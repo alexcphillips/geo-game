@@ -1,0 +1,123 @@
+import { useEffect, useRef } from "react";
+import { create } from "zustand";
+import { showToast } from "@/components/Toast/toastStore";
+import { api, toErrorMessage } from "@/lib/api";
+import {
+    GEO_API_PATHS,
+    type GeoCreateDungeonLobbyRequest,
+    type GeoDungeonEntrance,
+    type GeoDungeonsResponse,
+    type GeoRunResponse,
+    type GeoStartDungeonLobbyResponse,
+} from "@/lib/geo/contracts";
+
+const withLobbyId = (path: string, lobbyId: string) => path.replace(":lobbyId", encodeURIComponent(lobbyId));
+
+type DungeonState = {
+    /** The server's last word on the dungeon menu. Null until first read. */
+    data: GeoDungeonsResponse | null;
+    error: string | null;
+    /**
+     * Set when the player left or started their own lobby, so its going away
+     * isn't mistaken for the host starting or closing it.
+     */
+    leftOwnLobby: boolean;
+    refresh: () => Promise<void>;
+    create: (request: GeoCreateDungeonLobbyRequest) => Promise<void>;
+    join: (lobbyId: string, entrance: GeoDungeonEntrance) => Promise<void>;
+    leave: (lobbyId: string) => Promise<void>;
+    /** Host only: takes everyone in. Open the reply's Run at `/run/combat`. */
+    start: (lobbyId: string) => Promise<GeoStartDungeonLobbyResponse>;
+};
+
+/**
+ * The dungeon menu: dungeons, open lobbies, and the player's own lobby. Every
+ * action replies with the whole menu, so it shows at once. Actions throw
+ * ApiError with the server's reason.
+ */
+export const useDungeonStore = create<DungeonState>()((set, get) => {
+    const adopt = (data: GeoDungeonsResponse) => set({ data, error: null });
+
+    return {
+        data: null,
+        error: null,
+        leftOwnLobby: false,
+        refresh: async () => {
+            try {
+                adopt(await api.get<GeoDungeonsResponse>(GEO_API_PATHS.dungeons.root));
+            } catch (error) {
+                set({ error: toErrorMessage(error) });
+            }
+        },
+        create: async (request) => adopt(await api.post<GeoDungeonsResponse>(GEO_API_PATHS.dungeons.lobbies, request)),
+        join: async (lobbyId, entrance) =>
+            adopt(await api.post<GeoDungeonsResponse>(withLobbyId(GEO_API_PATHS.dungeons.join, lobbyId), entrance)),
+        leave: async (lobbyId) => {
+            const data = await api.post<GeoDungeonsResponse>(withLobbyId(GEO_API_PATHS.dungeons.leave, lobbyId));
+            set({ leftOwnLobby: true });
+            adopt(data);
+        },
+        start: async (lobbyId) => {
+            const started = await api.post<GeoStartDungeonLobbyResponse>(withLobbyId(GEO_API_PATHS.dungeons.start, lobbyId));
+            set({ leftOwnLobby: true });
+            void get().refresh();
+            return started;
+        },
+    };
+});
+
+/** While the menu is open: often enough to see players join. */
+const OPEN_POLL_MS = 3_000;
+/** While waiting in a lobby with the menu shut: soon enough to be taken in when it starts. */
+const LOBBY_POLL_MS = 5_000;
+
+/**
+ * Keeps the dungeon menu fresh: read once on mount, then polled quickly while
+ * the menu is open, a little slower while the player waits in a lobby, and
+ * not at all otherwise.
+ */
+export function useDungeonPolling(isMenuOpen: boolean, isEnabled = true) {
+    const refresh = useDungeonStore((state) => state.refresh);
+    const isInLobby = useDungeonStore((state) => state.data?.myLobby != null);
+
+    useEffect(() => {
+        if (isEnabled) void refresh();
+    }, [isEnabled, refresh]);
+
+    useEffect(() => {
+        if (!isEnabled || (!isMenuOpen && !isInLobby)) return;
+        const timer = setInterval(() => void refresh(), isMenuOpen ? OPEN_POLL_MS : LOBBY_POLL_MS);
+        return () => clearInterval(timer);
+    }, [isEnabled, isMenuOpen, isInLobby, refresh]);
+}
+
+/**
+ * Notices the player's lobby going away without them leaving it: either the
+ * host started it, which put them straight into the fight (`onTakenIn`), or
+ * the host closed it. Tells the two apart by whether a Run is now open.
+ */
+export function useLobbyExitWatcher(onTakenIn: () => void) {
+    const lobbyId = useDungeonStore((state) => state.data?.myLobby?.id ?? null);
+    const previous = useRef(lobbyId);
+    const onTakenInRef = useRef(onTakenIn);
+    useEffect(() => {
+        onTakenInRef.current = onTakenIn;
+    }, [onTakenIn]);
+
+    useEffect(() => {
+        const was = previous.current;
+        previous.current = lobbyId;
+        if (!was || lobbyId === was) return;
+        if (useDungeonStore.getState().leftOwnLobby) {
+            useDungeonStore.setState({ leftOwnLobby: false });
+            return;
+        }
+        void api
+            .get<GeoRunResponse | null>(GEO_API_PATHS.runs.active)
+            .then((active) => {
+                if (active) onTakenInRef.current();
+                else showToast("Your lobby closed, or started without you");
+            })
+            .catch(() => {});
+    }, [lobbyId]);
+}

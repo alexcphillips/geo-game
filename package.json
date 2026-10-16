@@ -1,0 +1,49 @@
+{
+    "name": "geo-game",
+    "version": "1.0.0",
+    "main": "expo-router/entry",
+    "dependencies": {
+        "@react-native-async-storage/async-storage": "2.2.0",
+        "expo": "~57.0.27",
+        "expo-constants": "~57.0.21",
+        "expo-linear-gradient": "~57.0.2",
+        "expo-linking": "~57.0.12",
+        "expo-location": "~57.0.20",
+        "expo-notifications": "~57.0.22",
+        "expo-router": "~57.0.25",
+        "expo-secure-store": "~57.0.4",
+        "expo-status-bar": "~57.0.1",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "react-native": "0.86.3",
+        "react-native-safe-area-context": "~5.7.0",
+        "react-native-screens": "~4.26.0",
+        "react-native-svg": "15.15.4",
+        "react-native-webview": "13.16.1",
+        "zustand": "^5.0.15"
+    },
+    "devDependencies": {
+        "@iconify-json/game-icons": "^1.2.4",
+        "@maplibre/maplibre-gl-style-spec": "^26.4.4",
+        "@types/react": "~19.2.2",
+        "eslint": "^9.0.0",
+        "eslint-config-expo": "~57.0.2",
+        "tsx": "^4.23.15",
+        "typescript": "~6.0.3"
+    },
+    "scripts": {
+        "start": "expo start",
+        "tunnel": "expo start --tunnel",
+        "android": "expo start --android",
+        "ios": "expo start --ios",
+        "lint": "expo lint",
+        "validate:map": "tsx scripts/validate-map-style.ts",
+        "typecheck": "tsc --noEmit",
+        "doctor": "expo-doctor",
+        "icons": "node scripts/generate-icons.mjs",
+        "sprites": "node scripts/generate-sprites.mjs",
+        "pet-icons": "node scripts/generate-pet-icons.mjs",
+        "sync:contracts": "node scripts/sync-geo-contracts.mjs"
+    },
+    "private": true
+}
