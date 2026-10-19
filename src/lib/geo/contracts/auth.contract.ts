@@ -16,6 +16,8 @@ export type GeoPlayer = {
     displayName: string;
     /** Spendable coins. Coins held by live bids are already taken out. */
     coins: number;
+    /** Coins in the bank at camp: safe from death, spendable once withdrawn. */
+    bankCoins: number;
     role: GeoRole;
     createdAt: string;
 };

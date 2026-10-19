@@ -50,7 +50,7 @@ export default function StackBuyPanel({
                 accessibilityState={{ disabled: !canBuy }}
             >
                 <Text style={styles.primaryText}>Buy {formatCoins(quantity)}</Text>
-                <Icon name="coins" size={15} color={colors.textOnEmber} />
+                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
                 <Text style={styles.primaryText}>{formatCoins(total ?? 0)}</Text>
             </Pressable>
             {problem && <Text style={styles.hint}>{problem}</Text>}

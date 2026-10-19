@@ -51,6 +51,7 @@ const ICONS = [
     "cape",
     "belt",
     "checked-shield",
+    "magic-shield",
     "knapsack",
     "swap-bag",
     "potion-ball",
@@ -76,6 +77,7 @@ const ICONS = [
     "heart-plus",
 
     // Skills and location suggestions
+    "histogram",
     "mining",
     "fishing-pole",
     "wheat",
@@ -129,9 +131,10 @@ const ICONS = [
     "visored-helm",
     "gauntlet",
     "greaves",
+    "shoulder-armor",
     "shop",
     "ringing-bell",
-    "coins",
+    "two-coins",
 
     // Market: auction and buy-it-now listings
     "gavel",

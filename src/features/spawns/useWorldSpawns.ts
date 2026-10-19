@@ -15,7 +15,7 @@ const REFETCH_AFTER_METRES = 15;
 /** Spawns reroll on the server every 15 minutes; check well inside that. */
 const REFETCH_EVERY_MS = 60_000;
 /** Until the server says otherwise. Matches its 50 m reach, which the ring shows. */
-const DEFAULT_REACH_METRES = 50;
+const DEFAULT_REACH_METRES = 60;
 const DEFAULT_SPAWN_RADIUS_METRES = DEFAULT_REACH_METRES;
 
 /**

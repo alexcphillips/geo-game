@@ -23,7 +23,7 @@ export default function DeathCard({ body, coinsLost, actions }: DeathCardProps) 
             <Text style={styles.body}>{body}</Text>
             {coinsLost !== null && (
                 <View style={styles.coins}>
-                    <Icon name="coins" size={18} color={colors.coins} />
+                    <Icon name="two-coins" size={18} color={colors.coins} />
                     <Text style={styles.coinsText}>
                         You lost {coinsLost.toLocaleString()} {coinsLost === 1 ? "coin" : "coins"}!
                     </Text>

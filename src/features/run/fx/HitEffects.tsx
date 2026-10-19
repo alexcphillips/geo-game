@@ -36,7 +36,7 @@ export type HitEffect =
  * Damage taken (red), a critical hit (gold, bigger), a block (blue), health
  * back (green), or a status coming or going (pale, smaller).
  */
-export type LabelTone = "damage" | "crit" | "guard" | "heal" | "status";
+export type LabelTone = "damage" | "crit" | "guard" | "barrier" | "heal" | "status";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -380,6 +380,7 @@ function FloatingLabel({
                     styles.damageText,
                     crit && styles.damageCrit,
                     tone === "guard" && styles.guardText,
+                    tone === "barrier" && styles.barrierText,
                     tone === "heal" && styles.healText,
                     tone === "status" && styles.statusText,
                     color !== undefined && { color },
@@ -415,6 +416,10 @@ const styles = StyleSheet.create({
     },
     guardText: {
         color: "#9FD0FF",
+        fontSize: 18,
+    },
+    barrierText: {
+        color: colors.barrierGradient[1],
         fontSize: 18,
     },
     healText: {

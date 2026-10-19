@@ -19,11 +19,13 @@ import { showToast } from "@/components/Toast/toastStore";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import RewardGrid from "@/features/inventory/components/RewardGrid";
 import ChestPicker from "@/features/chests/components/ChestPicker";
+import { pendingChestActions } from "@/features/inbox/inboxStore";
+import { refreshAfterRunStart } from "@/features/wardrobe/autoSwap";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { toInventoryItem } from "@/features/player/toInventoryItem";
 import { SPRITES, spriteScale, type SpriteName } from "@/features/spawns/sprites";
-import { combatDamageBonus, skillProgress, type SkillProgress } from "@/features/skills/skills";
+import { combatDamageBonus, skillLabel, skillProgress, type SkillProgress } from "@/features/skills/skills";
 import { toErrorMessage } from "@/lib/api";
 import type {
     GeoChestSelection,
@@ -91,6 +93,7 @@ export default function CombatRunScreen() {
         }
         try {
             setOpened(await runsApi.start(request));
+            void refreshAfterRunStart();
         } catch (error) {
             setProblem(toErrorMessage(error));
         }
@@ -156,6 +159,26 @@ function numbersOf(run: GeoRunView, pick: (c: GeoCombatantView) => number): Side
     return { player: player ? pick(player) : 0, enemy: enemy ? pick(enemy) : 0 };
 }
 
+/**
+ * Health before a log played: the server's figures after it, with the log's
+ * damage given back and its healing taken away. HP carries between fights, so
+ * a fresh Run can open below max.
+ */
+function healthBefore(response: GeoRunResponse): SideNumbers {
+    const player = playerOf(response.run);
+    const enemy = enemyOf(response.run);
+    const before = (combatant: GeoCombatantView | undefined) => {
+        if (!combatant) return 0;
+        const net = response.log.reduce((sum, entry) => {
+            if (entry.type === "damage" && entry.target === combatant.id) return sum + entry.amount;
+            if (entry.type === "heal" && entry.target === combatant.id) return sum - entry.amount;
+            return sum;
+        }, 0);
+        return Math.min(combatant.maxHealth, Math.max(0, combatant.health + net));
+    };
+    return { player: before(player), enemy: before(enemy) };
+}
+
 function spriteOf(name: string | undefined) {
     return SPRITES[name as SpriteName] ?? Object.values(SPRITES)[0]!;
 }
@@ -190,8 +213,9 @@ function CombatRun({
     const refreshPlayer = usePlayerStore((state) => state.refresh);
     // Can't change mid-Run, so the slots unlocked when it started still hold.
     const lunchboxSlots = usePlayerStore((state) => state.me?.lunchbox.slots ?? 1);
-    // Combat XP before this fight, for the level meter on a win.
-    const [xpBefore] = useState(() => usePlayerStore.getState().me?.skillXp.combat ?? 0);
+    // Skill XP before this fight, for the level meter and level-up toasts on a win.
+    const [skillXpBefore] = useState(() => usePlayerStore.getState().me?.skillXp ?? {});
+    const xpBefore = skillXpBefore.combat ?? 0;
 
     // The opening log applies its own statuses as it plays, so start without them.
     const [run, setRun] = useState(() =>
@@ -206,8 +230,8 @@ function CombatRun({
     const [isBusy, setIsBusy] = useState(opened.log.length > 0);
     const [inspected, setInspected] = useState<InventoryItem | null>(null);
 
-    // A fresh Run's log starts from full health; a resumed one has no log, so
-    // it starts where the server says it is.
+    // A fresh Run's log is rewound to find where health stood before it; a
+    // resumed one has no log, so it starts where the server says it is.
     const hasOpeningLog = opened.log.length > 0;
     const {
         playerRef,
@@ -218,12 +242,15 @@ function CombatRun({
         removeEffect,
         health,
         guard,
+        barrier,
         perform,
         dropGuard,
         sync,
     } = useCombatHits(
-        hasOpeningLog ? numbersOf(opened.run, (c) => c.maxHealth) : numbersOf(opened.run, (c) => c.health),
+        hasOpeningLog ? healthBefore(opened) : numbersOf(opened.run, (c) => c.health),
         hasOpeningLog ? { player: 0, enemy: 0 } : numbersOf(opened.run, (c) => c.guard),
+        // A starting barrier arrives in the opening log, like a cast one.
+        hasOpeningLog ? { player: 0, enemy: 0 } : numbersOf(opened.run, (c) => c.barrier),
     );
 
     const player = playerOf(run);
@@ -267,7 +294,11 @@ function CombatRun({
                         }),
                     })),
             });
-            sync(numbersOf(response.run, (c) => c.health), numbersOf(response.run, (c) => c.guard));
+            sync(
+                numbersOf(response.run, (c) => c.health),
+                numbersOf(response.run, (c) => c.guard),
+                numbersOf(response.run, (c) => c.barrier),
+            );
             setRun(response.run);
             setOrder(response.run.order);
             setActorId(response.run.currentActor);
@@ -347,11 +378,29 @@ function CombatRun({
     }, [order, actorId, run.combatants]);
 
     const hand = useMemo(() => handItems(run, items), [run, items]);
+    // Ids of cards the server says can't be played now (a self-buff already up).
+    const unplayable = useMemo(
+        () => new Set(run.hand.filter((card) => card.playable === false).map((card) => card.inventoryId)),
+        [run],
+    );
     const lunchbox = useMemo(() => packedSlots(run.lunchbox, items), [run.lunchbox, items]);
     const drops = run.rewards?.items ?? [];
     // A win that gave chests: picked from here, or left pending for later.
     const chestReward = run.rewards?.chests ?? null;
     const [openedChests, setOpenedChests] = useState<GeoChestSelection | null>(null);
+    const wonSelectionId = chestReward?.selectionId ?? null;
+    useEffect(() => {
+        if (wonSelectionId) pendingChestActions.won(wonSelectionId);
+    }, [wonSelectionId]);
+    // "Combat 12 → 13" for each skill this fight levelled up, once.
+    const xpRewards = run.rewards?.xp ?? null;
+    useEffect(() => {
+        for (const { skill, amount } of xpRewards ?? []) {
+            const before = skillProgress(skillXpBefore[skill] ?? 0).level;
+            const after = skillProgress((skillXpBefore[skill] ?? 0) + amount).level;
+            if (after > before) showToast(`${skillLabel(skill)} ${before} → ${after}`, "success");
+        }
+    }, [xpRewards, skillXpBefore]);
     const xpAmount = run.rewards?.xp.find((gain) => gain.skill === "combat")?.amount ?? 0;
     const xpGain = useMemo(() => {
         if (!xpAmount) return null;
@@ -386,7 +435,7 @@ function CombatRun({
                                     aspectRatio={PLAYER_ASPECT_RATIO}
                                     height={PLAYER_HEIGHT}
                                     name={player?.name ?? "You"}
-                                    health={{ current: health.player, max: player?.maxHealth ?? 1 }}
+                                    health={{ current: health.player, max: player?.maxHealth ?? 1, barrier: barrier.player }}
                                     flashOnHit={false}
                                 />
                                 <Statuses combatant={player} />
@@ -398,7 +447,7 @@ function CombatRun({
                                     aspectRatio={sprite.width / sprite.height}
                                     height={ENEMY_HEIGHT * spriteScale(enemy?.sprite)}
                                     name={enemy?.name}
-                                    health={{ current: health.enemy, max: enemy?.maxHealth ?? 1 }}
+                                    health={{ current: health.enemy, max: enemy?.maxHealth ?? 1, barrier: barrier.enemy }}
                                 />
                                 <Statuses combatant={enemy} />
                             </View>
@@ -413,6 +462,7 @@ function CombatRun({
                         cards={hand}
                         onPlay={(card) => void playCard(card)}
                         disabled={!isPlayerTurn}
+                        isPlayable={(card) => !unplayable.has(card.id)}
                         accessory={
                             <RunLunchbox
                                 packed={lunchbox}
@@ -455,7 +505,7 @@ function CombatRun({
                                     accessible
                                     accessibilityLabel={`Plus ${run.rewards?.coins} coins`}
                                 >
-                                    <Icon name="coins" size={18} color={colors.coins} />
+                                    <Icon name="two-coins" size={18} color={colors.coins} />
                                     <Text style={styles.coinRewardText}>+{run.rewards?.coins}</Text>
                                 </View>
                             )}

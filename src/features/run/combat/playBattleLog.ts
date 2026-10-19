@@ -12,6 +12,8 @@ function elementColor(element: string, crit: boolean): string {
             return "#9FD0FF";
         case "lightning":
             return "#F4F1A0";
+        case "poison":
+            return colors.statusPoison;
         default:
             return "#FFFFFF";
     }
@@ -123,6 +125,7 @@ export async function playBattleLog(log: GeoLogEntry[], playback: LogPlayback): 
                 if (!target) break;
                 const color = elementColor(entry.element, entry.crit);
                 if (entry.isAttack && source && source !== target) {
+                    if (entry.counter) await perform({ kind: "label", target: source, text: "Counter", tone: "status" });
                     await perform({
                         kind: "attack",
                         attacker: source,
@@ -130,11 +133,19 @@ export async function playBattleLog(log: GeoLogEntry[], playback: LogPlayback): 
                         slash: entry.delivery !== "projectile" && "single",
                         dealt: entry.amount,
                         blocked: entry.blocked,
+                        absorbed: entry.absorbed,
                         crit: entry.crit,
                         burstColor: color,
                     });
                 } else {
-                    await perform({ kind: "hit", target, dealt: entry.amount, blocked: entry.blocked, color });
+                    await perform({
+                        kind: "hit",
+                        target,
+                        dealt: entry.amount,
+                        blocked: entry.blocked,
+                        absorbed: entry.absorbed,
+                        color,
+                    });
                 }
                 break;
             }
@@ -148,6 +159,12 @@ export async function playBattleLog(log: GeoLogEntry[], playback: LogPlayback): 
             case "guard": {
                 const side = sideOf(entry.target);
                 if (side) await perform({ kind: "block", side, amount: entry.amount });
+                break;
+            }
+
+            case "barrier": {
+                const side = sideOf(entry.target);
+                if (side) await perform({ kind: "barrier", side, amount: entry.amount });
                 break;
             }
 

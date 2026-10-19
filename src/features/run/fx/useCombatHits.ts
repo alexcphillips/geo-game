@@ -20,10 +20,12 @@ export type Move =
           delivery: "lunge" | "projectile";
           /** A slash over the target as it lands; "double" adds a mirrored second. */
           slash: false | "single" | "double";
-          /** Health lost, after guard. */
+          /** Health lost, after guard and barrier. */
           dealt: number;
           /** Soaked by guard. */
           blocked: number;
+          /** Soaked by barrier. */
+          absorbed: number;
           crit: boolean;
           burstColor: string;
       }
@@ -33,6 +35,7 @@ export type Move =
           target: Side;
           dealt: number;
           blocked: number;
+          absorbed: number;
           color: string;
       }
     | { kind: "heal"; target: Side; amount: number }
@@ -42,13 +45,20 @@ export type Move =
           /** Guard added, soaking the next hits. */
           amount: number;
       }
+    | {
+          kind: "barrier";
+          side: Side;
+          /** The barrier is now this: set, not added to. */
+          amount: number;
+      }
     /** Just words over a combatant: a status taken or lost, a skipped turn. */
     | { kind: "label"; target: Side; text: string; tone: LabelTone; color?: string };
 
 const GUARD_COLOR = "#9FD0FF";
+const BARRIER_COLOR = colors.barrierGradient[0];
 const HEAL_COLOR = colors.toastSuccess;
 
-/** Health and guard for both sides, as the arena shows them. */
+/** Health, guard or barrier for both sides, as the arena shows them. */
 export type SideNumbers = Record<Side, number>;
 
 const other = (side: Side): Side => (side === "player" ? "enemy" : "player");
@@ -69,7 +79,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * entry after another. `sync` snaps health and guard to the server's figures
  * once a log is done, so nothing drawn can drift from the truth.
  */
-export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumbers) {
+export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumbers, initialBarrier: SideNumbers) {
     const playerRef = useRef<CombatantHandle>(null);
     const enemyRef = useRef<CombatantHandle>(null);
     const arenaRef = useRef<View>(null);
@@ -77,9 +87,11 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
     const [effects, setEffects] = useState<HitEffect[]>([]);
     const [health, setHealth] = useState<SideNumbers>(initialHealth);
     const [guard, setGuard] = useState<SideNumbers>(initialGuard);
+    const [barrier, setBarrier] = useState<SideNumbers>(initialBarrier);
     // Mirrors of state, read synchronously inside `perform`.
     const healthRef = useRef(initialHealth);
     const guardRef = useRef(initialGuard);
+    const barrierRef = useRef(initialBarrier);
     const nextId = useRef(0);
 
     const handle = (side: Side) => (side === "player" ? playerRef : enemyRef).current;
@@ -127,19 +139,28 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
         setGuard(guardRef.current);
     };
 
+    const setBarrierFor = (side: Side, amount: number) => {
+        barrierRef.current = { ...barrierRef.current, [side]: Math.max(0, amount) };
+        setBarrier(barrierRef.current);
+    };
+
     const setHealthFor = (side: Side, amount: number) => {
         healthRef.current = { ...healthRef.current, [side]: Math.max(0, amount) };
         setHealth(healthRef.current);
     };
 
-    /** Damage landing on a side: guard spent, number popped, health drained. */
+    /** Damage landing on a side: guard and barrier spent, number popped, health drained. */
     const land = useCallback(
-        async (target: Side, dealt: number, blocked: number, color: string, tone: LabelTone) => {
+        async (target: Side, dealt: number, blocked: number, absorbed: number, color: string, tone: LabelTone) => {
             if (blocked > 0) setGuardFor(target, guardRef.current[target] - blocked);
+            if (absorbed > 0) setBarrierFor(target, barrierRef.current[target] - absorbed);
             const box = await boxOf(target);
             if (box) {
-                add({ kind: "burst", target: box, color: blocked > 0 && dealt === 0 ? GUARD_COLOR : color });
-                add({ kind: "label", target: box, text: dealt > 0 ? `−${dealt}` : "Blocked", tone: dealt > 0 ? tone : "guard" });
+                // Nothing got through: show what stopped it, the barrier when guard had no part.
+                const soak = blocked > 0 ? { color: GUARD_COLOR, text: "Blocked", tone: "guard" as const } : { color: BARRIER_COLOR, text: "Absorbed", tone: "barrier" as const };
+                const isSoaked = dealt === 0 && blocked + absorbed > 0;
+                add({ kind: "burst", target: box, color: isSoaked ? soak.color : color });
+                add({ kind: "label", target: box, text: isSoaked ? soak.text : `−${dealt}`, tone: isSoaked ? soak.tone : tone });
             }
             handle(target)?.react();
             setHealthFor(target, healthRef.current[target] - dealt);
@@ -160,6 +181,16 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
                     await wait(SETTLE_MS);
                     return;
                 }
+                case "barrier": {
+                    const box = await boxOf(move.side);
+                    if (box) {
+                        add({ kind: "burst", target: box, color: BARRIER_COLOR });
+                        add({ kind: "label", target: box, text: `Barrier ${move.amount}`, tone: "barrier" });
+                    }
+                    setBarrierFor(move.side, move.amount);
+                    await wait(SETTLE_MS);
+                    return;
+                }
                 case "heal": {
                     const box = await boxOf(move.target);
                     if (box) {
@@ -177,7 +208,7 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
                     return;
                 }
                 case "hit":
-                    await land(move.target, move.dealt, move.blocked, move.color, "damage");
+                    await land(move.target, move.dealt, move.blocked, move.absorbed, move.color, "damage");
                     await wait(SHORT_SETTLE_MS);
                     return;
                 case "attack": {
@@ -199,7 +230,14 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
                         const box = await boxOf(targetSide);
                         if (box) add({ kind: "slash", target: box, double: move.slash === "double" });
                     }
-                    await land(targetSide, move.dealt, move.blocked, move.burstColor, move.crit ? "crit" : "damage");
+                    await land(
+                        targetSide,
+                        move.dealt,
+                        move.blocked,
+                        move.absorbed,
+                        move.burstColor,
+                        move.crit ? "crit" : "damage",
+                    );
                     if (move.crit) shakeArena();
                     await wait(SETTLE_MS);
                     return;
@@ -216,11 +254,13 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
     }, []);
 
     /** Snaps to the server's numbers, e.g. after a log or when resuming. */
-    const sync = useCallback((nextHealth: SideNumbers, nextGuard: SideNumbers) => {
+    const sync = useCallback((nextHealth: SideNumbers, nextGuard: SideNumbers, nextBarrier: SideNumbers) => {
         healthRef.current = nextHealth;
         guardRef.current = nextGuard;
+        barrierRef.current = nextBarrier;
         setHealth(nextHealth);
         setGuard(nextGuard);
+        setBarrier(nextBarrier);
     }, []);
 
     return {
@@ -232,6 +272,7 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
         removeEffect,
         health,
         guard,
+        barrier,
         perform,
         dropGuard,
         sync,

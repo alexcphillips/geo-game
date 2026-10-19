@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { isFaded, type InventoryItem } from "@/features/inventory/inventoryItems";
-import type { GeoBait, GeoEquipmentSlot, GeoLunchbox, GeoPetUpgrade, GeoSavedHand, GeoSeedBag, GeoTalismanBag } from "@/lib/geo/contracts";
+import type { GeoBait, GeoEquipmentSlot, GeoHealth, GeoLunchbox, GeoPetUpgrade, GeoSavedHand, GeoStatLine, GeoTalismanBag, GeoWardrobe } from "@/lib/geo/contracts";
 import { usePlayerStore } from "./playerStore";
 import { toInventoryItem } from "./toInventoryItem";
 
@@ -10,10 +10,11 @@ const NO_EQUIPMENT: Partial<Record<GeoEquipmentSlot, string>> = {};
 const NO_BAG: GeoTalismanBag = { pages: 1, inventoryIds: [] };
 const NO_LUNCHBOX: GeoLunchbox = { slots: 1, contents: [] };
 const NO_BAIT: GeoBait = { slots: 1, contents: [] };
-const NO_SEEDS: GeoSeedBag = { slots: 1, contents: [] };
 const NO_HANDS: Record<string, string[]> = {};
 const NO_SAVED_HANDS: GeoSavedHand[] = [];
 const NO_XP: Record<string, number> = {};
+const NO_HEALTH: GeoHealth = { current: 1, max: 1 };
+const NO_STATS: GeoStatLine[] = [];
 
 /** Everything the player owns, talismans and cards included, ready to draw. */
 export function useInventory(): InventoryItem[] {
@@ -40,14 +41,19 @@ export function useTalismanBag(): GeoTalismanBag {
     return usePlayerStore((state) => state.me?.talismanBag ?? NO_BAG);
 }
 
+/** Health between fights; full at 1/1 before the player loads. */
+export function useHealth(): GeoHealth {
+    return usePlayerStore((state) => state.me?.health ?? NO_HEALTH);
+}
+
+/** Every stat's total and its sources, for the character's Stats tab. Empty before the player loads. */
+export function useStats(): GeoStatLine[] {
+    return usePlayerStore((state) => state.me?.stats ?? NO_STATS);
+}
+
 /** Slots unlocked, and the food packed in them. */
 export function useLunchbox(): GeoLunchbox {
     return usePlayerStore((state) => state.me?.lunchbox ?? NO_LUNCHBOX);
-}
-
-/** Seed Bag slots unlocked, and the seeds packed in them. */
-export function useSeedBag(): GeoSeedBag {
-    return usePlayerStore((state) => state.me?.seedBag ?? NO_SEEDS);
 }
 
 /** Bait slots unlocked, and the bait packed in them. */
@@ -96,6 +102,16 @@ export function useSkillXp(): Record<string, number> {
 
 export function useCoins(): number {
     return usePlayerStore((state) => state.me?.player.coins ?? 0);
+}
+
+/** Saved loadouts and the wardrobe's upgrades; null before the player loads. */
+export function useWardrobe(): GeoWardrobe | null {
+    return usePlayerStore((state) => state.me?.wardrobe ?? null);
+}
+
+/** Coins in the bank at camp. */
+export function useBankCoins(): number {
+    return usePlayerStore((state) => state.me?.player.bankCoins ?? 0);
 }
 
 /** A skill's current hand, as cards to draw, in hand order. Faded cards are left out. */

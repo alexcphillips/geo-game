@@ -265,7 +265,7 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                             accessibilityLabel="Sell an item"
                             hitSlop={8}
                         >
-                            <Icon name="coins" size={14} color={colors.emberBright} />
+                            <Icon name="two-coins" size={14} color={colors.emberBright} />
                             <Text style={styles.sellButtonText}>Sell</Text>
                         </Pressable>
                     </View>

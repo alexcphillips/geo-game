@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Badge from "@/components/Badge/Badge";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
+import ChestsPage from "@/features/chests/components/ChestsPage";
 import { formatDateTime, formatListedAgo } from "@/features/market/market";
 import { toErrorMessage } from "@/lib/api";
 import { colors } from "@/theme/colors";
@@ -13,15 +15,25 @@ type InboxModalProps = {
     onClose: () => void;
 };
 
+type InboxTab = "mail" | "chests";
+
 /**
- * The inbox: replies to the player's feedback, and announcements to everyone
- * (news, updates, events, a new mayor), newest first.
+ * The inbox, in two tabs. Mail: replies to the player's feedback, and
+ * announcements to everyone (news, updates, events, a new mayor), newest
+ * first. Chests: chests won and waiting to be opened, then the history, kept
+ * apart so a run of dungeon wins doesn't bury the mail.
  *
- * Opening it reads everything in it: the badge clears at once, while what
- * was new keeps its marker until the inbox closes. Friend requests aren't
- * here; they're with friends.
+ * Opening it reads all the mail: the button's badge drops it at once, while
+ * what was new keeps its marker (and the tab its count) until the inbox
+ * closes. Chests count until they're opened. It opens on Chests when chests
+ * are all that's waiting. Friend requests aren't here; they're with friends.
  */
 export default function InboxModal({ onClose }: InboxModalProps) {
+    const [tab, setTab] = useState<InboxTab>(() => {
+        const { unread, pendingChests } = useInboxStore.getState();
+        return unread === 0 && pendingChests > 0 ? "chests" : "mail";
+    });
+    const pendingChests = useInboxStore((state) => state.pendingChests);
     const [mail, setMail] = useState<Mail[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [open, setOpen] = useState<Mail | null>(null);
@@ -52,7 +64,25 @@ export default function InboxModal({ onClose }: InboxModalProps) {
             closePlacement="footer"
             onClose={onClose}
         >
-            {!mail ? (
+            {!open && (
+                <View style={styles.tabs} accessibilityRole="tablist">
+                    <TabButton
+                        label="Mail"
+                        badge={mail?.filter((entry) => !entry.item.read).length ?? 0}
+                        isActive={tab === "mail"}
+                        onPress={() => setTab("mail")}
+                    />
+                    <TabButton
+                        label="Chests"
+                        badge={pendingChests}
+                        isActive={tab === "chests"}
+                        onPress={() => setTab("chests")}
+                    />
+                </View>
+            )}
+            {tab === "chests" && !open ? (
+                <ChestsPage />
+            ) : !mail ? (
                 <View style={styles.loading}>
                     {error ? <Text style={styles.empty}>{error}</Text> : <ActivityIndicator color={colors.emberBright} />}
                 </View>
@@ -67,6 +97,24 @@ export default function InboxModal({ onClose }: InboxModalProps) {
                 </ScrollView>
             )}
         </Modal>
+    );
+}
+
+function TabButton({ label, badge, isActive, onPress }: { label: string; badge: number; isActive: boolean; onPress: () => void }) {
+    return (
+        <Pressable
+            onPress={onPress}
+            style={[styles.tab, isActive && styles.tabActive]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={badge > 0 ? `${label}, ${badge} new` : label}
+        >
+            {/* The badge sits on the label's corner, not the whole tab's. */}
+            <View style={styles.tabLabelWrap}>
+                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
+                <Badge count={badge} />
+            </View>
+        </Pressable>
     );
 }
 
@@ -131,6 +179,38 @@ function MailPage({ mail }: { mail: Mail }) {
 }
 
 const styles = StyleSheet.create({
+    tabs: {
+        flexDirection: "row",
+        marginBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    tab: {
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 10,
+        // Overlaps the bar's hairline, so the active underline sits on it.
+        marginBottom: -1,
+        borderBottomWidth: 2,
+        borderBottomColor: "transparent",
+    },
+    tabActive: {
+        borderBottomColor: colors.ember,
+    },
+    tabLabelWrap: {
+        paddingHorizontal: 10,
+        paddingTop: 4,
+    },
+    tabLabel: {
+        color: colors.textSecondary,
+        fontSize: 13,
+        fontWeight: "700",
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+    },
+    tabLabelActive: {
+        color: colors.emberBright,
+    },
     loading: {
         paddingVertical: 32,
         alignItems: "center",

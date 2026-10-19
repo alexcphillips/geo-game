@@ -15,7 +15,7 @@ type EquipmentSlotProps = {
     onLongPress?: (item: InventoryItem) => void;
 };
 
-export const SLOT_SIZE = 52;
+export const SLOT_SIZE = 68;
 
 /**
  * One equipment square.
@@ -38,7 +38,7 @@ export default function EquipmentSlot({
             ]}
         >
             {item ? (
-                <Icon name={item.icon} size={30} color={colors.emberBright} />
+                <Icon name={item.icon} size={40} color={colors.emberBright} />
             ) : (
                 <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>
                     {slot.label}
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     },
     label: {
         color: colors.textSecondary,
-        fontSize: 9,
+        fontSize: 10,
         letterSpacing: 0.5,
         textTransform: "uppercase",
     },

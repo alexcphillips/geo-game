@@ -35,8 +35,8 @@ type CombatantProps = {
     height: number;
     /** Shown above the health bar. Omit for no nameplate. */
     name?: string;
-    /** Omit to draw the art with no health bar. */
-    health?: { current: number; max: number };
+    /** Omit to draw the art with no health bar. `barrier` draws gold over it. */
+    health?: { current: number; max: number; barrier?: number };
     /** Flash white when hit. Off for the player's knight. */
     flashOnHit?: boolean;
 };
@@ -131,6 +131,7 @@ export default function Combatant({
                             label={`${name ?? "Enemy"} health`}
                             current={health.current}
                             max={health.max}
+                            barrier={health.barrier}
                             gradient={colors.healthGradient}
                             width={HEALTH_BAR_WIDTH}
                             animateChanges

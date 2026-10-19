@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { CARD_SKILLS, type CardSkill } from "@/features/cards/cardSkills";
-import { placeTypeInfo } from "@/features/places/places";
+import { placeTitle, placeTypeInfo } from "@/features/places/places";
 import { useCurrentHand } from "@/features/player/usePlayer";
 import RunHand from "@/features/run/components/RunHand";
 import RunScreen from "@/features/run/components/RunScreen";
@@ -28,7 +28,7 @@ export default function PlaceRunScreen() {
     // A place Run is training its skill; one with no skill is just a visit.
     useReportActivity(skill ? "skilling" : "exploring", skill);
     const type = placeTypeInfo(skill);
-    const title = name || `${type.label} Area`;
+    const title = placeTitle(name, skill);
 
     return (
         <RunScreen

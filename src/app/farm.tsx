@@ -27,14 +27,12 @@ import {
 import { useReportActivity } from "@/features/friends/presenceStore";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import { packedSlots } from "@/features/lunchbox/lunchbox";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { useInventory } from "@/features/player/usePlayer";
 import { useAdminSettingsStore } from "@/features/settings/adminSettingsStore";
 import { toInventoryItem } from "@/features/player/toInventoryItem";
 import OutcomeButton from "@/features/run/components/OutcomeButton";
 import RunHand from "@/features/run/components/RunHand";
-import RunLunchbox from "@/features/run/components/RunLunchbox";
 import RunScreen from "@/features/run/components/RunScreen";
 import { toErrorMessage } from "@/lib/api";
 import {
@@ -180,10 +178,6 @@ export default function FarmScreen() {
     );
     const pestTypes = useMemo(() => Object.fromEntries((farm?.pestTypes ?? []).map((pest) => [pest.id, pest])), [farm?.pestTypes]);
     const hand = useMemo(() => (farm ? handItems(farm, items) : []), [farm, items]);
-    const packedSeeds = useMemo(
-        () => (farm ? packedSlots(farm.seedBag.contents, items, "seeds") : []),
-        [farm, items],
-    );
     const preview = useMemo(
         () => (aiming && aimAt !== null && farm ? shapeTiles(aiming.shape, aimAt, farm.size) : new Set<number>()),
         [aiming, aimAt, farm],
@@ -302,9 +296,6 @@ export default function FarmScreen() {
                         onPlay={atPlace ? playCard : undefined}
                         onInspect={setInspected}
                         cornerMark={(card) => <LaborMark labor={farm.hand.find((entry) => entry.inventoryId === card.id)?.labor} />}
-                        accessory={
-                            <RunLunchbox kind="seeds" packed={packedSeeds} unlocked={farm.seedBag.slots} canUse={false} onUse={() => {}} />
-                        }
                     />
                 }
             />
@@ -599,20 +590,21 @@ function TilePanel({ farm, index, crops, pestTypes, structureTypes, held, items,
                     />,
                 );
             }
-            for (const packed of farm.seedBag.contents) {
-                const crop = Object.values(crops).find((entry) => entry.seedItemId === packed.itemId);
-                if (!crop) continue;
+            // Seeds plant straight from the inventory.
+            const plantable = Object.values(crops).filter((crop) => crop.seedItemId && (held[crop.seedItemId] ?? 0) > 0);
+            for (const crop of plantable) {
+                const seedItemId = crop.seedItemId!;
                 buttons.push(
                     <Chip
-                        key={`plant-${packed.slot}`}
-                        label={`Plant ${crop.name} (${packed.quantity})`}
+                        key={`plant-${crop.id}`}
+                        label={`Plant ${crop.name} (${held[seedItemId]})`}
                         icon={cropIcon(crop.icon)}
                         primary={tile.blueprint === crop.id}
-                        onPress={() => void act({ type: "plant", tile: index, slot: packed.slot })}
+                        onPress={() => void act({ type: "plant", tile: index, itemId: seedItemId })}
                     />,
                 );
             }
-            if (farm.seedBag.contents.length === 0) buttons.push(<Text key="noseeds" style={styles.hint}>Pack seeds in the Seed Bag to plant.</Text>);
+            if (plantable.length === 0) buttons.push(<Text key="noseeds" style={styles.hint}>No seeds to plant. The Farmer sells them.</Text>);
         }
         if (tile.crop?.ripe) buttons.push(<Chip key="harvest" label="Harvest · 1" primary onPress={() => void act({ type: "harvest", tile: index })} />);
         if (tile.moisture < GEO_FARM_MAX_MOISTURE) {

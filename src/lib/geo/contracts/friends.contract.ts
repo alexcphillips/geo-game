@@ -35,6 +35,8 @@ export type GeoPresenceResponse = {
     incomingRequests: number;
     /** Unread inbox mail (messages and announcements). */
     unreadInbox: number;
+    /** Chest selections won but not opened yet: the inbox's Chests tab. */
+    pendingChests: number;
 };
 
 export type GeoFriendStatus =

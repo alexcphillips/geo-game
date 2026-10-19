@@ -2,7 +2,7 @@ import type { GameIconName } from "@/components/Icon/Icon";
 import type { CardSkill } from "@/features/cards/cardSkills";
 import type { EquipKind } from "@/features/character/characterSlots";
 import type { GeoPetState, GeoQualityTier } from "@/lib/geo/contracts";
-import type { Rarity } from "./rarity";
+import { rarityInfo, type Rarity } from "./rarity";
 
 /**
  * Inventory tabs, in display order. Each item belongs to exactly one.
@@ -11,7 +11,7 @@ import type { Rarity } from "./rarity";
  */
 export type InventoryTabId =
     | "weapons"
-    | "armour"
+    | "armor"
     | "accessories"
     | "cards"
     | "materials"
@@ -28,7 +28,7 @@ export type InventoryTab = {
 export const INVENTORY_TABS: InventoryTab[] = [
     // Main hand and off hand: swords, staves, shields.
     { id: "weapons", label: "Weapons", icon: "crossed-swords" },
-    { id: "armour", label: "Armour", icon: "breastplate" },
+    { id: "armor", label: "Armor", icon: "breastplate" },
     // Rings, amulets, and talismans that aren't in the Talisman Bag (so don't count).
     { id: "accessories", label: "Accessories", icon: "ring" },
     // No Cards tab: cards live in the card menu, never the inventory. Card
@@ -65,6 +65,8 @@ export type InventoryItem = {
      * means the Talisman Bag rather than a slot.
      */
     equipSlot?: EquipKind | "talisman";
+    /** A fishing rod: held in the main hand, but no weapon. */
+    isRod?: boolean;
     /** Stack size for materials and consumables. Omitted means one. */
     quantity?: number;
     /**
@@ -72,7 +74,7 @@ export type InventoryItem = {
      * become a permanently faded, unplayable asset.
      */
     charges?: { remaining: number; max: number };
-    /** Weapons and armour: this copy's reforge id, if reforged. */
+    /** Weapons and armor: this copy's reforge id, if reforged. */
     reforge?: string;
     /** A sentence or two of flavour and purpose, shown on the detail page. */
     description: string;
@@ -108,12 +110,31 @@ export type InventoryItem = {
 
 export type ItemStat = { label: string; value: string };
 
-/** Highest quality tier first, then everything else as it was: Soulbound catches lead a list. */
-export function qualityFirst(items: InventoryItem[]): InventoryItem[] {
-    const rank = (item: InventoryItem) => (item.quality ? QUALITY_RANK[item.quality] : 0);
-    // Array sort is stable, so items of the same rank keep their order.
-    return [...items].sort((a, b) => rank(b) - rank(a));
+/**
+ * How an inventory tab is ordered. Descending means newest, rarest, most
+ * valuable first, or Z–A for names. Value is the whole stack's sell value.
+ */
+export type InventorySort = { by: "newest" | "rarity" | "value" | "name"; descending: boolean };
+
+export const DEFAULT_INVENTORY_SORT: InventorySort = { by: "newest", descending: true };
+
+/** `items` in `sort` order. Ties go to the higher quality tier, then the name. */
+export function sortInventory(items: InventoryItem[], sort: InventorySort): InventoryItem[] {
+    const key = SORT_KEYS[sort.by];
+    const sign = sort.descending ? -1 : 1;
+    const quality = (item: InventoryItem) => (item.quality ? QUALITY_RANK[item.quality] : 0);
+    return [...items].sort(
+        (a, b) => sign * key(a, b) || quality(b) - quality(a) || a.name.localeCompare(b.name),
+    );
 }
+
+/** Ascending comparisons; `sortInventory` flips them for descending. */
+const SORT_KEYS: Record<InventorySort["by"], (a: InventoryItem, b: InventoryItem) => number> = {
+    newest: (a, b) => Date.parse(a.obtainedAt) - Date.parse(b.obtainedAt),
+    rarity: (a, b) => rarityInfo(a.rarity).rank - rarityInfo(b.rarity).rank,
+    value: (a, b) => a.sellValue * (a.quantity ?? 1) - b.sellValue * (b.quantity ?? 1),
+    name: (a, b) => a.name.localeCompare(b.name),
+};
 
 const QUALITY_RANK: Record<GeoQualityTier, number> = { bronze: 1, silver: 2, gold: 3, ruby: 4 };
 

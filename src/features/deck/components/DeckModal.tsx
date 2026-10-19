@@ -222,7 +222,7 @@ export default function DeckModal({ onClose }: DeckModalProps) {
                         onPress={() => setHand([])}
                     />
                     <TextButton
-                        label="Save"
+                        label="Save Hand"
                         disabled={handCards.length === 0}
                         onPress={saveHand}
                     />
@@ -351,6 +351,7 @@ function TextButton({
             onPress={onPress}
             disabled={disabled}
             hitSlop={8}
+            style={[styles.textButtonBox, disabled && styles.textButtonBoxDisabled]}
             accessibilityRole="button"
             accessibilityState={{ disabled }}
         >
@@ -416,7 +417,17 @@ const styles = StyleSheet.create({
     },
     headerActions: {
         flexDirection: "row",
-        gap: 16,
+        gap: 8,
+    },
+    textButtonBox: {
+        borderWidth: 1,
+        borderColor: colors.emberBright,
+        borderRadius: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    textButtonBoxDisabled: {
+        borderColor: colors.border,
     },
     textButton: {
         color: colors.emberBright,

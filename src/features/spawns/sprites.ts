@@ -29,7 +29,7 @@ export const SPRITE_SCALES: Partial<Record<SpriteName, number>> = {
     "gilded-slime": 0.7,
     "green-slime": 0.7,
     "magma-slime": 0.7,
-    spider: 0.5,
+    spider: 0.7,
 };
 
 export function spriteScale(name: string | undefined): number {

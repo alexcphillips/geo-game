@@ -13,7 +13,8 @@ export function placePath(placeId: string): string {
  * audit log keeps what it was). Making it inactive is the undoable way.
  */
 export function confirmRemovePlace(place: { id: string; name: string }, onRemoved: () => void) {
-    Alert.alert(`Remove ${place.name}?`, "It leaves the map for everyone, for good. To hide it for now, make it inactive instead.", [
+    const title = place.name || "this place";
+    Alert.alert(`Remove ${title}?`, "It leaves the map for everyone, for good. To hide it for now, make it inactive instead.", [
         { text: "Cancel", style: "cancel" },
         {
             text: "Remove",
@@ -22,7 +23,7 @@ export function confirmRemovePlace(place: { id: string; name: string }, onRemove
                 try {
                     await api.delete(placePath(place.id));
                     usePlacesStore.getState().refetch();
-                    showToast(`${place.name} removed`, "success");
+                    showToast(`${place.name || "The place"} was removed`, "success");
                     onRemoved();
                 } catch (error) {
                     showToast(toErrorMessage(error), "error");

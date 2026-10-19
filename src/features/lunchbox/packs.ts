@@ -1,22 +1,21 @@
 import type { GameIconName } from "@/components/Icon/Icon";
 import { playerActions } from "@/features/player/playerStore";
-import { useBait, useLunchbox, useSeedBag } from "@/features/player/usePlayer";
+import { useBait, useLunchbox } from "@/features/player/usePlayer";
 import {
     GEO_BAIT_MAX_SLOTS,
     GEO_BAIT_STACK_SIZE,
-    GEO_SEED_BAG_MAX_SLOTS,
-    GEO_SEED_BAG_STACK_SIZE,
     type GeoItemView,
     type GeoLunchbox,
 } from "@/lib/geo/contracts";
-import { isBait, isFood, isSeed, LUNCHBOX_MAX_SLOTS, LUNCHBOX_STACK_SIZE } from "./lunchbox";
+import { isBait, isFood, LUNCHBOX_MAX_SLOTS, LUNCHBOX_STACK_SIZE } from "./lunchbox";
 
 /**
  * Things packed into slots before a Run, all handled the same way: the
- * lunchbox (food, for combat), bait (for fishing) and the Seed Bag (for farming). Each slot holds a
+ * lunchbox (food, for combat) and bait (for fishing). Each slot holds a
  * stack of one item; packed items leave the inventory until unpacked or used.
+ * Both pack only at camp.
  */
-export type PackKind = "lunchbox" | "bait" | "seeds";
+export type PackKind = "lunchbox" | "bait";
 
 export type PackInfo = {
     title: string;
@@ -33,6 +32,8 @@ export type PackInfo = {
     hint: string;
     /** When the inventory has nothing to pack. */
     noneOwned: string;
+    /** Packing works only at camp (unpacking works anywhere). */
+    needsCamp: boolean;
     /** In the Run's sheet: what a tap does, and what to say while it can't. */
     useHint: string;
     waitHint: string;
@@ -49,8 +50,9 @@ export const PACKS: Record<PackKind, PackInfo> = {
         maxSlots: LUNCHBOX_MAX_SLOTS,
         stackSize: LUNCHBOX_STACK_SIZE,
         holds: isFood,
-        hint: "Eat from it in a Run: eating takes your turn. A slot holds one kind of food.",
+        hint: "Eat from it in a Run (it takes your turn), or between fights from a food's page. A slot holds one kind of food.",
         noneOwned: "No food to pack. Cook some, or buy bread from the Baker.",
+        needsCamp: true,
         useHint: "Tap to eat · takes your turn. Hold for details.",
         waitHint: "Wait for your turn to eat. Hold for details.",
         pack: playerActions.packLunchbox,
@@ -66,25 +68,11 @@ export const PACKS: Record<PackKind, PackInfo> = {
         holds: isBait,
         hint: "Use it in a fishing Run: each cast takes one. A slot holds one kind of bait.",
         noneOwned: "No bait to pack. Buy worms from the Angler.",
+        needsCamp: true,
         useHint: "Tap to use. Hold for details.",
         waitHint: "Bait is used once casting arrives. Hold for details.",
         pack: playerActions.packBait,
         unpack: playerActions.unpackBait,
-    },
-    seeds: {
-        title: "Seed Bag",
-        icon: "plant-seed",
-        tileLabel: "Seeds",
-        noun: "seeds",
-        maxSlots: GEO_SEED_BAG_MAX_SLOTS,
-        stackSize: GEO_SEED_BAG_STACK_SIZE,
-        holds: isSeed,
-        hint: "Plant from it at your farm: planting is free, one seed per tile. A slot holds one kind of seed.",
-        noneOwned: "No seeds to pack. The Farmer sells them, and harvests give some back.",
-        useHint: "Pick a tile on the farm, then plant from here. Hold for details.",
-        waitHint: "Seeds are planted from a tile. Hold for details.",
-        pack: playerActions.packSeeds,
-        unpack: playerActions.unpackSeeds,
     },
 };
 
@@ -92,6 +80,5 @@ export const PACKS: Record<PackKind, PackInfo> = {
 export function usePack(kind: PackKind): GeoLunchbox {
     const lunchbox = useLunchbox();
     const bait = useBait();
-    const seeds = useSeedBag();
-    return kind === "bait" ? bait : kind === "seeds" ? seeds : lunchbox;
+    return kind === "bait" ? bait : lunchbox;
 }

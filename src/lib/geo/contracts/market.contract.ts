@@ -93,7 +93,7 @@ export type GeoListingItem = {
     quantity: number;
     /** Cards only; listed cards are always at full charge. */
     chargesLeft: number | null;
-    /** Weapons and armour: the copy's reforge id, or null. It goes to the buyer with the item. */
+    /** Weapons and armor: the copy's reforge id, or null. It goes to the buyer with the item. */
     reforge: string | null;
     /** Pets: its level and held item, which go to the buyer with it; null for anything else. */
     pet: GeoPetState | null;

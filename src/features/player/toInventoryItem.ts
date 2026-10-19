@@ -39,7 +39,7 @@ export function tabOf(def: GeoItemView): InventoryTabId {
             return "cards";
         case "equipment":
             if (def.slot === "ring" || def.slot === "amulet") return "accessories";
-            return def.slot === "mainHand" || def.slot === "offHand" ? "weapons" : "armour";
+            return def.slot === "mainHand" || def.slot === "offHand" ? "weapons" : "armor";
         case "talisman":
             return "accessories";
         case "material":
@@ -111,6 +111,7 @@ export function toInventoryItem(
         rarity: def.rarity,
         skill: cardSkillOf(def.skill),
         equipSlot: def.kind === "talisman" ? "talisman" : def.kind === "equipment" ? def.slot : undefined,
+        ...(def.rod && { isRod: true }),
         quantity: isStack ? entry.quantity : undefined,
         charges:
             def.kind === "card"

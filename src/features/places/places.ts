@@ -66,6 +66,11 @@ export function placeTypeInfo(skill: Skill | null): PlaceTypeInfo {
     return skill ? SKILL_TYPES[skill] : LANDMARK_TYPE;
 }
 
+/** What a place is called: its name, or its type's when it has none ("Mining Area"). */
+export function placeTitle(name: string | null | undefined, skill: Skill | null): string {
+    return name || `${placeTypeInfo(skill).label} Area`;
+}
+
 /** A hand-made place's kind as the map knows it: a skill, or null for a landmark. */
 export function kindToSkill(kind: GeoPlaceKind): Skill | null {
     return kind === "landmark" ? null : kind;

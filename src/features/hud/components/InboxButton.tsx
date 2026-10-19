@@ -7,17 +7,22 @@ type InboxButtonProps = {
 
 /**
  * Top-right, left of friends: the inbox, with a badge counting unread mail
- * (from the presence heartbeat, so it updates every minute or so).
+ * and unopened chests (from the presence heartbeat, so it updates every
+ * minute or so).
  */
 export default function InboxButton({ onPress }: InboxButtonProps) {
     const unread = useInboxStore((state) => state.unread);
+    const chests = useInboxStore((state) => state.pendingChests);
+    const waiting = unread + chests;
 
     return (
         <TopCornerButton
             icon="envelope"
             slot={2}
-            badge={unread}
-            accessibilityLabel={unread > 0 ? `Open inbox, ${unread} unread` : "Open inbox"}
+            badge={waiting}
+            accessibilityLabel={
+                waiting > 0 ? `Open inbox, ${unread} unread, ${chests} chests to open` : "Open inbox"
+            }
             onPress={onPress}
         />
     );

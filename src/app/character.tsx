@@ -14,22 +14,26 @@ import ItemEquipAction from "@/features/character/components/ItemEquipAction";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import EquipmentSlot, { SLOT_SIZE } from "@/features/character/components/EquipmentSlot";
 import EquipPickerModal from "@/features/character/components/EquipPickerModal";
+import CharacterStats from "@/features/character/components/CharacterStats";
 import {
     EQUIPMENT_LAYOUT,
     type EquipmentColumn,
     type EquipmentSlot as EquipmentSlotModel,
 } from "@/features/character/characterSlots";
 import { useEquipment, useInventory } from "@/features/player/usePlayer";
-import LunchboxModal from "@/features/lunchbox/components/LunchboxModal";
 import TalismanBagModal from "@/features/talismans/components/TalismanBagModal";
 import PetsModal from "@/features/pets/components/PetsModal";
-import SkillsModal from "@/features/skills/components/SkillsModal";
-import ChestsPage from "@/features/chests/components/ChestsPage";
+import PetSlot from "@/features/pets/components/PetSlot";
+import WardrobeModal from "@/features/wardrobe/components/WardrobeModal";
+import WardrobeStrip from "@/features/wardrobe/components/WardrobeStrip";
 import { colors } from "@/theme/colors";
 import {
     BOTTOM_ACTION_DIAMETER,
     HOME_INDICATOR_CLEARANCE,
 } from "@/theme/layout";
+
+/** Where the pet sits: the right column's bottom cell, under the off hand. */
+const PET_CELL = { column: "right" as const, row: 4.5 };
 
 /** One row down the paper doll: a slot plus the gap under it. */
 const ROW_STEP = SLOT_SIZE + 12;
@@ -44,11 +48,19 @@ const COLUMN_LEFT: Record<EquipmentColumn, number> = {
 };
 
 const DOLL_WIDTH = COLUMN_STEP * 2 + SLOT_SIZE;
-const DOLL_HEIGHT = Math.max(...EQUIPMENT_LAYOUT.map((slot) => slot.row)) * ROW_STEP + SLOT_SIZE;
+const DOLL_HEIGHT = Math.max(PET_CELL.row, ...EQUIPMENT_LAYOUT.map((slot) => slot.row)) * ROW_STEP + SLOT_SIZE;
 
 /** Menu tiles per row. Three keeps labels like "Talisman Bag" on one line. */
 const MENU_COLUMNS = 3;
 const MENU_GAP = 10;
+
+/** The tabs below the divider. Menu first, and open by default. */
+const LOWER_TABS = [
+    { id: "menu", label: "Menu" },
+    { id: "stats", label: "Stats" },
+] as const;
+
+type LowerTabId = (typeof LOWER_TABS)[number]["id"];
 
 /**
  * The character screen.
@@ -60,12 +72,14 @@ const MENU_GAP = 10;
  *
  * The gear is a Diablo-style paper doll: the body down the middle, head to
  * feet, with shoulders, hands, rings and weapons on one side and the amulet,
- * cloak, rings and off hand on the other (see `characterSlots`). Below the gear
- * is a grid of menu tiles — the Talisman Bag, the Lunchbox (what you carry into
- * fights), Bait (what you carry fishing), Skills, Chests waiting to be opened
- * and Pets — which grows downward and scrolls as more systems get a home here. Close sits bottom-centre, in the same slot the world screen
- * puts Inventory, so the one control that is always there is always in the same
- * place.
+ * cloak, rings and off hand on the other (see `characterSlots`), and the
+ * active pet under the off hand: tap it for the roster, hold it for that pet.
+ * Above the doll is the wardrobe: saved loadouts, one tap to switch.
+ * Below the gear are two tabs. Menu, the default, holds the Talisman Bag.
+ * Everything else lives on the world screen's bottom bar, its Actions sheet,
+ * or (chests) the Inbox.
+ * Close sits bottom-centre, in the same slot as the world screen's Actions
+ * button, so the one control that is always there is always in the same place.
  *
  * Tapping a slot, empty or full, opens a picker of everything owned that fits
  * it; holding a full one opens the worn item's details. What's worn is the
@@ -73,13 +87,12 @@ const MENU_GAP = 10;
  */
 export default function CharacterScreen() {
     const insets = useSafeAreaInsets();
+    const [lowerTab, setLowerTab] = useState<LowerTabId>("menu");
     const [isTalismanBagOpen, setIsTalismanBagOpen] = useState(false);
-    const [isLunchboxOpen, setIsLunchboxOpen] = useState(false);
-    const [isBaitOpen, setIsBaitOpen] = useState(false);
-    const [isSeedBagOpen, setIsSeedBagOpen] = useState(false);
-    const [isSkillsOpen, setIsSkillsOpen] = useState(false);
-    const [isChestsOpen, setIsChestsOpen] = useState(false);
-    const [isPetsOpen, setIsPetsOpen] = useState(false);
+    /** The pets modal: open on the roster, or on one pet (held slot). */
+    const [petsModal, setPetsModal] = useState<{ petId?: string } | null>(null);
+    /** The wardrobe manager: open, on a slot if one was held. */
+    const [wardrobeModal, setWardrobeModal] = useState<{ slot?: number } | null>(null);
     const [pickerSlot, setPickerSlot] = useState<EquipmentSlotModel | null>(null);
     const equipped = useEquipment();
     const inventory = useInventory();
@@ -121,6 +134,8 @@ export default function CharacterScreen() {
                     },
                 ]}
             >
+                <WardrobeStrip onManage={(slot) => setWardrobeModal({ slot })} />
+
                 <View style={styles.doll}>
                     {EQUIPMENT_LAYOUT.map((slot) => (
                         <View
@@ -133,38 +148,42 @@ export default function CharacterScreen() {
                             {renderSlot(slot)}
                         </View>
                     ))}
+                    <View style={[styles.dollCell, { left: COLUMN_LEFT[PET_CELL.column], top: PET_CELL.row * ROW_STEP }]}>
+                        <PetSlot onPress={() => setPetsModal({})} onLongPress={(petId) => setPetsModal({ petId })} />
+                    </View>
                 </View>
 
-                <View style={styles.menu}>
-                    <View style={styles.menuCell}>
-                        <MenuTile
-                            label="Talisman Bag"
-                            icon="gem-pendant"
-                            onPress={() => setIsTalismanBagOpen(true)}
-                        />
+                <View style={styles.lower}>
+                    <View style={styles.tabs} accessibilityRole="tablist">
+                        {LOWER_TABS.map((tab) => {
+                            const isActive = tab.id === lowerTab;
+                            return (
+                                <Pressable
+                                    key={tab.id}
+                                    onPress={() => setLowerTab(tab.id)}
+                                    style={[styles.tab, isActive && styles.tabActive]}
+                                    accessibilityRole="tab"
+                                    accessibilityState={{ selected: isActive }}
+                                >
+                                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+                                </Pressable>
+                            );
+                        })}
                     </View>
-                    <View style={styles.menuCell}>
-                        <MenuTile label="Lunchbox" icon="knife-fork" onPress={() => setIsLunchboxOpen(true)} />
-                    </View>
-                    <View style={styles.menuCell}>
-                        <MenuTile label="Bait" icon="fishing-hook" onPress={() => setIsBaitOpen(true)} />
-                    </View>
-                    <View style={styles.menuCell}>
-                        <MenuTile label="Seed Bag" icon="plant-seed" onPress={() => setIsSeedBagOpen(true)} />
-                    </View>
-                    <View style={styles.menuCell}>
-                        {/* From here the farm is look-and-plan only; work happens at a farming place. */}
-                        <MenuTile label="Farm" icon="sprout" onPress={() => router.push("/farm")} />
-                    </View>
-                    <View style={styles.menuCell}>
-                        <MenuTile label="Skills" icon="upgrade" onPress={() => setIsSkillsOpen(true)} />
-                    </View>
-                    <View style={styles.menuCell}>
-                        <MenuTile label="Chests" icon="chest" onPress={() => setIsChestsOpen(true)} />
-                    </View>
-                    <View style={styles.menuCell}>
-                        <MenuTile label="Pets" icon="paw-print" onPress={() => setIsPetsOpen(true)} />
-                    </View>
+
+                    {lowerTab === "stats" ? (
+                        <CharacterStats />
+                    ) : (
+                        <View style={styles.menu}>
+                            <View style={styles.menuCell}>
+                                <MenuTile
+                                    label="Talisman Bag"
+                                    icon="gem-pendant"
+                                    onPress={() => setIsTalismanBagOpen(true)}
+                                />
+                            </View>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
@@ -188,21 +207,9 @@ export default function CharacterScreen() {
                 <TalismanBagModal onClose={() => setIsTalismanBagOpen(false)} />
             )}
 
-            {isLunchboxOpen && <LunchboxModal onClose={() => setIsLunchboxOpen(false)} />}
+            {petsModal && <PetsModal initialPetId={petsModal.petId} onClose={() => setPetsModal(null)} />}
 
-            {isBaitOpen && <LunchboxModal kind="bait" onClose={() => setIsBaitOpen(false)} />}
-
-            {isSeedBagOpen && <LunchboxModal kind="seeds" onClose={() => setIsSeedBagOpen(false)} />}
-
-            {isSkillsOpen && <SkillsModal onClose={() => setIsSkillsOpen(false)} />}
-
-            {isChestsOpen && (
-                <Modal title="Chests" size="fill" showBack closePlacement="footer" onClose={() => setIsChestsOpen(false)}>
-                    <ChestsPage />
-                </Modal>
-            )}
-
-            {isPetsOpen && <PetsModal onClose={() => setIsPetsOpen(false)} />}
+            {wardrobeModal && <WardrobeModal focusSlot={wardrobeModal.slot} onClose={() => setWardrobeModal(null)} />}
 
             <View
                 style={[
@@ -263,16 +270,47 @@ const styles = StyleSheet.create({
     dollCell: {
         position: "absolute",
     },
+    // The divider under the gear, then the tabs.
+    lower: {
+        marginTop: 28,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+    },
+    tabs: {
+        flexDirection: "row",
+        marginBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    tab: {
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 10,
+        // Overlaps the bar's hairline, so the active underline sits on it.
+        marginBottom: -1,
+        borderBottomWidth: 2,
+        borderBottomColor: "transparent",
+    },
+    tabActive: {
+        borderBottomColor: colors.ember,
+    },
+    tabLabel: {
+        color: colors.textSecondary,
+        fontSize: 13,
+        fontWeight: "700",
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+    },
+    tabLabelActive: {
+        color: colors.emberBright,
+    },
     // Negative margin cancels the cells' outer padding, so the tiles line up
     // with the gear columns' edges.
     menu: {
         flexDirection: "row",
         flexWrap: "wrap",
-        marginTop: 28,
         marginHorizontal: -MENU_GAP / 2,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
     },
     menuCell: {
         width: `${100 / MENU_COLUMNS}%`,

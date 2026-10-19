@@ -14,7 +14,7 @@ type ItemEquipActionProps = {
 /**
  * The Equip / Unequip button on an item's detail page.
  *
- * - Weapons and armour go in their slot; whatever was there goes back to the
+ * - Weapons and armor go in their slot; whatever was there goes back to the
  *   inventory.
  * - Rings go in the first empty ring slot. With both full, it asks which
  *   ring to replace, in place.

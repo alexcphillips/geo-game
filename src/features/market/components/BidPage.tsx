@@ -97,7 +97,7 @@ export default function BidPage({
                     <View key={label} style={styles.row}>
                         <Text style={styles.rowLabel}>{label}</Text>
                         <View style={styles.rowValue}>
-                            {isCoins && <Icon name="coins" size={13} color={colors.coins} />}
+                            {isCoins && <Icon name="two-coins" size={13} color={colors.coins} />}
                             <Text style={isCoins ? styles.coinsText : styles.plainText}>{value}</Text>
                         </View>
                     </View>
@@ -116,7 +116,7 @@ export default function BidPage({
                 accessibilityState={{ disabled: minProblem !== null }}
             >
                 <Text style={styles.primaryText}>Bid minimum</Text>
-                <Icon name="coins" size={15} color={colors.textOnEmber} />
+                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
                 <Text style={styles.primaryText}>{formatCoins(minBid)}</Text>
             </Pressable>
 

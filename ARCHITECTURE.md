@@ -426,7 +426,7 @@ screen, which is precisely the case decision 10 carved out by capping the modal
 at `large`. Being a route also means the hardware back button and navigation
 history work with no extra code. The first real test of that rule, and it held.
 
-Layout follows Dark Souls' equip screen — weapons left, armour right, rings
+Layout follows Dark Souls' equip screen — weapons left, armor right, rings
 underneath — because that is the convention this game borrows from, and it puts
 the figure at the centre of its own equipment. The slot data lives in
 `characterSlots.ts` as three arrays, so the screen is laid out by iterating
@@ -472,7 +472,7 @@ src/
   features/             One directory per domain. Self-contained.
     location/hooks/     usePlayerLocation — GPS lifecycle and permissions
     map/                GameMap + the WebView map page
-    hud/                CoinCounter (top left), ActionBar (bottom)
+    hud/                CoinCounter (top left), BottomBar + Actions sheet (bottom), action registry
     character/          Slot definitions, equipment squares, portrait badge
       assets/           Knight art (bust for the badge, figure for the screen)
     pets/               Pets modal; pet icons by name (petIcons.generated.ts)
@@ -621,9 +621,12 @@ map against OSM tiles:
 - An ember player marker. The camera is locked to the player — no panning, no
   tilt — zoom capped at 14–18, rotated by one-finger drag, with a compass to
   restore north (decision 9).
-- HUD: a coin counter top left, the character portrait bottom left, and an
-  Inventory button bottom centre (decision 10). The inventory has icon tabs —
-  Weapons (main/off hand), Armour, Accessories, Cards, Materials,
+- HUD: a coin counter top left, and a five-slot bottom bar — Character
+  (portrait), Inventory, Actions (centre, raised), Skills, Deck — with badges
+  for new items and skill level-ups. Actions opens a grouped sheet rendered
+  from the registry in `features/hud/actions.ts`. The map centres the player
+  above the bar (decision 10). The inventory has icon tabs —
+  Weapons (main/off hand), Armor, Accessories, Cards, Materials,
   Consumables, Misc — each a grid of item tiles with a per-tab search.
   Materials has skill sub-tabs (Combat, Fishing, Mining, Farming,
   Foraging), keyed by the item's `skill`, the same field that assigns a

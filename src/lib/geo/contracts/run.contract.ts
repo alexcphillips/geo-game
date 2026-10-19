@@ -18,17 +18,25 @@ export type GeoLogEntry =
           type: "damage";
           source: string;
           target: string;
+          /** Health lost, after guard and barrier. */
           amount: number;
+          /** Soaked by guard. */
           blocked: number;
+          /** Soaked by barrier. */
+          absorbed: number;
           element: string;
           crit: boolean;
           isAttack: boolean;
           delivery?: "melee" | "projectile";
+          /** A counterattack: the target struck back after being attacked. */
+          counter?: boolean;
           /** The effect that caused it, when not the main action. */
           effectId?: string;
       }
     | { type: "heal"; target: string; amount: number }
     | { type: "guard"; target: string; amount: number }
+    /** The target's barrier is now `amount`: set, not added to. */
+    | { type: "barrier"; target: string; amount: number }
     | { type: "statusApplied"; target: string; statusId: string; stacks: number }
     | { type: "statusRemoved"; target: string; statusId: string }
     | { type: "proc"; owner: string; effectId: string }
@@ -46,6 +54,8 @@ export type GeoCombatantView = {
     health: number;
     maxHealth: number;
     guard: number;
+    /** Soaks damage after guard; the app draws it over the health bar. */
+    barrier: number;
     statuses: { statusId: string; stacks: number; turnsLeft: number | null }[];
 };
 
@@ -55,6 +65,13 @@ export type GeoHandCard = {
     itemId: string;
     cardId: string;
     chargesLeft: number;
+    /**
+     * Combat: whether it could be played now, turn aside: it has charges, the
+     * weapon fits, and its own rule allows it (a self-buff already active
+     * can't be recast until it's removed). Grey it out when false. Absent
+     * (fishing, farming): playable while it has charges.
+     */
+    playable?: boolean;
 };
 
 /** One lunchbox slot: a stack of one food. */

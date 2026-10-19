@@ -58,7 +58,7 @@ export default function AdminPlayersPage() {
                                 </Text>
                                 <Text style={styles.muted}>{player.email}</Text>
                             </View>
-                            <Icon name="coins" size={13} color={colors.coins} />
+                            <Icon name="two-coins" size={13} color={colors.coins} />
                             <Text style={styles.coins}>{formatCoins(player.coins)}</Text>
                         </Pressable>
                     ))}
@@ -111,7 +111,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                 {player.email} · joined {formatDateTime(player.createdAt)}
             </Text>
             <View style={styles.coinLine}>
-                <Icon name="coins" size={16} color={colors.coins} />
+                <Icon name="two-coins" size={16} color={colors.coins} />
                 <Text style={styles.coinsLarge}>{formatCoins(player.coins)}</Text>
             </View>
 

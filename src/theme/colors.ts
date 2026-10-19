@@ -84,6 +84,8 @@ export const colors = {
      * rounded surface catching light.
      */
     healthGradient: ["#8C3127", "#6B211B", "#49150F"],
+    /** A barrier over the health bar: gold, lit the same way. */
+    barrierGradient: ["#F2D978", "#D9B24A", "#9C7A26"],
     /** The bar's frame, lit from above like the fills. */
     barFrameGradient: ["#4C443C", "#1A1614"],
 

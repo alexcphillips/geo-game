@@ -11,6 +11,7 @@ import OutcomeButton from "@/features/run/components/OutcomeButton";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoChestOffer, GeoChestSelection } from "@/lib/geo/contracts";
 import { colors } from "@/theme/colors";
+import { pendingChestActions } from "@/features/inbox/inboxStore";
 import { chestsApi } from "../chestsApi";
 import { CHEST_TIER_COLORS } from "../chestTiers";
 import ChestTile, { ChestCost } from "./ChestTile";
@@ -55,6 +56,7 @@ export default function ChestPicker({
             setIsOpening(true);
             try {
                 const { selection: opened } = await chestsApi.open(selection.id, focused);
+                pendingChestActions.opened();
                 void refreshPlayer();
                 onOpened(opened);
             } catch (error) {

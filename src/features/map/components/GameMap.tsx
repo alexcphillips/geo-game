@@ -20,12 +20,18 @@ type GameMapProps = {
     places?: GeoPlace[];
     /** A landmark or skill hub marker was tapped. Reach is the caller's call. */
     onPlacePress?: (place: MapPlace) => void;
+    /** The player's camp, with a ring this far out; null for none. */
+    camp?: { latitude: number; longitude: number; radiusMetres: number } | null;
+    /** The camp marker was tapped. */
+    onCampPress?: () => void;
     /** The nearest water edge in view changed; null when there's none near. */
     onNearWater?: (water: MapNearWater | null) => void;
     /** The nearest mine, woods, farmland or POI in view changed; a habitat left out has none near. */
     onNearPlaces?: (places: MapNearPlaces) => void;
     /** Free camera: pan, unrestricted zoom, no lock to the player. */
     isAdminMode?: boolean;
+    /** Pixels at the bottom covered by the HUD; the player is centred above them. */
+    bottomPadding?: number;
     /**
      * Pin-drop mode: when set, taps place a pin, starting at `initial`.
      * Each placement is reported through `onPinPlaced`.
@@ -65,9 +71,12 @@ export default function GameMap({
     onSpawnPress,
     spawnRadiusMetres = null,
     onPlacePress,
+    camp = null,
+    onCampPress,
     onNearWater,
     onNearPlaces,
     isAdminMode = false,
+    bottomPadding = 0,
     pinDrop = null,
     focus = null,
     onError,
@@ -96,6 +105,14 @@ export default function GameMap({
             `window.gameMap.setAdminMode(${isAdminMode}); true;`,
         );
     }, [isMapReady, isAdminMode]);
+
+    useEffect(() => {
+        if (!isMapReady) return;
+
+        webViewRef.current?.injectJavaScript(
+            `window.gameMap.setBottomPadding(${bottomPadding}); true;`,
+        );
+    }, [isMapReady, bottomPadding]);
 
     // After the admin-mode effect, so the camera is already free when it flies.
     useEffect(() => {
@@ -142,6 +159,19 @@ export default function GameMap({
         );
     }, [isMapReady, places]);
 
+    const campLatitude = camp?.latitude ?? null;
+    const campLongitude = camp?.longitude ?? null;
+    const campRadius = camp?.radiusMetres ?? 0;
+    useEffect(() => {
+        if (!isMapReady) return;
+
+        webViewRef.current?.injectJavaScript(
+            campLatitude === null
+                ? "window.gameMap.setCamp(null); true;"
+                : `window.gameMap.setCamp(${campLongitude}, ${campLatitude}, ${campRadius}); true;`,
+        );
+    }, [isMapReady, campLatitude, campLongitude, campRadius]);
+
     useEffect(() => {
         if (!isMapReady) return;
 
@@ -160,6 +190,7 @@ export default function GameMap({
     const placesRef = useRef(places);
     const onSpawnPressRef = useRef(onSpawnPress);
     const onPlacePressRef = useRef(onPlacePress);
+    const onCampPressRef = useRef(onCampPress);
     const onNearWaterRef = useRef(onNearWater);
     const onNearPlacesRef = useRef(onNearPlaces);
     useEffect(() => {
@@ -168,6 +199,7 @@ export default function GameMap({
         placesRef.current = places;
         onSpawnPressRef.current = onSpawnPress;
         onPlacePressRef.current = onPlacePress;
+        onCampPressRef.current = onCampPress;
         onNearWaterRef.current = onNearWater;
         onNearPlacesRef.current = onNearPlaces;
     });
@@ -205,6 +237,7 @@ export default function GameMap({
                 const spawn = spawnsRef.current.find((candidate) => candidate.id === message.id);
                 if (spawn) onSpawnPressRef.current?.(spawn);
             }
+            if (message.type === "camp") onCampPressRef.current?.();
             if (message.type === "place") {
                 // A hand-made place opens from the server's copy, which has
                 // its description; the page adds any water it sits on.

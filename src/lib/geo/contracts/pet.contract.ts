@@ -14,7 +14,7 @@ import type { GeoItemStat, GeoRarity } from "./content.contract";
 export type GeoPetAbility = {
     name: string;
     description: string;
-    /** What it gives at this level, e.g. Defence · +3%. Empty while locked. */
+    /** What it gives at this level, e.g. Defense · +3%. Empty while locked. */
     stats: GeoItemStat[];
     /** The lowest rarity that has it. */
     from: GeoRarity;

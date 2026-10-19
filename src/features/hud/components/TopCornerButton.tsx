@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Badge from "@/components/Badge/Badge";
 import Icon, { type GameIconName } from "@/components/Icon/Icon";
 import { colors } from "@/theme/colors";
 import {
@@ -42,11 +43,7 @@ export default function TopCornerButton({ icon, slot, badge = 0, accessibilityLa
             hitSlop={6}
         >
             <Icon name={icon} size={22} color={colors.emberBright} />
-            {badge > 0 && (
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
-                </View>
-            )}
+            <Badge count={badge} />
         </Pressable>
     );
 }
@@ -66,25 +63,5 @@ const styles = StyleSheet.create({
     pressed: {
         transform: [{ scale: 0.94 }],
         backgroundColor: "rgba(201, 100, 30, 0.25)",
-    },
-    badge: {
-        position: "absolute",
-        top: -4,
-        right: -4,
-        minWidth: 18,
-        height: 18,
-        paddingHorizontal: 4,
-        borderRadius: 9,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: colors.toastError,
-        borderWidth: 1.5,
-        borderColor: colors.void,
-    },
-    badgeText: {
-        color: colors.textPrimary,
-        fontSize: 10,
-        fontWeight: "700",
-        fontVariant: ["tabular-nums"],
     },
 });

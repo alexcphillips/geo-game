@@ -19,7 +19,7 @@ import { colors } from "@/theme/colors";
 import { TIER_LABELS, WATER_LABELS } from "../fishingWaters";
 import { confirmRemovePlace, placePath } from "../placeAdmin";
 import { usePlaceDraft } from "../placeDraft";
-import { PLACE_TYPES } from "../places";
+import { PLACE_TYPES, kindToSkill, placeTitle } from "../places";
 import { usePlacesStore } from "../placesStore";
 
 type PlaceEditorPageProps = {
@@ -40,7 +40,7 @@ export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEd
     const [isSaving, setIsSaving] = useState(false);
     const isNew = draft.placeId === null;
     const name = draft.name.trim();
-    const canSave = name.length > 0 && draft.pin !== null && !isSaving;
+    const canSave = draft.pin !== null && !isSaving;
 
     const save = async () => {
         if (!canSave || !draft.pin) return;
@@ -63,7 +63,8 @@ export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEd
                 await api.post(GEO_API_PATHS.admin.places, request);
             }
             refetchPlaces();
-            showToast(isNew ? `${name} is on the map` : `${name} saved`, "success");
+            const title = placeTitle(name, kindToSkill(draft.kind));
+            showToast(isNew ? `${title} is on the map` : `${title} saved`, "success");
             onDone();
         } catch (error) {
             showToast(toErrorMessage(error), "error");
@@ -130,7 +131,7 @@ export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEd
                 </>
             )}
 
-            <Text style={styles.sectionTitle}>Name</Text>
+            <Text style={styles.sectionTitle}>Name (optional)</Text>
             <TextInput
                 value={draft.name}
                 onChangeText={(text) => draft.update({ name: text })}

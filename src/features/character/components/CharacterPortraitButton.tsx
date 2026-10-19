@@ -1,14 +1,19 @@
 import { Image, Pressable, StyleSheet } from "react-native";
+import Badge from "@/components/Badge/Badge";
 import { colors } from "@/theme/colors";
 
 type CharacterPortraitButtonProps = {
     onPress: () => void;
+    /** Diameter; defaults to 56. */
+    size?: number;
+    /** A count of what's waiting on the character screen; nothing shows at 0. */
+    badge?: number;
 };
 
 const DIAMETER = 56;
 
 /**
- * The bottom-left portrait badge — the way into the character screen.
+ * The portrait in the bottom bar's first slot — the way into the character screen.
  *
  * The source art (170×128) is a head-and-shoulders bust, already framed the way
  * a portrait wants to be, so `cover` inside a circular clip is all it needs:
@@ -18,45 +23,46 @@ const DIAMETER = 56;
  */
 export default function CharacterPortraitButton({
     onPress,
+    size = DIAMETER,
+    badge = 0,
 }: CharacterPortraitButtonProps) {
     return (
         <Pressable
             onPress={onPress}
             accessibilityRole="button"
             accessibilityLabel="Open character screen"
-            style={({ pressed }) => [
-                styles.badge,
-                pressed && styles.badgePressed,
-            ]}
+            hitSlop={6}
         >
-            <Image
-                source={require("../assets/knight_head_portrait.png")}
-                style={styles.portrait}
-                resizeMode="cover"
-                accessible={false}
-            />
+            {({ pressed }) => (
+                <>
+                    {/* The clip is its own view so the badge can sit outside it. */}
+                    <Image
+                        source={require("../assets/knight_head_portrait.png")}
+                        style={[
+                            styles.portrait,
+                            { width: size, height: size, borderRadius: size / 2 },
+                            pressed && styles.portraitPressed,
+                        ]}
+                        resizeMode="cover"
+                        accessible={false}
+                    />
+                    <Badge count={badge} />
+                </>
+            )}
         </Pressable>
     );
 }
 
 const styles = StyleSheet.create({
-    badge: {
-        width: DIAMETER,
-        height: DIAMETER,
-        borderRadius: DIAMETER / 2,
+    // The image's own border radius clips it to the circle, so the square
+    // corners don't sit outside the ring.
+    portrait: {
         borderWidth: 2,
         borderColor: colors.ember,
         backgroundColor: colors.surface,
-        // Clips the image to the circle. Without this the square image corners
-        // would sit outside the ring.
-        overflow: "hidden",
     },
-    badgePressed: {
+    portraitPressed: {
         transform: [{ scale: 0.94 }],
         borderColor: colors.emberBright,
-    },
-    portrait: {
-        width: "100%",
-        height: "100%",
     },
 });

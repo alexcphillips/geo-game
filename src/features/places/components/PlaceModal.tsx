@@ -12,7 +12,7 @@ import {
     msUntilActivityChange,
 } from "../fishingActivity";
 import { fishingTier } from "../fishingWaters";
-import { placeTypeInfo, type MapPlace } from "../places";
+import { placeTitle, placeTypeInfo, type MapPlace } from "../places";
 
 type PlaceModalProps = {
     place: MapPlace;
@@ -64,7 +64,7 @@ export default function PlaceModal({
                 <View style={[styles.badge, { borderColor: type.color }]}>
                     <Icon name={type.icon} size={30} color={type.color} />
                 </View>
-                <Text style={styles.name}>{place.name || `${type.label} Area`}</Text>
+                <Text style={styles.name}>{placeTitle(place.name, place.skill)}</Text>
                 <Text style={[styles.type, { color: type.color }]}>{type.label}</Text>
                 {inReach ? (
                     <Text style={styles.distance}>{Math.round(distance)} m away</Text>

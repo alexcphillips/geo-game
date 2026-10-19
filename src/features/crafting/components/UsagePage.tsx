@@ -91,7 +91,7 @@ function Obtained({
                     <Text style={styles.sourceName}>{source.name}</Text>
                     <Text style={styles.sourceDetail}>
                         {source.kind === "enemy"
-                            ? `Drop · ${formatChance(source.chance)}${source.quantity > 1 ? ` · ×${formatCoins(source.quantity)}` : ""}`
+                            ? `Drop · ${formatChance(source.chance)}${formatQuantity(source.quantity)}`
                             : "Vendor"}
                     </Text>
                 </View>
@@ -113,6 +113,12 @@ function formatChance(chance: number): string {
     if (chance >= 1) return "Always";
     const percent = chance * 100;
     return `${percent >= 1 ? Math.round(percent) : Number(percent.toPrecision(2))}%`;
+}
+
+/** {1,1} → "", {2,2} → " · ×2", {1,3} → " · ×1–3". */
+function formatQuantity({ min, max }: { min: number; max: number }): string {
+    if (max <= 1) return "";
+    return min === max ? ` · ×${formatCoins(min)}` : ` · ×${formatCoins(min)}–${formatCoins(max)}`;
 }
 
 const styles = StyleSheet.create({

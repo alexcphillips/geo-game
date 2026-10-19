@@ -109,7 +109,8 @@ export type GeoFishingRunView = {
     baitItemId: string | null;
     /** Fishing Power: rod power plus the fishing level. */
     power: number;
-    rod: { name: string; maxTier: GeoQualityTier };
+    /** The equipped rod: the rarest fish it can hook, and the best quality it can land (null: none). */
+    rod: { name: string; maxRarity: GeoRarity; maxTier: GeoQualityTier | null };
 };
 
 /** `POST /geo/fishing`: open (or resume) a fishing Run at water of this tier. */

@@ -4,7 +4,7 @@ import type { ImageSourcePropType } from "react-native";
 
 /** Pet icons, by name: each `assets/<name>.png`. */
 export const PET_ICONS = {
-    "tarantula-pet": require("./assets/tarantula-pet.png"),
+    tarantula: require("./assets/tarantula.png"),
 } as const satisfies Record<string, ImageSourcePropType>;
 
 export type PetIconName = keyof typeof PET_ICONS;

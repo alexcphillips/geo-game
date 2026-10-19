@@ -50,7 +50,9 @@ export default function RecipesPage({
     onInspect: (itemId: string) => void;
     onCraft: (recipeId: string) => void;
 }) {
-    const statuses = useRecipeStatuses();
+    // Cooking recipes live on the Cooking menu.
+    const all = useRecipeStatuses();
+    const statuses = useMemo(() => all.filter((status) => status.recipe.station !== "cooking"), [all]);
     const categories = useMemo(() => {
         const present = new Set(statuses.map(recipeCategory));
         return RECIPE_CATEGORIES.filter((candidate) => present.has(candidate.id));

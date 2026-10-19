@@ -30,9 +30,10 @@ export function usePresenceHeartbeat() {
             if (!isActive) return;
             friendsApi
                 .beat({ activity, skill })
-                .then(({ incomingRequests, unreadInbox }) => {
+                .then(({ incomingRequests, unreadInbox, pendingChests }) => {
                     usePresenceStore.getState().setIncomingRequests(incomingRequests);
                     useInboxStore.getState().setUnread(unreadInbox);
+                    useInboxStore.getState().setPendingChests(pendingChests);
                 })
                 .catch(() => {});
         };

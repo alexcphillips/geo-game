@@ -30,7 +30,7 @@ export function NumberInput({
 }) {
     return (
         <View style={styles.input}>
-            {coins && <Icon name="coins" size={16} color={colors.coins} />}
+            {coins && <Icon name="two-coins" size={16} color={colors.coins} />}
             <TextInput
                 value={value}
                 onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ""))}

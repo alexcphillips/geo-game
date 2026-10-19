@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { refreshAfterRunStart } from "@/features/wardrobe/autoSwap";
 import { router, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import Modal from "@/components/Modal/Modal";
@@ -15,6 +16,7 @@ import { usePlayerLocation } from "@/features/location/hooks/usePlayerLocation";
 import { PLACE_REACH_METRES } from "@/features/places/places";
 import { useAdminSettingsStore } from "@/features/settings/adminSettingsStore";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
+import { rarityInfo } from "@/features/inventory/rarity";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { packedSlots } from "@/features/lunchbox/lunchbox";
 import { usePlayerStore } from "@/features/player/playerStore";
@@ -89,6 +91,7 @@ export default function FishingRunScreen() {
             .then((opened) => {
                 runId.current = opened.id;
                 setRun(opened);
+                void refreshAfterRunStart();
             })
             .catch((error: unknown) => setProblem(toErrorMessage(error)));
     }, [isPlayerReady, tier]);
@@ -344,8 +347,16 @@ function SpotInfo({ name, run }: { name: string | undefined; run: GeoFishingRunV
         <View style={styles.spot}>
             <Text style={styles.spotName}>{name || "Fishing spot"}</Text>
             <Text style={styles.spotGear}>
-                {run.rod.name} · Power {run.power} · quality up to{" "}
-                <Text style={{ color: QUALITY_TIER_COLORS[run.rod.maxTier] }}>{QUALITY_TIER_LABELS[run.rod.maxTier]}</Text>
+                {run.rod.name} · Power {run.power} · hooks up to{" "}
+                <Text style={{ color: rarityInfo(run.rod.maxRarity).color }}>{rarityInfo(run.rod.maxRarity).label}</Text> ·{" "}
+                {run.rod.maxTier ? (
+                    <>
+                        quality up to{" "}
+                        <Text style={{ color: QUALITY_TIER_COLORS[run.rod.maxTier] }}>{QUALITY_TIER_LABELS[run.rod.maxTier]}</Text>
+                    </>
+                ) : (
+                    "no quality catches"
+                )}
             </Text>
         </View>
     );

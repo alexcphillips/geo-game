@@ -3,8 +3,8 @@
  *
  * These exist so screens line up with each other rather than each guessing. The
  * bottom-centre control slot in particular is used by two different screens —
- * Inventory on the world map, Close on the character screen — and "same
- * position" only stays true if both read the same number.
+ * Actions on the world map's bottom bar, Close on the character screen — and
+ * "same position" only stays true if both read the same number.
  */
 
 /**
@@ -17,6 +17,21 @@ export const HOME_INDICATOR_CLEARANCE = 16;
 
 /** Diameter of the circular bottom-centre button (the character screen's close). */
 export const BOTTOM_ACTION_DIAMETER = 48;
+
+/**
+ * The world screen's bottom bar, above the bottom safe-area inset. The map
+ * centres the player in what's left above it.
+ */
+export const BOTTOM_BAR_HEIGHT = 60;
+
+/**
+ * The bar's centre Actions button: a little larger than the other slots, and
+ * raised so it overlaps the bar's top edge — it reads as "opens more".
+ */
+export const ACTIONS_BUTTON_DIAMETER = 54;
+
+/** Gap kept between the bottom bar and anything floating just above it. */
+export const ABOVE_BAR_GAP = 12;
 
 /**
  * Screen transition duration, applied globally in the root layout.

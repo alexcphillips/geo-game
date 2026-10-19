@@ -39,7 +39,7 @@ export default function ChestTile({
 export function ChestCost({ cost, affordable = true }: { cost: number; affordable?: boolean }) {
     return (
         <View style={styles.cost}>
-            {cost > 0 && <Icon name="coins" size={13} color={affordable ? colors.coins : colors.damage} />}
+            {cost > 0 && <Icon name="two-coins" size={13} color={affordable ? colors.coins : colors.damage} />}
             <Text style={[styles.costText, !affordable && styles.unaffordable]}>{chestCostLabel(cost)}</Text>
         </View>
     );

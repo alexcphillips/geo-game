@@ -6,7 +6,7 @@ import { distanceMetres, type Coordinates } from "@/features/location/distance";
 import { TIER_LABELS } from "@/features/places/fishingWaters";
 import { confirmRemovePlace } from "@/features/places/placeAdmin";
 import { usePlaceDraft } from "@/features/places/placeDraft";
-import { PLACE_TYPES } from "@/features/places/places";
+import { PLACE_TYPES, kindToSkill, placeTitle } from "@/features/places/places";
 import { usePlacesStore } from "@/features/places/placesStore";
 import { api, toErrorMessage } from "@/lib/api";
 import { GEO_API_PATHS, type GeoAdminPlace, type GeoAdminPlacesResponse } from "@/lib/geo/contracts";
@@ -69,7 +69,7 @@ export default function AdminPlacesPage({ position, onOpenEditor, onShowOnMap }:
                                 <View style={styles.cardHeader}>
                                     <Icon name={info.icon} size={20} color={info.color} />
                                     <Text style={styles.name} numberOfLines={1}>
-                                        {place.name}
+                                        {placeTitle(place.name, kindToSkill(place.kind))}
                                     </Text>
                                     <Text style={styles.muted}>{formatDistance(distance)}</Text>
                                 </View>

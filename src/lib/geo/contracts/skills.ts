@@ -1,5 +1,7 @@
 // Copied from cozy-app/shared/src/geo/skills.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
+import type { GeoSkillRequirement } from "./crafting.contract";
+
 /**
  * Skill levels from XP, shared so the server enforces the same levels the app
  * shows (e.g. a recipe that needs Combat 5).
@@ -47,4 +49,20 @@ export function geoSkillProgress(totalXp: number): GeoSkillProgress {
 /** A skill's level for this much total XP. Level 1 at 0 XP, at most GEO_MAX_SKILL_LEVEL. */
 export function geoSkillLevel(totalXp: number): number {
     return geoSkillProgress(totalXp).level;
+}
+
+/**
+ * The first requirement these levels fall short of (a recipe's, or gear's to
+ * equip it), or undefined when all are met. Skills missing from `levels` are level 1.
+ */
+export function geoUnmetSkill(
+    levels: Record<string, number>,
+    requirements: readonly GeoSkillRequirement[] = [],
+): GeoSkillRequirement | undefined {
+    return requirements.find(({ skill, level }) => (levels[skill] ?? 1) < level);
+}
+
+/** "combat" → "Combat", for refusals the player reads. */
+export function geoSkillName(skill: string): string {
+    return skill.charAt(0).toUpperCase() + skill.slice(1);
 }

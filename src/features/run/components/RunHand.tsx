@@ -20,6 +20,8 @@ type RunHandProps = {
     onInspect?: (card: InventoryItem) => void;
     /** A small mark in a card's top corner, e.g. fishing's ✦ for a card that raises quality. */
     cornerMark?: (card: InventoryItem) => ReactNode;
+    /** False greys out one card the server says can't be played now, e.g. a self-buff already up. */
+    isPlayable?: (card: InventoryItem) => boolean;
 };
 
 /**
@@ -29,7 +31,7 @@ type RunHandProps = {
  * right, so the cards get the full width and every action a turn can take
  * still sits under the thumb.
  */
-export default function RunHand({ cards, onPlay, disabled = false, accessory, onInspect, cornerMark }: RunHandProps) {
+export default function RunHand({ cards, onPlay, disabled = false, accessory, onInspect, cornerMark, isPlayable }: RunHandProps) {
     return (
         <View style={styles.container}>
             {accessory && <View style={styles.accessory}>{accessory}</View>}
@@ -43,7 +45,7 @@ export default function RunHand({ cards, onPlay, disabled = false, accessory, on
                             onPlay={onPlay && !isFaded(card) ? () => onPlay(card) : undefined}
                             onInspect={onInspect ? () => onInspect(card) : undefined}
                             corner={cornerMark?.(card)}
-                            disabled={disabled}
+                            disabled={disabled || isPlayable?.(card) === false}
                         />
                     ) : (
                         <View key={`empty-${index}`} style={[styles.card, styles.placeholder]}>

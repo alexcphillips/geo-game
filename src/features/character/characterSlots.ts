@@ -4,7 +4,8 @@
  * The body runs down the middle column (head, chest, belt, legs, feet). The
  * side columns sit half a row lower, so each side slot falls between two body
  * slots: shoulders and amulet flank the neck, then hands and cloak, the rings,
- * and the weapons at the bottom.
+ * and the weapons at the bottom. A fishing rod is held in the main hand; the
+ * wardrobe swaps it in and out with the rest of a loadout.
  *
  * Extending this is the whole point of the file — new slots land here with a
  * place on the grid, and the screen picks them up without changing.

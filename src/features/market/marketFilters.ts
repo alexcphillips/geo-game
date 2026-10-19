@@ -107,9 +107,17 @@ export const MARKET_FILTERS: Record<MarketTabId, FilterGroup[]> = {
     all: [ALL_SALE_TYPE],
     weapons: [
         SALE_TYPE,
-        { id: "slot", options: [slotOption("mainHand", "Main hand"), slotOption("offHand", "Off hand")] },
+        {
+            id: "slot",
+            options: [
+                // Rods are main-hand gear too, but have their own filter.
+                { id: "mainHand", label: "Main hand", matches: (item) => item.equipSlot === "mainHand" && !item.isRod },
+                slotOption("offHand", "Off hand"),
+                { id: "rod", label: "Rod", matches: (item) => item.isRod === true },
+            ],
+        },
     ],
-    armour: [
+    armor: [
         SALE_TYPE,
         {
             id: "slot",

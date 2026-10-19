@@ -3,9 +3,10 @@
 import type { GeoRarity } from "./content.contract";
 
 /**
- * NPC vendors. Each sells a fixed list and buys what its rule accepts, at the
- * item's sell value (`GeoItemView.sellValue`) — the same number that is the
- * item's lowest Market price.
+ * NPC vendors. Each sells a fixed list, and every vendor buys any item with a
+ * sell value above 0 that isn't Soulbound, at that sell value
+ * (`GeoItemView.sellValue`) — the same number that is the item's lowest
+ * Market price.
  */
 
 export type GeoVendorOffer = {
@@ -18,12 +19,6 @@ export type GeoVendorOffer = {
     tab?: string;
 };
 
-/** One item a vendor will buy, and what it pays per unit. */
-export type GeoVendorBuyOffer = {
-    itemId: string;
-    price: number;
-};
-
 export type GeoVendor = {
     id: string;
     name: string;
@@ -32,8 +27,6 @@ export type GeoVendor = {
     description: string;
     /** What the player can buy here. */
     sells: GeoVendorOffer[];
-    /** Every item this vendor buys from players. */
-    buys: GeoVendorBuyOffer[];
     /**
      * Set when the vendor reforges: coins per reroll, by the item's rarity
      * (mayor perks included). A reroll never lands on the reforge it has.

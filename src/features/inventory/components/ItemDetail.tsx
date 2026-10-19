@@ -43,7 +43,9 @@ export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
     const tabLabel =
         item.equipSlot === "talisman"
             ? "Talisman"
-            : INVENTORY_TABS.find((tab) => tab.id === item.tab)?.label;
+            : item.tab === "pets"
+              ? "Pet"
+              : INVENTORY_TABS.find((tab) => tab.id === item.tab)?.label;
     const rarity = rarityInfo(item.rarity);
     const skillLabel = CARD_SKILLS.find((skill) => skill.id === item.skill)?.label;
     const unlocks = item.unlocksCards ?? [];

@@ -91,7 +91,7 @@ export default function ListingActions({
                 accessibilityState={{ disabled: !canAfford }}
             >
                 <Text style={styles.primaryText}>Buy now</Text>
-                <Icon name="coins" size={15} color={colors.textOnEmber} />
+                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
                 <Text style={styles.primaryText}>{formatCoins(buyerPays)}</Text>
             </Pressable>
             {!canAfford && (

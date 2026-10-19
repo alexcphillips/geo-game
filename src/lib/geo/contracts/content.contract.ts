@@ -1,10 +1,11 @@
 // Copied from cozy-app/shared/src/geo/content.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
-import type { GeoRecipe } from "./crafting.contract";
+import type { GeoRecipe, GeoSkillRequirement } from "./crafting.contract";
 import type { GeoQualityTier } from "./fishing.contract";
 
 export type GeoRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
+/** Rods are held in the main hand, like weapons: fishing needs one there. */
 export type GeoEquipKind = "mainHand" | "offHand" | "head" | "chest" | "hands" | "legs" | "feet" | "shoulders" | "cloak" | "belt" | "amulet" | "ring";
 
 /** Equipment slot ids on the character screen; rings take either of two. */
@@ -46,7 +47,7 @@ export function geoSlotKind(slot: GeoEquipmentSlot): GeoEquipKind {
 
 export type GeoItemKind = "card" | "equipment" | "talisman" | "material" | "consumable" | "misc" | "pet" | "petItem";
 
-/** A label/value row on the item detail page, e.g. Defence · +6. */
+/** A label/value row on the item detail page, e.g. Defense · +6. */
 export type GeoItemStat = { label: string; value: string };
 
 /** An item as the app draws it. Rules (effects, modifiers) stay server-side. */
@@ -68,15 +69,19 @@ export type GeoItemView = {
     maxCharges?: number;
     /** Equipment. */
     slot?: GeoEquipKind;
+    /** A fishing rod: main-hand gear that isn't a weapon. */
+    rod?: true;
     /** Equipment: names of the cards it makes available while worn. */
     unlocksCards?: string[];
-    /** Weapons and armour: which reforges it takes (`GeoReforgeView.appliesTo`). */
+    /** Equipment: skill levels needed to equip it. The server refuses without them. */
+    skills?: GeoSkillRequirement[];
+    /** Weapons and armor: which reforges it takes (`GeoReforgeView.appliesTo`). */
     reforgeTarget?: GeoReforgeTarget;
     /** Consumables that are food: packable in the lunchbox and eaten in a Run. */
     food?: { tags: string[] };
     /** Consumables that are bait: packable in the bait slots and used in a fishing Run. */
     bait?: boolean;
-    /** Seeds: the crop they grow into. Packable in the Seed Bag. */
+    /** Seeds: the crop they grow into. Planted straight from the inventory. */
     seedOf?: string;
     /** A quality catch's tier, e.g. a Silver Salmon. */
     quality?: GeoQualityTier;
@@ -105,7 +110,8 @@ export type GeoItemSource =
           name: string;
           /** 0–1, per kill. */
           chance: number;
-          quantity: number;
+          /** Rolled between these, inclusive. */
+          quantity: { min: number; max: number };
       }
     | {
           kind: "vendor";
@@ -114,17 +120,17 @@ export type GeoItemSource =
           name: string;
       };
 
-export type GeoReforgeTarget = "weapon" | "armour";
+export type GeoReforgeTarget = "weapon" | "armor";
 
 /**
- * A reforge a vendor can roll onto one copy of a weapon or armour
+ * A reforge a vendor can roll onto one copy of a weapon or armor
  * (`GeoInventoryEntry.reforge`). Its name goes before the item's.
  */
 export type GeoReforgeView = {
     id: string;
     name: string;
     appliesTo: GeoReforgeTarget[];
-    /** Its stat rows on an item of each rarity, e.g. Defence +2, Speed -1. */
+    /** Its stat rows on an item of each rarity, e.g. Defense +2, Speed -1. */
     stats: Record<GeoRarity, GeoItemStat[]>;
 };
 

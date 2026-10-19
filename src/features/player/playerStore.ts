@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { showToast } from "@/components/Toast/toastStore";
+import { lastPosition } from "@/features/location/locationStore";
 import { api, NetworkError, toErrorMessage } from "@/lib/api";
 import { register, resumeSession, setSessionEndedHandler, signIn, signOut } from "@/lib/api/session";
 import {
@@ -8,7 +9,9 @@ import {
     type GeoEquipmentSlot,
     type GeoItemSource,
     type GeoItemView,
+    type GeoLoadoutActivity,
     type GeoMeResponse,
+    type GeoPoint,
     type GeoRecipe,
     type GeoReforgeView,
 } from "@/lib/geo/contracts";
@@ -155,6 +158,19 @@ async function change(send: () => Promise<GeoMeResponse>): Promise<boolean> {
     }
 }
 
+/**
+ * Like `change`, for requests the server checks against where the player is
+ * (camp): sends the last GPS fix as `position`, or says there isn't one yet.
+ */
+function changeHere(send: (position: GeoPoint) => Promise<GeoMeResponse>): Promise<boolean> {
+    const position = lastPosition();
+    if (!position) {
+        showToast("Still finding you. Try again in a moment.", "info");
+        return Promise.resolve(false);
+    }
+    return change(() => send(position));
+}
+
 const fill = (path: string, params: Record<string, string>) =>
     Object.entries(params).reduce(
         (result, [key, value]) => result.replace(`:${key}`, encodeURIComponent(value)),
@@ -192,7 +208,25 @@ export const playerActions = {
      * back to the inventory first, so this both packs and tops up.
      */
     packLunchbox: (slot: number, itemId: string, quantity: number) =>
-        change(() => api.put(fill(GEO_API_PATHS.me.lunchboxSlot, { slot: String(slot) }), { itemId, quantity })),
+        changeHere((position) =>
+            api.put(fill(GEO_API_PATHS.me.lunchboxSlot, { slot: String(slot) }), { itemId, quantity, position }),
+        ),
+
+    /**
+     * Eats one food from a lunchbox slot between fights: only its effect on
+     * health counts. Toasts how much health it gave (or took).
+     */
+    eatLunchbox: async (slot: number) => {
+        const before = usePlayerStore.getState().me?.health.current ?? 0;
+        const ok = await change(() => api.post(fill(GEO_API_PATHS.me.eatLunchbox, { slot: String(slot) })));
+        if (!ok) return false;
+        const delta = (usePlayerStore.getState().me?.health.current ?? 0) - before;
+        showToast(
+            delta > 0 ? `+${delta} health` : delta < 0 ? `${delta} health` : "No change to your health",
+            delta < 0 ? "error" : delta > 0 ? "success" : "info",
+        );
+        return true;
+    },
 
     /** Empties a lunchbox slot back into the inventory. */
     unpackLunchbox: (slot: number) =>
@@ -200,19 +234,42 @@ export const playerActions = {
 
     /** The bait slot now holds `quantity` of the bait, like `packLunchbox`. */
     packBait: (slot: number, itemId: string, quantity: number) =>
-        change(() => api.put(fill(GEO_API_PATHS.me.baitSlot, { slot: String(slot) }), { itemId, quantity })),
+        changeHere((position) =>
+            api.put(fill(GEO_API_PATHS.me.baitSlot, { slot: String(slot) }), { itemId, quantity, position }),
+        ),
 
     /** Empties a bait slot back into the inventory. */
     unpackBait: (slot: number) =>
         change(() => api.delete(fill(GEO_API_PATHS.me.baitSlot, { slot: String(slot) }))),
 
-    /** The Seed Bag slot now holds `quantity` of the seed, like `packBait`. */
-    packSeeds: (slot: number, itemId: string, quantity: number) =>
-        change(() => api.put(fill(GEO_API_PATHS.me.seedBagSlot, { slot: String(slot) }), { itemId, quantity })),
+    /** Camp becomes (about) where the player stands. Once a week; the server rounds it. */
+    setCamp: () => changeHere((position) => api.put(GEO_API_PATHS.me.camp, { position })),
 
-    /** Empties a Seed Bag slot back into the inventory. */
-    unpackSeeds: (slot: number) =>
-        change(() => api.delete(fill(GEO_API_PATHS.me.seedBagSlot, { slot: String(slot) }))),
+    /** Wears a saved loadout: its gear and pet. */
+    wearLoadout: (slot: number) => change(() => api.post(fill(GEO_API_PATHS.me.wearLoadout, { slot: String(slot) }))),
+
+    /** `save`: stores what's worn now in the slot as `name` (and makes it active); otherwise only renames. */
+    saveLoadout: (slot: number, name: string, save: boolean) =>
+        change(() => api.put(fill(GEO_API_PATHS.me.loadout, { slot: String(slot) }), { name, save })),
+
+    /** Clears a loadout slot; what's worn stays on. */
+    deleteLoadout: (slot: number) => change(() => api.delete(fill(GEO_API_PATHS.me.loadout, { slot: String(slot) }))),
+
+    /** Tags the loadout auto-swap wears for an activity, or untags it. */
+    setLoadoutAuto: (slot: number, autoFor: GeoLoadoutActivity | null) =>
+        change(() => api.put(fill(GEO_API_PATHS.me.loadoutAuto, { slot: String(slot) }), { autoFor })),
+
+    buyLoadoutSlot: () => change(() => api.post(GEO_API_PATHS.me.buyLoadoutSlot)),
+
+    buyAutoSwap: () => change(() => api.post(GEO_API_PATHS.me.buyAutoSwap)),
+
+    /** Purse → bank at camp. Banked coins are safe from death. */
+    bankDeposit: (amount: number) =>
+        changeHere((position) => api.post(GEO_API_PATHS.me.bankDeposit, { amount, position })),
+
+    /** Bank → purse, at camp. */
+    bankWithdraw: (amount: number) =>
+        changeHere((position) => api.post(GEO_API_PATHS.me.bankWithdraw, { amount, position })),
 
     /** Makes a pet the active one, or puts the active pet away with null. */
     setActivePet: (inventoryId: string | null) => change(() => api.put(GEO_API_PATHS.me.activePet, { inventoryId })),

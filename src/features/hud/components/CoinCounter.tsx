@@ -10,13 +10,13 @@ type CoinCounterProps = {
  * The coin readout — icon plus count. Coins are the currency: what Vendors
  * and the Market price things in.
  *
- * Unpositioned: `PlayerStatusHud` owns where it sits, so this stays a plain
- * row that can be dropped anywhere.
+ * Unpositioned: the world screen places it (bottom-left, above the bar), so
+ * this stays a plain row that can be dropped anywhere.
  */
 export default function CoinCounter({ coins }: CoinCounterProps) {
     return (
         <View style={styles.row} accessibilityRole="text" accessibilityLabel={`${coins} coins`}>
-            <Icon name="coins" size={18} color={colors.coins} />
+            <Icon name="two-coins" size={18} color={colors.coins} />
             {/* `toLocaleString` because balances reach six figures and an
                 unseparated run of digits is unreadable at a glance. */}
             <Text style={styles.count}>{coins.toLocaleString()}</Text>

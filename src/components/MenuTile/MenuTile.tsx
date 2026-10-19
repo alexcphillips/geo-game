@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text } from "react-native";
+import Badge from "@/components/Badge/Badge";
 import Icon, { type GameIconName } from "@/components/Icon/Icon";
 import { colors } from "@/theme/colors";
 
@@ -6,15 +7,18 @@ type MenuTileProps = {
     label: string;
     icon: GameIconName;
     onPress: () => void;
+    /** A count of what's waiting behind the tile; nothing shows at 0. */
+    badge?: number;
 };
 
 /**
- * One square tile in a menu grid — settings, the character screen.
+ * One square tile in a menu grid — settings, the character screen, the
+ * world screen's Actions sheet.
  *
  * Square via `aspectRatio` rather than a fixed size, so the grid's column count
  * alone decides how big tiles are on any screen width.
  */
-export default function MenuTile({ label, icon, onPress }: MenuTileProps) {
+export default function MenuTile({ label, icon, onPress, badge = 0 }: MenuTileProps) {
     return (
         <Pressable
             style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
@@ -26,6 +30,7 @@ export default function MenuTile({ label, icon, onPress }: MenuTileProps) {
             <Text style={styles.label} numberOfLines={1}>
                 {label}
             </Text>
+            <Badge count={badge} />
         </Pressable>
     );
 }

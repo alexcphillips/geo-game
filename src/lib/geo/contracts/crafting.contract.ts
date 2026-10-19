@@ -26,6 +26,10 @@ export type GeoRecipe = {
     output: GeoItemAmount;
     /** Every one must be met; none are spent. */
     skills: GeoSkillRequirement[];
+    /** Where it's made: "cooking" puts it on the Cooking menu. Absent: the crafting screen. */
+    station?: "cooking";
+    /** Skill XP per craft. */
+    xp?: { skill: string; amount: number };
 };
 
 /** `POST /geo/crafting/:recipeId`. Replies with the player (`GeoMeResponse`). */

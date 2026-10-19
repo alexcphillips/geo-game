@@ -22,11 +22,6 @@ export function isBait(def: GeoItemView | undefined): boolean {
     return def?.kind === "consumable" && def.bait === true;
 }
 
-/** Whether an item is seeds: a material some crop grows from. */
-export function isSeed(def: GeoItemView | undefined): boolean {
-    return def?.seedOf !== undefined;
-}
-
 /** One slot as the screens draw it: a food tile with how many are left. */
 export type PackedSlot = { slot: number; item: InventoryItem; quantity: number };
 
@@ -34,7 +29,7 @@ export type PackedSlot = { slot: number; item: InventoryItem; quantity: number }
 export function packedSlots(
     contents: GeoLunchboxSlot[],
     items: Record<string, GeoItemView>,
-    kind: "lunchbox" | "bait" | "seeds" = "lunchbox",
+    kind: "lunchbox" | "bait" = "lunchbox",
 ): PackedSlot[] {
     return contents.flatMap((entry) => {
         const def = items[entry.itemId];

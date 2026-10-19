@@ -10,14 +10,14 @@ export const craftingActions = {
      * the output together; the player it sends back replaces ours before the
      * toast, so the inventory already shows the change.
      */
-    craft: async (recipeId: string, quantity: number, madeName: string, madeCount: number): Promise<boolean> => {
+    craft: async (recipeId: string, quantity: number, madeName: string, madeCount: number, verb = "Crafted"): Promise<boolean> => {
         try {
             const me = await api.post<GeoMeResponse>(
                 GEO_API_PATHS.crafting.craft.replace(":recipeId", encodeURIComponent(recipeId)),
                 { quantity },
             );
             usePlayerStore.setState({ me });
-            showToast(`Crafted ${madeCount.toLocaleString()} ${madeName}`, "success");
+            showToast(`${verb} ${madeCount.toLocaleString()} ${madeName}`, "success");
             return true;
         } catch (error) {
             showToast(toErrorMessage(error), "error");

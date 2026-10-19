@@ -103,7 +103,7 @@ function SoldRow({ listing, now, onPress }: { listing: OwnListing; now: number; 
                     {sale.collected ? "Sold" : "To collect"}
                 </Text>
                 <View style={styles.priceLine}>
-                    <Icon name="coins" size={14} color={colors.coins} />
+                    <Icon name="two-coins" size={14} color={colors.coins} />
                     <Text style={styles.priceText}>{formatCoins(sale.collected ? sale.buyerPaid : sale.sellerGot)}</Text>
                 </View>
             </View>
@@ -120,7 +120,7 @@ function CollectButton({ label, onPress }: { label: string; onPress: () => void 
             accessibilityRole="button"
             hitSlop={8}
         >
-            <Icon name="coins" size={13} color={colors.coins} />
+            <Icon name="two-coins" size={13} color={colors.coins} />
             <Text style={styles.collectText}>{label}</Text>
         </Pressable>
     );
@@ -217,7 +217,7 @@ export function OwnListingPanel({
                     <View key={label} style={styles.panelRow}>
                         <Text style={styles.panelLabel}>{label}</Text>
                         <View style={styles.priceLine}>
-                            {isCoins && <Icon name="coins" size={13} color={colors.coins} />}
+                            {isCoins && <Icon name="two-coins" size={13} color={colors.coins} />}
                             <Text style={isCoins ? styles.panelCoins : styles.panelValue}>{value}</Text>
                         </View>
                     </View>
@@ -230,7 +230,7 @@ export function OwnListingPanel({
                     style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
                     accessibilityRole="button"
                 >
-                    <Icon name="coins" size={15} color={colors.coins} />
+                    <Icon name="two-coins" size={15} color={colors.coins} />
                     <Text style={styles.primaryText}>Collect {formatCoins(listing.uncollected)} coins</Text>
                 </Pressable>
             ) : (
@@ -347,7 +347,7 @@ function BidRow({ bid, topLabel }: { bid: Bid; topLabel: string | null }) {
                 <Text style={styles.meta}>{formatDateTime(bid.at)}</Text>
             </View>
             <View style={styles.priceLine}>
-                <Icon name="coins" size={13} color={colors.coins} />
+                <Icon name="two-coins" size={13} color={colors.coins} />
                 <Text style={styles.panelCoins}>{formatCoins(bid.amount)}</Text>
             </View>
         </View>

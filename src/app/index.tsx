@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { router, useIsFocused } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayerLocation } from "@/features/location/hooks/usePlayerLocation";
 import GameMap from "@/features/map/components/GameMap";
 import type { MapNearPlaces, MapNearWater } from "@/features/map/mapHtml";
-import ActionBar from "@/features/hud/components/ActionBar";
+import BottomBar, { useBottomBarHeight } from "@/features/hud/components/BottomBar";
 import SettingsButton from "@/features/hud/components/SettingsButton";
 import FriendsButton from "@/features/hud/components/FriendsButton";
 import InboxButton from "@/features/hud/components/InboxButton";
@@ -18,14 +17,21 @@ import { useWhatsNew } from "@/features/inbox/useWhatsNew";
 import FriendsModal from "@/features/friends/components/FriendsModal";
 import CraftingModal from "@/features/crafting/components/CraftingModal";
 import DeckModal from "@/features/deck/components/DeckModal";
+import { CAMP_RADIUS_METRES } from "@/features/camp/camp";
+import CampModal from "@/features/camp/components/CampModal";
+import CookingModal from "@/features/cooking/components/CookingModal";
+import SkillsModal from "@/features/skills/components/SkillsModal";
+import QuestLogModal from "@/features/quests/components/QuestLogModal";
+import LunchboxModal from "@/features/lunchbox/components/LunchboxModal";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
+import CoinCounter from "@/features/hud/components/CoinCounter";
 import PlayerStatusHud from "@/features/hud/components/PlayerStatusHud";
 import { distanceMetres } from "@/features/location/distance";
 import PlaceModal from "@/features/places/components/PlaceModal";
 import { confirmRemovePlace } from "@/features/places/placeAdmin";
 import { usePlaceDraft } from "@/features/places/placeDraft";
 import { fishingTier } from "@/features/places/fishingWaters";
-import { PLACE_REACH_METRES, PLACE_TYPES, type MapPlace } from "@/features/places/places";
+import { PLACE_REACH_METRES, PLACE_TYPES, placeTitle, type MapPlace } from "@/features/places/places";
 import { useHandMadePlaces } from "@/features/places/useHandMadePlaces";
 import InventoryModal from "@/features/inventory/components/InventoryModal";
 import MarketModal from "@/features/market/components/MarketModal";
@@ -58,6 +64,7 @@ import {
     type GeoRunResponse,
 } from "@/lib/geo/contracts";
 import { colors } from "@/theme/colors";
+import { ABOVE_BAR_GAP } from "@/theme/layout";
 
 /**
  * The world screen — the game's home. Everything else is reached from here.
@@ -68,7 +75,6 @@ import { colors } from "@/theme/colors";
  */
 export default function WorldScreen() {
     const { position, permission, error } = usePlayerLocation();
-    const insets = useSafeAreaInsets();
     const [mapError, setMapError] = useState<string | null>(null);
     const [isInventoryOpen, setIsInventoryOpen] = useState(false);
     const [isVendorsOpen, setIsVendorsOpen] = useState(false);
@@ -79,6 +85,13 @@ export default function WorldScreen() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isDeckOpen, setIsDeckOpen] = useState(false);
     const [isCraftingOpen, setIsCraftingOpen] = useState(false);
+    const [isCampOpen, setIsCampOpen] = useState(false);
+    const [isSkillsOpen, setIsSkillsOpen] = useState(false);
+    const [isCookingOpen, setIsCookingOpen] = useState(false);
+    const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
+    const barHeight = useBottomBarHeight();
+    // Opened from Camp (to restock), or the lunchbox from the health bar (to eat).
+    const [openPack, setOpenPack] = useState<"lunchbox" | "bait" | null>(null);
     const [settingsPage, setSettingsPage] = useState<SettingsPage>("menu");
     const isFreeCamera = useAdminSettingsStore((state) => state.isFreeCamera);
     const setIsFreeCamera = useAdminSettingsStore((state) => state.setIsFreeCamera);
@@ -88,6 +101,7 @@ export default function WorldScreen() {
 
     const isPlayerReady = usePlayerStore((state) => state.status === "ready");
     const coins = useCoins();
+    const camp = usePlayerStore((state) => state.me?.camp ?? null);
     const [nearWater, setNearWater] = useState<MapNearWater | null>(null);
     const [nearPlaces, setNearPlaces] = useState<MapNearPlaces>({});
     const { spawns, reachMetres, spawnRadiusMetres } = useWorldSpawns(position, isPlayerReady, nearWater, nearPlaces);
@@ -107,6 +121,8 @@ export default function WorldScreen() {
         isSettingsOpen ||
         isDeckOpen ||
         isCraftingOpen ||
+        isCampOpen ||
+        openPack !== null ||
         dungeonMenu !== null ||
         openPlace !== null;
     useDungeonPolling(dungeonMenu !== null, isPlayerReady);
@@ -254,6 +270,8 @@ export default function WorldScreen() {
             <GameMap
                 position={position}
                 isAdminMode={isFreeCamera}
+                // The bar is hidden while the map is taken over, so the whole map is free then.
+                bottomPadding={isMapTakenOver ? 0 : barHeight}
                 spawns={spawns}
                 places={handMadePlaces}
                 spawnRadiusMetres={showSpawnRadius ? spawnRadiusMetres : null}
@@ -280,6 +298,14 @@ export default function WorldScreen() {
                 }}
                 onPlacePress={(place) => {
                     if (!isDroppingPin) setOpenPlace(place);
+                }}
+                camp={
+                    camp
+                        ? { latitude: camp.position.latitude, longitude: camp.position.longitude, radiusMetres: CAMP_RADIUS_METRES }
+                        : null
+                }
+                onCampPress={() => {
+                    if (!isDroppingPin) setIsCampOpen(true);
                 }}
                 pinDrop={
                     pinDropFor === "review" && reviewPin
@@ -331,7 +357,16 @@ export default function WorldScreen() {
 
             {!isMapTakenOver && (
                 <>
-                    <PlayerStatusHud coins={coins} />
+                    <PlayerStatusHud
+                        onPressHealth={() => setOpenPack("lunchbox")}
+                        onOpenQuestLog={() => setIsQuestLogOpen(true)}
+                    />
+
+                    {/* Bottom-left, just above the bar. Lets taps through to the
+                        map, which is a rotation surface everywhere. */}
+                    <View style={[styles.coins, { bottom: barHeight + ABOVE_BAR_GAP }]} pointerEvents="none">
+                        <CoinCounter coins={coins} />
+                    </View>
 
                     <InboxButton onPress={() => setIsInboxOpen(true)} />
 
@@ -341,14 +376,22 @@ export default function WorldScreen() {
 
                     <SettingsButton onPress={() => openSettings()} />
 
-                    <ActionBar
+                    <BottomBar
                         onOpenCharacter={() => router.push("/character")}
                         onOpenInventory={() => setIsInventoryOpen(true)}
-                        onOpenCrafting={() => setIsCraftingOpen(true)}
-                        onOpenVendors={() => setIsVendorsOpen(true)}
-                        onOpenMarket={() => setIsMarketOpen(true)}
-                        onOpenCommunityCenter={() => setCommunityCenterTab("mayor")}
+                        onOpenSkills={() => setIsSkillsOpen(true)}
                         onOpenDeck={() => setIsDeckOpen(true)}
+                        actions={{
+                            camp: { onPress: () => setIsCampOpen(true) },
+                            lunchbox: { onPress: () => setOpenPack("lunchbox") },
+                            bait: { onPress: () => setOpenPack("bait") },
+                            farm: { onPress: () => router.push("/farm") },
+                            crafting: { onPress: () => setIsCraftingOpen(true) },
+                            cooking: { onPress: () => setIsCookingOpen(true) },
+                            vendors: { onPress: () => setIsVendorsOpen(true) },
+                            market: { onPress: () => setIsMarketOpen(true) },
+                            communityCenter: { onPress: () => setCommunityCenterTab("mayor") },
+                        }}
                     />
                 </>
             )}
@@ -356,10 +399,10 @@ export default function WorldScreen() {
             {/* The map lives in a WebView and depends on the network for both
                 its library and its tiles, so a failure there is silent black
                 unless it is surfaced. */}
-            {!isMapTakenOver && <ServerStatusBanner bottom={insets.bottom + (mapError ? 150 : 90)} />}
+            {!isMapTakenOver && <ServerStatusBanner bottom={barHeight + ABOVE_BAR_GAP + (mapError ? 60 : 0)} />}
 
             {mapError && (
-                <View style={[styles.mapError, { bottom: insets.bottom + 90 }]}>
+                <View style={[styles.mapError, { bottom: barHeight + ABOVE_BAR_GAP }]}>
                     <Text style={styles.mapErrorText}>{mapError}</Text>
                 </View>
             )}
@@ -402,7 +445,7 @@ export default function WorldScreen() {
                                     {
                                           pathname: "/farm",
                                           params: {
-                                              place: openPlace.name,
+                                              place: placeTitle(openPlace.name, openPlace.skill),
                                               latitude: String(openPlace.latitude),
                                               longitude: String(openPlace.longitude),
                                           },
@@ -481,6 +524,25 @@ export default function WorldScreen() {
 
             {isDeckOpen && <DeckModal onClose={() => setIsDeckOpen(false)} />}
 
+            {isSkillsOpen && <SkillsModal onClose={() => setIsSkillsOpen(false)} />}
+
+            {isCookingOpen && <CookingModal onClose={() => setIsCookingOpen(false)} />}
+
+            {isQuestLogOpen && <QuestLogModal onClose={() => setIsQuestLogOpen(false)} />}
+
+            {isCampOpen && (
+                <CampModal
+                    onClose={() => setIsCampOpen(false)}
+                    onOpenPack={(kind) => {
+                        // One native modal at a time: Camp closes, the pack opens.
+                        setIsCampOpen(false);
+                        setOpenPack(kind);
+                    }}
+                />
+            )}
+
+            {openPack && <LunchboxModal kind={openPack} onClose={() => setOpenPack(null)} />}
+
             {isCraftingOpen && (
                 <CraftingModal
                     onClose={() => setIsCraftingOpen(false)}
@@ -518,6 +580,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.void,
+    },
+    coins: {
+        position: "absolute",
+        left: 16,
     },
     mapError: {
         position: "absolute",

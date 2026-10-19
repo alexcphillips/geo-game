@@ -130,7 +130,7 @@ export function searchRecipes(statuses: RecipeStatus[], query: string, sort: Rec
 export type RecipeCategory =
     | "cards"
     | "weapons"
-    | "armour"
+    | "armor"
     | "accessories"
     | "consumables"
     | "materials"
@@ -142,7 +142,7 @@ export type RecipeCategory =
 export const RECIPE_CATEGORIES: { id: RecipeCategory; label: string }[] = [
     { id: "cards", label: "Cards" },
     { id: "weapons", label: "Weapons" },
-    { id: "armour", label: "Armour" },
+    { id: "armor", label: "Armor" },
     { id: "accessories", label: "Accessories" },
     { id: "consumables", label: "Consumables" },
     { id: "materials", label: "Materials" },

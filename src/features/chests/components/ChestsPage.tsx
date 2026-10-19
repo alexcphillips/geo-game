@@ -6,13 +6,14 @@ import { formatListedAgo } from "@/features/market/market";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoChestSelection, GeoChestsResponse } from "@/lib/geo/contracts";
 import { colors } from "@/theme/colors";
+import { useInboxStore } from "@/features/inbox/inboxStore";
 import { chestsApi } from "../chestsApi";
 import { CHEST_TIER_COLORS } from "../chestTiers";
 import ChestPicker from "./ChestPicker";
 import { ChestCost } from "./ChestTile";
 
 /**
- * Character → Chests: selections waiting to be opened, then the history of
+ * Inbox → Chests: selections waiting to be opened, then the history of
  * opened ones. Fetched once per visit, so a chest opened here shows what it
  * held in place, and moves down to the history the next time the page opens.
  */
@@ -23,7 +24,11 @@ export default function ChestsPage() {
     useEffect(() => {
         chestsApi
             .list()
-            .then(setChests)
+            .then((list) => {
+                setChests(list);
+                // Fresher than the last heartbeat's count.
+                useInboxStore.getState().setPendingChests(list.pending.length);
+            })
             .catch((failure) => setError(toErrorMessage(failure)));
     }, []);
 

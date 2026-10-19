@@ -50,6 +50,13 @@ const MARKER_BADGES = Object.fromEntries(
     ]),
 );
 
+/** The player's camp marker: the campfire, on an ember disc a size up from places'. */
+const CAMP_BADGE_PX = 32;
+const CAMP_BADGE_SVG =
+    `<svg viewBox="0 0 ${GAME_ICON_VIEWBOX} ${GAME_ICON_VIEWBOX}" width="20" height="20" aria-hidden="true">` +
+    GAME_ICONS.campfire.map((d) => `<path d="${d}"/>`).join("") +
+    "</svg>";
+
 /**
  * How far from a marker's point, in screen pixels, a tap still counts as
  * hitting it. The dots are 6–12px across; a fingertip is ~40px.
@@ -71,6 +78,8 @@ export type MapMessage =
     | { type: "error"; message: string }
     /** Pin-drop mode: where the player placed the pin. */
     | { type: "pin"; latitude: number; longitude: number }
+    /** The player tapped their camp marker. */
+    | { type: "camp" }
     /** The player tapped an enemy spawn. */
     | { type: "spawn"; id: string }
     /**
@@ -148,6 +157,8 @@ export type MapWater = {
  * - In: `window.gameMap.setPlayer(lng, lat)` — called via `injectJavaScript`.
  * - In: `window.gameMap.setAdminMode(enabled)` — frees the camera for
  *   debugging; see `setAdminMode` below.
+ * - In: `window.gameMap.setBottomPadding(px)` — screen covered by the HUD's
+ *   bottom bar; the camera centres the player in what's left above it.
  * - In: `window.gameMap.setSpawnRadius(metres | null)` — the ring around the
  *   player showing how far out enemies spawn; null hides it.
  * - In: `window.gameMap.setSpawns(spawns)` — enemies on the map, as
@@ -159,6 +170,9 @@ export type MapWater = {
  *   `{ id, name, skill, latitude, longitude }[]`, drawn with the tile places'
  *   markers. Replaces the previous set. A tile marker of the same type within
  *   reach of one is hidden; see `refreshLandmarks`.
+ * - In: `window.gameMap.setCamp(lng, lat, metres)` / `setCamp(null)` — the
+ *   player's camp, with a ring as far out as counts as being at it. Tapping
+ *   it posts a `camp`.
  * - In: `window.gameMap.focusOn(lng, lat, colour)` / `clearFocus()` — flies
  *   the free camera to a point and marks it (admins reviewing suggestions).
  * - Out: tapping a landmark or skill marker posts a `place`. The page reports
@@ -184,6 +198,7 @@ export function buildMapHtml(): string {
         sprites: SPRITES,
         spriteScales: SPRITE_SCALES,
         markerBadges: MARKER_BADGES,
+        campBadgeSvg: CAMP_BADGE_SVG,
         handMadeCoverMetres: PLACE_REACH_METRES,
         nearPlaceMetres: GEO_WORLD_HABITAT_METRES,
     });
@@ -225,7 +240,11 @@ export function buildMapHtml(): string {
     /* Place markers: an optional name label above a badge — a disc in the
        type's colour with its icon. Anchored at the bottom, offset so the
        badge's centre sits on the place. */
+    /* Stacking: enemies at the bottom, then places, then camp, then the
+       dropped and focus pins, so markers are never hidden under a sprite. MapLibre makes marker elements
+       absolute, so z-index applies. */
     .landmark {
+      z-index: 2;
       pointer-events: none;
       display: flex;
       flex-direction: column;
@@ -262,6 +281,30 @@ export function buildMapHtml(): string {
         0 0 3px ${colors.void},
         0 1px 2px ${colors.void};
     }
+    /* The player's camp: an ember disc with the campfire, drawn above the
+       place markers. Taps are found by distance, like places, so it never
+       blocks the one-finger rotate. */
+    .camp {
+      z-index: 3;
+      pointer-events: none;
+    }
+    .camp-badge {
+      width: ${CAMP_BADGE_PX}px;
+      height: ${CAMP_BADGE_PX}px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: ${colors.ember};
+      border: 2px solid ${colors.void};
+      color: ${colors.void};
+      box-shadow: 0 0 0 2px rgba(232, 135, 60, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+    .camp-badge svg {
+      display: block;
+      fill: currentColor;
+    }
     /* Enemy spawns: the sprite, with two white rings rippling out from under
        it, staggered so there is always one on its way out. The marker is the
        tap target: 84px at street level, shrinking with the art when zoomed
@@ -271,6 +314,7 @@ export function buildMapHtml(): string {
        flow, each pushed down by the ones before it, and they swim around as
        the map rotates. */
     .spawn {
+      z-index: 1;
       width: max(44px, calc(84px * var(--spawn-scale, 1)));
       height: max(44px, calc(84px * var(--spawn-scale, 1)));
       display: flex;
@@ -324,12 +368,19 @@ export function buildMapHtml(): string {
       box-sizing: border-box;
       border: 2.5px solid rgba(255, 255, 255, 0.95);
       border-radius: 50%;
+      /* Centred and unseen outside the animation, so a ring that isn't
+         running never shows at its unshifted spot, down-right of the sprite. */
+      transform: translate(-50%, -50%);
+      opacity: 0;
       /* A ring every 1.8s: each ripples out over the first half of its
          3.6s cycle, then rests unseen, and the second starts halfway. */
       animation: spawn-pulse 3.6s ease-out infinite;
     }
+    /* A negative delay starts the second ring halfway through its cycle the
+       moment the marker appears. A positive one would leave it outside the
+       animation — no keyframe transform — for its first 1.8s. */
     .spawn-pulse.delayed {
-      animation-delay: 1.8s;
+      animation-delay: -1.8s;
     }
     @keyframes spawn-pulse {
       /* Starts at the sprite's edge (~30px out) so the whole ripple is
@@ -353,6 +404,7 @@ export function buildMapHtml(): string {
        the pin is drawn inside it, because MapLibre positions markers with an
        inline transform that would wipe out the pin's own rotation. */
     .suggest-pin-handle {
+      z-index: 4;
       width: 44px;
       height: 44px;
       display: flex;
@@ -361,6 +413,7 @@ export function buildMapHtml(): string {
       cursor: grab;
     }
     .suggest-pin {
+      z-index: 4;
       width: 22px;
       height: 22px;
       margin-bottom: 4px;
@@ -395,7 +448,7 @@ export function buildMapHtml(): string {
       right: ${TOP_BUTTON_EDGE_INSET + TOP_BUTTON_DIAMETER / 2 - 29 / 2 - 10}px !important;
     }
     .maplibregl-ctrl-bottom-right {
-      bottom: calc(env(safe-area-inset-bottom) - 6px) !important;
+      bottom: calc(env(safe-area-inset-bottom) + 54px) !important;
     }
   </style>
 </head>
@@ -638,6 +691,15 @@ export function buildMapHtml(): string {
           refreshLandmarks();
         },
 
+        /**
+         * Keeps the camera's centre, and so the player, in the middle of the
+         * part of the map not under the bottom bar. MapLibre's own padding,
+         * so zoom and rotate still turn about the player.
+         */
+        setBottomPadding: function (px) {
+          map.setPadding({ top: 0, right: 0, left: 0, bottom: px });
+        },
+
         /** Draws the spawn radius around the player; null hides it. */
         setSpawnRadius: function (metres) {
           spawnRing.setRadius(metres);
@@ -659,6 +721,11 @@ export function buildMapHtml(): string {
 
         clearFocus: function () {
           focusMarker.hide();
+        },
+
+        /** The player's camp and its radius; null removes both. */
+        setCamp: function (lng, lat, metres) {
+          campMarker.set(lng === null ? null : [lng, lat], metres);
         },
 
         setPlayer: function (lng, lat) {
@@ -753,6 +820,8 @@ export function buildMapHtml(): string {
             centre = lngLat;
             if (radius) render();
           },
+          /** Shared with the camp ring. */
+          circle: circle,
         };
       })();
 
@@ -786,8 +855,15 @@ export function buildMapHtml(): string {
 
           // stopPropagation keeps the tap from also reaching the map, where
           // it would count as a map click (and, in pin-drop mode, move the pin).
+          // Camp and place markers win over the enemy under them: they draw
+          // on top, so that's what the player meant to tap.
           wrapper.addEventListener("click", function (event) {
             event.stopPropagation();
+            if (!pinDrop.isActive()) {
+              var origin = map.getContainer().getBoundingClientRect();
+              var point = { x: event.clientX - origin.left, y: event.clientY - origin.top };
+              if (tapMarkerAt(point)) return;
+            }
             send({ type: "spawn", id: spawn.id });
           });
 
@@ -913,6 +989,75 @@ export function buildMapHtml(): string {
 
           isActive: function () {
             return marker !== null;
+          },
+        };
+      })();
+
+      /**
+       * The player's camp: a marker, and a ring on the ground as far out as
+       * counts as being at camp (packing, resting). The ring is a real circle
+       * in metres, like the spawn radius.
+       */
+      var campMarker = (function () {
+        var SOURCE_ID = "camp-radius";
+        var marker = null;
+
+        function render(lngLat, metres) {
+          var data = lngLat
+            ? spawnRing.circle(lngLat, metres)
+            : { type: "FeatureCollection", features: [] };
+
+          var source = map.getSource(SOURCE_ID);
+          if (source) {
+            source.setData(data);
+            return;
+          }
+
+          map.addSource(SOURCE_ID, { type: "geojson", data: data });
+          map.addLayer({
+            id: SOURCE_ID + "-fill",
+            type: "fill",
+            source: SOURCE_ID,
+            paint: { "fill-color": ${JSON.stringify(colors.ember)}, "fill-opacity": 0.08 },
+          });
+          map.addLayer({
+            id: SOURCE_ID + "-line",
+            type: "line",
+            source: SOURCE_ID,
+            paint: {
+              "line-color": ${JSON.stringify(colors.emberBright)},
+              "line-opacity": 0.6,
+              "line-width": 1.5,
+            },
+          });
+        }
+
+        return {
+          set: function (lngLat, metres) {
+            render(lngLat, metres);
+            if (!lngLat) {
+              if (marker) marker.remove();
+              marker = null;
+              return;
+            }
+            if (!marker) {
+              var wrapper = document.createElement("div");
+              wrapper.className = "camp";
+              var disc = document.createElement("div");
+              disc.className = "camp-badge";
+              // Built from our own generated icon data, never from map content.
+              disc.innerHTML = CONFIG.campBadgeSvg;
+              wrapper.appendChild(disc);
+              marker = new maplibregl.Marker({ element: wrapper }).setLngLat(lngLat).addTo(map);
+            }
+            marker.setLngLat(lngLat);
+          },
+
+          /** Whether a tap at this screen point hits the camp marker. */
+          isAt: function (point) {
+            if (!marker) return false;
+            var anchor = map.project(marker.getLngLat());
+            return Math.hypot(anchor.x - point.x, anchor.y - point.y) <= PLACE_TAP_RADIUS_PX;
           },
         };
       })();
@@ -1642,12 +1787,20 @@ export function buildMapHtml(): string {
         return best;
       }
 
-      map.on("click", function (event) {
-        // Mid pin-drop a tap places the pin; nothing else should open.
-        if (pinDrop.isActive()) return;
+      /**
+       * Opens the camp or place marker at this screen point, if there is one.
+       * Returns whether a marker took the tap. Used by map clicks and by
+       * spawns, which sit under markers and hand them the tap first.
+       */
+      function tapMarkerAt(point) {
+        // Camp first: it sits on top, often right over a place.
+        if (campMarker.isAt(point)) {
+          send({ type: "camp" });
+          return true;
+        }
 
-        var marker = placeAt(event.point);
-        if (!marker) return;
+        var marker = placeAt(point);
+        if (!marker) return false;
 
         var lngLat = marker.getLngLat();
         send({
@@ -1659,6 +1812,13 @@ export function buildMapHtml(): string {
           latitude: lngLat.lat,
           longitude: lngLat.lng,
         });
+        return true;
+      }
+
+      map.on("click", function (event) {
+        // Mid pin-drop a tap places the pin; nothing else should open.
+        if (pinDrop.isActive()) return;
+        tapMarkerAt(event.point);
       });
 
       /**

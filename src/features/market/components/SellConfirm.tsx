@@ -71,7 +71,7 @@ export default function SellConfirm({ item, draft, coins, onConfirm }: SellConfi
                     <View key={label} style={styles.row}>
                         <Text style={styles.rowLabel}>{label}</Text>
                         <View style={styles.rowValue}>
-                            {isCoins && <Icon name="coins" size={13} color={colors.coins} />}
+                            {isCoins && <Icon name="two-coins" size={13} color={colors.coins} />}
                             <Text style={[styles.rowValueText, !isCoins && styles.rowValuePlain]}>
                                 {value}
                             </Text>

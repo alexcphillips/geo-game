@@ -15,6 +15,8 @@ import { petArt } from "../petArt";
 
 type PetsModalProps = {
     onClose: () => void;
+    /** Open on this pet's page rather than the list. */
+    initialPetId?: string;
 };
 
 type Page = { page: "list" } | { page: "pet"; id: string } | { page: "give"; id: string };
@@ -25,13 +27,13 @@ type OwnedPet = InventoryItem & { pet: GeoPetState };
 const isPet = (item: InventoryItem): item is OwnedPet => item.pet !== undefined;
 
 /**
- * Your pets, from the character screen. One is active at a time and gives
+ * Your pets, from the character screen's pet slot. One is active at a time and gives
  * its stats (pets never fight); it levels from the skill XP you earn while
  * it's out. Tap a pet for its stats, abilities and held item. Kat, a vendor,
  * raises a pet's rarity.
  */
-export default function PetsModal({ onClose }: PetsModalProps) {
-    const [page, setPage] = useState<Page>({ page: "list" });
+export default function PetsModal({ onClose, initialPetId }: PetsModalProps) {
+    const [page, setPage] = useState<Page>(initialPetId ? { page: "pet", id: initialPetId } : { page: "list" });
     const inventory = useInventory();
     const activeId = useActivePetId();
     const pets = useMemo(

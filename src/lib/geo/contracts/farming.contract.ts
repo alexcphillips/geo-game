@@ -1,6 +1,6 @@
 // Copied from cozy-app/shared/src/geo/farming.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
-import type { GeoHandCard, GeoLunchboxSlot } from "./run.contract";
+import type { GeoHandCard } from "./run.contract";
 
 /**
  * Farming: one grid per player that runs on a real clock. Every 12h the farm
@@ -316,8 +316,6 @@ export type GeoFarmView = {
     /** Coins the next tile costs; null when every tile is owned. */
     unlockCost: number | null;
     hand: GeoFarmHandCard[];
-    /** The Seed Bag: slots unlocked and what's packed. Planting takes one seed. */
-    seedBag: GeoSeedBag;
     crops: GeoCropView[];
     /** Every pest on the farm, each with its next move. */
     pests: GeoFarmPest[];
@@ -337,29 +335,13 @@ export type GeoFarmView = {
 };
 
 /**
- * Seeds packed for farming, slotted like the bait bag: a stack of one seed
- * per slot, no seed in two slots, and packed seeds have left the inventory.
- */
-export type GeoSeedBag = {
-    slots: number;
-    contents: GeoLunchboxSlot[];
-};
-
-export const GEO_SEED_BAG_MAX_SLOTS = 4;
-/** PLACEHOLDER. */
-export const GEO_SEED_BAG_STACK_SIZE = 50;
-
-/** `PUT /geo/me/seed-bag/:slot`: the slot now holds this many of this seed. */
-export type GeoPackSeedsRequest = { itemId: string; quantity: number };
-
-/**
  * `POST /geo/farm/actions`. Work needs the player at a farming place;
  * `blueprint` (planning) and the Pesthunter (`turn-in`, `pesthunter-buy`)
  * work anywhere.
  */
 export type GeoFarmAction =
-    /** Free: takes one seed from the Seed Bag slot. */
-    | { type: "plant"; tile: number; slot: number }
+    /** Free: takes one of these seeds from the inventory. */
+    | { type: "plant"; tile: number; itemId: string }
     /** 1 Labor, or 1 water from a Well instead: +1 moisture. */
     | { type: "water"; tile: number }
     /** 1 Labor: a ripe crop into the inventory. */

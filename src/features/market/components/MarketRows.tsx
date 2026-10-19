@@ -85,7 +85,7 @@ export function ListingRow({
             </View>
             <View style={styles.rowPrice}>
                 <View style={styles.priceLine}>
-                    <Icon name="coins" size={14} color={colors.coins} />
+                    <Icon name="two-coins" size={14} color={colors.coins} />
                     <Text style={styles.priceText}>{price}</Text>
                 </View>
                 {priceNote && <Text style={styles.meta}>{priceNote}</Text>}
@@ -133,7 +133,7 @@ export function ProductRow({ product, onPress }: { product: MarketProduct; onPre
             </View>
             <View style={styles.rowPrice}>
                 <View style={styles.priceLine}>
-                    <Icon name="coins" size={14} color={colors.coins} />
+                    <Icon name="two-coins" size={14} color={colors.coins} />
                     <Text style={styles.priceText}>{price}</Text>
                 </View>
                 <Text style={styles.meta}>each</Text>
@@ -162,7 +162,7 @@ export function ListingSummary({ listing, now }: { listing: MarketListing; now: 
                           : `Current bid · ${listing.bids} bids`}
                 </Text>
                 <View style={styles.priceLine}>
-                    <Icon name="coins" size={16} color={colors.coins} />
+                    <Icon name="two-coins" size={16} color={colors.coins} />
                     <Text style={styles.panelPrice}>{formatCoins(listingPrice(listing))}</Text>
                 </View>
             </View>
@@ -212,7 +212,7 @@ export function PriceLadder({ product }: { product: MarketProduct }) {
             {product.offers.map((offer, index) => (
                 <View key={offer.price} style={styles.panelRow}>
                     <View style={styles.priceLine}>
-                        <Icon name="coins" size={14} color={colors.coins} />
+                        <Icon name="two-coins" size={14} color={colors.coins} />
                         <Text style={[styles.ladderPrice, index === 0 && styles.ladderPriceBest]}>
                             {formatCoins(offer.price)}
                         </Text>

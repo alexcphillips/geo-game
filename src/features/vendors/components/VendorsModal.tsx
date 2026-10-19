@@ -7,16 +7,18 @@ import Modal from "@/components/Modal/Modal";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import { rarityInfo, type Rarity } from "@/features/inventory/rarity";
 import { Field, QuantityInput } from "@/features/market/components/FormFields";
 import { formatCoins } from "@/features/market/market";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { catalogueItem } from "@/features/player/toInventoryItem";
-import { useCoins, useEquipment, useInUseIds, useInventory } from "@/features/player/usePlayer";
+import { useActivePetId, useCoins, useEquipment, useInUseIds, useInventory, usePetUpgrade } from "@/features/player/usePlayer";
 import { api, toErrorMessage } from "@/lib/api";
 import {
     GEO_API_PATHS,
     GEO_VENDOR_MAX_QUANTITY,
     type GeoItemStat,
+    type GeoItemView,
     type GeoVendor,
     type GeoVendorsResponse,
 } from "@/lib/geo/contracts";
@@ -27,12 +29,13 @@ import { useReportActivity } from "@/features/friends/presenceStore";
 const GRID_COLUMNS = 3;
 const GRID_GAP = 12;
 
-/** A buy tab is `buy:<name>`, one per offer `tab` ("Weapons"); then Sell, then Reforge for a vendor that reforges. */
-type VendorTab = `buy:${string}` | "sell" | "reforge";
+/** A buy tab is `buy:<name>`, one per offer `tab` ("Weapons"); then Sell, then Reforge or Pets for a vendor that does those. */
+type VendorTab = `buy:${string}` | "sell" | "reforge" | "pets";
 
 type ShopPage = { page: "shop"; vendorId: string; tab: VendorTab };
 type TradePage = { page: "trade"; vendorId: string; tab: VendorTab; itemId: string; inventoryId?: string };
 type ReforgePage = { page: "reforge"; vendorId: string; inventoryId: string };
+type PetUpgradePage = { page: "petUpgrade"; vendorId: string; inventoryId: string };
 
 /**
  * Where the modal is: the merchant list, a merchant's shop, one trade, one
@@ -44,7 +47,8 @@ type Page =
     | ShopPage
     | TradePage
     | ReforgePage
-    | { page: "detail"; vendorId: string; item: InventoryItem; from: ShopPage | TradePage | ReforgePage };
+    | PetUpgradePage
+    | { page: "detail"; vendorId: string; item: InventoryItem; from: ShopPage | TradePage | ReforgePage | PetUpgradePage };
 
 const UNTABBED = "Buy";
 
@@ -55,12 +59,13 @@ function tabsOf(vendor: GeoVendor): { id: VendorTab; label: string }[] {
         ...(buyTabs.length > 0 ? buyTabs : [UNTABBED]).map((name) => ({ id: `buy:${name}` as const, label: name })),
         { id: "sell", label: "Sell" },
         ...(vendor.reforgeCost ? [{ id: "reforge" as const, label: "Reforge" }] : []),
+        ...(vendor.petUpgrades ? [{ id: "pets" as const, label: "Pets" }] : []),
     ];
 }
 
 const isBuyTab = (tab: VendorTab): tab is `buy:${string}` => tab.startsWith("buy:");
 
-/** "Defence +2 · Speed -1". */
+/** "Defense +2 · Speed -1". */
 const statLine = (stats: GeoItemStat[]) => stats.map((stat) => `${stat.label} ${stat.value}`).join(" · ");
 
 type VendorsModalProps = {
@@ -73,7 +78,7 @@ function iconOf(name: string): GameIconName {
 
 /**
  * Vendors: the NPC merchants. A grid of merchants, each opening its shop with
- * tabs: what it sells (one tab, or several like Weapons and Armour), Sell
+ * tabs: what it sells (one tab, or several like Weapons and Armor), Sell
  * (what of yours it buys), and Reforge for a vendor that rerolls gear. A trade
  * opens its own page with a quantity and the total, and goes to the server,
  * which takes the coins and hands over the item together, or neither.
@@ -96,6 +101,7 @@ export default function VendorsModal({ onClose }: VendorsModalProps) {
         if (page.page === "detail") setPage(page.from);
         else if (page.page === "trade") setPage({ page: "shop", vendorId: page.vendorId, tab: page.tab });
         else if (page.page === "reforge") setPage({ page: "shop", vendorId: page.vendorId, tab: "reforge" });
+        else if (page.page === "petUpgrade") setPage({ page: "shop", vendorId: page.vendorId, tab: "pets" });
         else setPage({ page: "list" });
     };
 
@@ -144,7 +150,15 @@ export default function VendorsModal({ onClose }: VendorsModalProps) {
                         setPage({ page: "trade", vendorId: vendor.id, tab: page.tab, itemId, inventoryId })
                     }
                     onReforge={(inventoryId) => setPage({ page: "reforge", vendorId: vendor.id, inventoryId })}
+                    onUpgradePet={(inventoryId) => setPage({ page: "petUpgrade", vendorId: vendor.id, inventoryId })}
                     onInspect={(item) => setPage({ page: "detail", vendorId: vendor.id, item, from: page })}
+                />
+            ) : page.page === "petUpgrade" ? (
+                <PetUpgrade
+                    vendor={vendor}
+                    inventoryId={page.inventoryId}
+                    onInspect={(item) => setPage({ page: "detail", vendorId: vendor.id, item, from: page })}
+                    onDone={back}
                 />
             ) : page.page === "reforge" ? (
                 <Reforge
@@ -162,23 +176,39 @@ export default function VendorsModal({ onClose }: VendorsModalProps) {
                     onDone={back}
                 />
             ) : (
-                <ItemDetail item={page.item} />
+                <ItemDetail
+                    item={page.item}
+                    action={
+                        <BuyAction
+                            vendor={vendor}
+                            from={page.from}
+                            itemId={page.item.itemId}
+                            onBuy={(tab) => setPage({ page: "trade", vendorId: vendor.id, tab, itemId: page.item.itemId })}
+                        />
+                    }
+                />
             )}
         </Modal>
     );
 }
 
-/** What of the player's this vendor buys, and isn't in use. */
-function useSellable(vendor: GeoVendor): { item: InventoryItem; price: number }[] {
+/** What vendors pay for one, or undefined if they don't buy it: any vendor buys anything with a sell value that isn't Soulbound. */
+function npcPrice(def: GeoItemView | undefined): number | undefined {
+    return def && !def.soulbound && def.sellValue > 0 ? def.sellValue : undefined;
+}
+
+/** What of the player's vendors buy, and isn't in use. */
+function useSellable(): { item: InventoryItem; price: number }[] {
     const inventory = useInventory();
     const inUse = useInUseIds();
+    const items = usePlayerStore((state) => state.items);
     return inventory.flatMap((item) => {
-        const offer = vendor.buys.find((buy) => buy.itemId === item.itemId);
-        return offer && !inUse.has(item.id) ? [{ item, price: offer.price }] : [];
+        const price = npcPrice(items[item.itemId]);
+        return price !== undefined && !inUse.has(item.id) ? [{ item, price }] : [];
     });
 }
 
-/** The player's weapons and armour, worn ones included: reforging leaves them where they are. */
+/** The player's weapons and armor, worn ones included: reforging leaves them where they are. */
 function useReforgeable(): { item: InventoryItem; isWorn: boolean }[] {
     const inventory = useInventory();
     const items = usePlayerStore((state) => state.items);
@@ -194,6 +224,7 @@ function Shop({
     onTab,
     onPick,
     onReforge,
+    onUpgradePet,
     onInspect,
 }: {
     vendor: GeoVendor;
@@ -201,11 +232,12 @@ function Shop({
     onTab: (tab: VendorTab) => void;
     onPick: (itemId: string, inventoryId?: string) => void;
     onReforge: (inventoryId: string) => void;
+    onUpgradePet: (inventoryId: string) => void;
     onInspect: (item: InventoryItem) => void;
 }) {
     const items = usePlayerStore((state) => state.items);
     const reforges = usePlayerStore((state) => state.reforges);
-    const sellable = useSellable(vendor);
+    const sellable = useSellable();
     const reforgeable = useReforgeable();
     const offers = isBuyTab(tab) ? vendor.sells.filter((offer) => `buy:${offer.tab ?? UNTABBED}` === tab) : [];
 
@@ -265,12 +297,7 @@ function Shop({
                     ))}
                 {tab === "sell" && sellable.length === 0 && (
                     <Text style={styles.emptyText}>
-                        {`You have nothing the ${vendor.name} buys. They buy: ${
-                            vendor.buys
-                                .map((buy) => items[buy.itemId]?.name)
-                                .filter(Boolean)
-                                .join(", ") || "nothing"
-                        }.`}
+                        You have nothing to sell. Vendors buy anything with a sell value that isn&apos;t Soulbound.
                     </Text>
                 )}
 
@@ -292,8 +319,10 @@ function Shop({
                         );
                     })}
                 {tab === "reforge" && reforgeable.length === 0 && (
-                    <Text style={styles.emptyText}>You have no weapons or armour to reforge.</Text>
+                    <Text style={styles.emptyText}>You have no weapons or armor to reforge.</Text>
                 )}
+
+                {tab === "pets" && <PetsTab vendor={vendor} onUpgrade={onUpgradePet} onInspect={onInspect} />}
             </ScrollView>
         </View>
     );
@@ -336,10 +365,44 @@ function TradeRow({
                 <Text style={styles.rowDetail}>{detail}</Text>
             </View>
             <View style={styles.price}>
-                <Icon name="coins" size={14} color={colors.coins} />
+                <Icon name="two-coins" size={14} color={colors.coins} />
                 <Text style={styles.priceText}>{formatCoins(price)}</Text>
                 <Text style={styles.rowDetail}>{priceNote}</Text>
             </View>
+        </Pressable>
+    );
+}
+
+/**
+ * The Buy button on a vendor item's details, when they were opened from a
+ * buy tab: it opens that item's trade. Nothing for an item being sold,
+ * reforged or raised.
+ */
+function BuyAction({
+    vendor,
+    from,
+    itemId,
+    onBuy,
+}: {
+    vendor: GeoVendor;
+    from: ShopPage | TradePage | ReforgePage | PetUpgradePage;
+    itemId: string;
+    onBuy: (tab: `buy:${string}`) => void;
+}) {
+    const offer = vendor.sells.find((candidate) => candidate.itemId === itemId);
+    if (!offer || from.page === "reforge" || from.page === "petUpgrade" || !isBuyTab(from.tab)) return null;
+    const tab = from.tab;
+
+    return (
+        <Pressable
+            onPress={() => onBuy(tab)}
+            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Buy, ${offer.price} coins each`}
+        >
+            <Text style={styles.primaryText}>Buy for</Text>
+            <Icon name="two-coins" size={15} color={colors.textOnEmber} />
+            <Text style={styles.primaryText}>{formatCoins(offer.price)}</Text>
         </Pressable>
     );
 }
@@ -370,7 +433,7 @@ function Trade({
     const isBuy = isBuyTab(tab);
     const price = isBuy
         ? vendor.sells.find((offer) => offer.itemId === itemId)?.price
-        : vendor.buys.find((offer) => offer.itemId === itemId)?.price;
+        : npcPrice(def);
     // Sold out from under the page (e.g. sold the whole stack): back to the shop.
     if (!def || price === undefined || (!isBuy && !owned)) {
         return <Text style={styles.emptyText}>That&apos;s no longer here.</Text>;
@@ -446,7 +509,7 @@ function Trade({
                 <Text style={styles.primaryText}>
                     {isBuy ? "Buy" : "Sell"} {formatCoins(quantity)} for
                 </Text>
-                <Icon name="coins" size={15} color={colors.textOnEmber} />
+                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
                 <Text style={styles.primaryText}>{formatCoins(total)}</Text>
             </Pressable>
             {problem && <Text style={styles.problem}>{problem}</Text>}
@@ -534,8 +597,167 @@ function Reforge({
                 accessibilityRole="button"
             >
                 <Text style={styles.primaryText}>{current ? "Reroll" : "Reforge"} for</Text>
-                <Icon name="coins" size={15} color={colors.textOnEmber} />
+                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
                 <Text style={styles.primaryText}>{formatCoins(cost)}</Text>
+            </Pressable>
+            {problem && <Text style={styles.problem}>{problem}</Text>}
+        </ScrollView>
+    );
+}
+
+/** "Rare", or "the next rarity" for one this build doesn't know. */
+const rarityLabel = (rarity: Rarity | undefined) => (rarity ? rarityInfo(rarity).label : "the next rarity");
+
+/** The pet with this vendor, if any, then every pet it could raise and its price. */
+function PetsTab({
+    vendor,
+    onUpgrade,
+    onInspect,
+}: {
+    vendor: GeoVendor;
+    onUpgrade: (inventoryId: string) => void;
+    onInspect: (item: InventoryItem) => void;
+}) {
+    const items = usePlayerStore((state) => state.items);
+    const waiting = usePetUpgrade();
+    const activePet = useActivePetId();
+    const pets = useInventory().filter((item) => item.pet?.upgrade);
+    // When the tab opened: enough to say whether the pet is ready.
+    const [now] = useState(() => Date.now());
+    const [isBusy, setIsBusy] = useState(false);
+
+    const waitingDef = waiting ? items[waiting.itemId] : undefined;
+    const isReady = waiting ? new Date(waiting.readyAt).getTime() <= now : false;
+
+    return (
+        <>
+            {waiting && (
+                <View style={styles.outcomes}>
+                    <Text style={styles.sectionLabel}>With {vendor.name}</Text>
+                    <Text style={styles.rowName}>
+                        {waitingDef?.name ?? "Your pet"}, becoming {rarityLabel(items[waiting.toItemId]?.rarity)}
+                    </Text>
+                    <Text style={styles.rowDetail}>
+                        {isReady
+                            ? "Ready to collect."
+                            : `Ready ${new Date(waiting.readyAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}.`}
+                    </Text>
+                    <Pressable
+                        onPress={async () => {
+                            setIsBusy(true);
+                            await vendorActions.collectPetUpgrade(vendor.id, waitingDef?.name ?? "pet");
+                            setIsBusy(false);
+                        }}
+                        disabled={!isReady || isBusy}
+                        style={({ pressed }) => [styles.primary, (!isReady || isBusy) && styles.disabled, pressed && styles.pressed]}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.primaryText}>Collect</Text>
+                    </Pressable>
+                </View>
+            )}
+            {pets.map((item) => {
+                const quote = item.pet!.upgrade!;
+                return (
+                    <TradeRow
+                        key={item.id}
+                        item={item}
+                        price={quote.coins}
+                        priceNote="to raise"
+                        detail={[
+                            `Lv ${item.pet!.level} → ${rarityLabel(items[quote.toItemId]?.rarity)}`,
+                            `${quote.hours} h`,
+                            item.id === activePet && "Active",
+                        ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        onPress={() => onUpgrade(item.id)}
+                        onInspect={onInspect}
+                    />
+                );
+            })}
+            {pets.length === 0 && !waiting && <Text style={styles.emptyText}>You have no pets {vendor.name} can raise.</Text>}
+        </>
+    );
+}
+
+/** Leaving one pet with Kat: what it becomes, the full price, and the button. */
+function PetUpgrade({
+    vendor,
+    inventoryId,
+    onInspect,
+    onDone,
+}: {
+    vendor: GeoVendor;
+    inventoryId: string;
+    onInspect: (item: InventoryItem) => void;
+    onDone: () => void;
+}) {
+    const items = usePlayerStore((state) => state.items);
+    const inventory = useInventory();
+    const coins = useCoins();
+    const activePet = useActivePetId();
+    const waiting = usePetUpgrade();
+    const [isBusy, setIsBusy] = useState(false);
+    const item = inventory.find((candidate) => candidate.id === inventoryId);
+    const quote = item?.pet?.upgrade;
+    if (!item || !quote) return <Text style={styles.emptyText}>That&apos;s no longer here.</Text>;
+
+    const have = (itemId: string) =>
+        inventory.filter((candidate) => candidate.itemId === itemId).reduce((sum, candidate) => sum + (candidate.quantity ?? 1), 0);
+    const next = items[quote.toItemId];
+    const problem = waiting
+        ? `${vendor.name} is already looking after a pet.`
+        : item.id === activePet
+          ? "Put it away first."
+          : quote.coins > coins
+            ? `It costs ${formatCoins(quote.coins)}. You have ${formatCoins(coins)}.`
+            : quote.items.some((cost) => have(cost.itemId) < cost.quantity)
+              ? "You're short of materials."
+              : null;
+
+    const submit = async () => {
+        if (problem || isBusy) return;
+        setIsBusy(true);
+        const ok = await vendorActions.upgradePet(vendor.id, inventoryId, item.name);
+        setIsBusy(false);
+        if (ok) onDone();
+    };
+
+    return (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.trade}>
+            <View style={styles.row}>
+                <View style={styles.rowTile}>
+                    <ItemTile item={item} compact onPress={() => onInspect(item)} onLongPress={() => onInspect(item)} />
+                </View>
+                <View style={styles.rowText}>
+                    <Text style={styles.rowName}>{item.name}</Text>
+                    <Text style={styles.rowDetail}>
+                        Lv {item.pet!.level} {rarityLabel(item.rarity)} → {rarityLabel(next?.rarity)}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.outcomes}>
+                <Text style={styles.sectionLabel}>Price</Text>
+                <Text style={styles.rowDetail}>{formatCoins(quote.coins)} coins</Text>
+                {quote.items.map((cost) => (
+                    <Text key={cost.itemId} style={styles.rowDetail}>
+                        {cost.quantity} {items[cost.itemId]?.name ?? cost.itemId} (you have {formatCoins(have(cost.itemId))})
+                    </Text>
+                ))}
+                <Text style={styles.rowDetail}>
+                    {vendor.name} keeps it for {quote.hours} h. It keeps its XP, but a rarer pet needs more per level, so its level may drop.
+                </Text>
+            </View>
+
+            <Pressable
+                onPress={() => void submit()}
+                disabled={problem !== null || isBusy}
+                style={({ pressed }) => [styles.primary, (problem !== null || isBusy) && styles.disabled, pressed && styles.pressed]}
+                accessibilityRole="button"
+            >
+                <Text style={styles.primaryText}>Leave it with {vendor.name}</Text>
             </Pressable>
             {problem && <Text style={styles.problem}>{problem}</Text>}
         </ScrollView>

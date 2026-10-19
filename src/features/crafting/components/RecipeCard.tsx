@@ -19,7 +19,8 @@ function kindLabel(def: GeoItemView): string {
         case "equipment":
             if (def.slot === "ring") return "Ring";
             if (def.slot === "amulet") return "Amulet";
-            return def.slot === "mainHand" || def.slot === "offHand" ? "Weapon" : "Armour";
+            if (def.rod) return "Rod";
+            return def.slot === "mainHand" || def.slot === "offHand" ? "Weapon" : "Armor";
         case "talisman":
             return "Talisman";
         case "material":

@@ -8,6 +8,12 @@ type StatBarProps = {
     current: number;
     max: number;
     /**
+     * A shield over the bar, in the same units as `max`: drawn gold from where
+     * the fill ends, as wide as barrier ÷ max. When that would run past the
+     * end it slides left over the fill, so it's never drawn narrower.
+     */
+    barrier?: number;
+    /**
      * Three vertical stops for the fill, e.g. `colors.healthGradient`.
      */
     gradient: readonly [ColorValue, ColorValue, ...ColorValue[]];
@@ -59,6 +65,7 @@ const GRADIENT_END = { x: 0, y: 1 };
 export default function StatBar({
     current,
     max,
+    barrier = 0,
     gradient,
     width,
     label,
@@ -72,6 +79,35 @@ export default function StatBar({
     // gradient is vertical, so stretching it horizontally changes nothing.
     const [fill] = useState(() => new Animated.Value(ratio));
     const [chip] = useState(() => new Animated.Value(ratio));
+
+    const barrierRatio = max > 0 ? Math.min(1, Math.max(0, barrier / max)) : 0;
+    const barrierStart = Math.min(ratio, 1 - barrierRatio);
+    // Left and width, so these run on the JS driver; they move rarely.
+    const [shieldStart] = useState(() => new Animated.Value(barrierStart));
+    const [shieldWidth] = useState(() => new Animated.Value(barrierRatio));
+
+    useEffect(() => {
+        if (!animateChanges) {
+            shieldStart.setValue(barrierStart);
+            shieldWidth.setValue(barrierRatio);
+            return;
+        }
+        const move = Animated.parallel(
+            [
+                [shieldStart, barrierStart],
+                [shieldWidth, barrierRatio],
+            ].map(([value, toValue]) =>
+                Animated.timing(value as Animated.Value, {
+                    toValue: toValue as number,
+                    duration: HIT_TIMING.drain,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: false,
+                }),
+            ),
+        );
+        move.start();
+        return () => move.stop();
+    }, [animateChanges, barrierStart, barrierRatio, shieldStart, shieldWidth]);
 
     useEffect(() => {
         if (!animateChanges) {
@@ -137,6 +173,25 @@ export default function StatBar({
                         style={[styles.fill, { width: `${ratio * 100}%` }]}
                     />
                 )}
+                <Animated.View
+                    pointerEvents="none"
+                    style={[
+                        styles.barrier,
+                        {
+                            left: shieldStart.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                            width: shieldWidth.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                            // No seam left behind once it's gone.
+                            borderLeftWidth: shieldWidth.interpolate({ inputRange: [0, 0.01, 1], outputRange: [0, 1, 1] }),
+                        },
+                    ]}
+                >
+                    <LinearGradient
+                        colors={colors.barrierGradient}
+                        start={GRADIENT_START}
+                        end={GRADIENT_END}
+                        style={StyleSheet.absoluteFill}
+                    />
+                </Animated.View>
                 <View style={styles.gloss} pointerEvents="none" />
             </View>
         </LinearGradient>
@@ -174,6 +229,14 @@ const styles = StyleSheet.create({
     /** The pale chunk of just-lost health. */
     chip: {
         backgroundColor: "#D9B7A6",
+    },
+    /** Gold over the fill; a dark seam keeps it apart from the health beside it. */
+    barrier: {
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        borderLeftColor: "rgba(0, 0, 0, 0.45)",
+        overflow: "hidden",
     },
     gloss: {
         position: "absolute",
