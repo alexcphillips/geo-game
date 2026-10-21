@@ -75,7 +75,7 @@ export default function SkyStrip({ farm, now, atPlace }: { farm: GeoFarmView; no
     );
 }
 
-const useStyles = createStyles((p) => ({
+const useStyles = createStyles((p, mood) => ({
     strip: {
         flexDirection: "row",
         alignItems: "center",
@@ -84,7 +84,7 @@ const useStyles = createStyles((p) => ({
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 18,
-        backgroundColor: colors.sky,
+        backgroundColor: mood === "dusk" ? colors.skyNight : colors.sky,
         borderWidth: INK.border,
         borderColor: p.outline,
     },

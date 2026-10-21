@@ -41,7 +41,7 @@ export default function RootLayout() {
     return (
         <SafeAreaProvider>
             {/* Day unless a screen says otherwise: fights and dungeons are
-                dusk, and the map follows the phone's light or dark mode. */}
+                dusk, and the map and character screen follow the phone's light or dark mode. */}
             <MoodProvider mood="day">
                 {/* Nothing else is reachable until signed in. */}
                 {isSignedOut ? (

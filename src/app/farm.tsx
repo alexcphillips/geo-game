@@ -37,7 +37,7 @@ import { useInventory } from "@/features/player/usePlayer";
 import { useAdminSettingsStore } from "@/features/settings/adminSettingsStore";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoFarmAction, GeoFarmGain, GeoFarmHandCard, GeoFarmView, GeoItemView, GeoStructureView } from "@/lib/geo/contracts";
-import { createStyles, MoodProvider } from "@/theme/theme";
+import { createStyles, MoodProvider, useAmbientMood } from "@/theme/theme";
 
 /**
  * The farm: one grid on a real clock. Every cycle it takes a turn on its own
@@ -55,9 +55,10 @@ import { createStyles, MoodProvider } from "@/theme/theme";
  * drawn lives in `features/farming/components`.
  */
 export default function FarmScreen() {
-    // The farm is the cosiest place in the game: always day.
+    // Follows the phone's light or dark mode, like the map.
+    const mood = useAmbientMood();
     return (
-        <MoodProvider mood="day">
+        <MoodProvider mood={mood}>
             <FarmScreenContent />
         </MoodProvider>
     );

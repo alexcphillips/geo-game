@@ -9,8 +9,8 @@
  *
  * Both moods share one set of role names, so a component asks for `surface`
  * or `danger` and gets the right colour for wherever it's drawn (see
- * `theme.tsx`). Card faces stay parchment in both moods: they're the thread
- * that makes a dusk fight and a day farm read as one game.
+ * `theme.tsx`). Card faces follow the mood too: parchment by day, lifted ink
+ * at dusk.
  *
  * Panels, buttons and cards are "inked": a thick `outline` border and a hard,
  * unblurred drop shadow in the same colour, echoing the line work of the
@@ -69,10 +69,10 @@ export type Palette = {
     /** A barrier over the health bar: gold, kept apart from Guard's icy blue. */
     barrierFill: readonly [string, string, string];
 
-    /** Card faces: parchment in both moods. */
+    /** Card faces: parchment by day, a lifted ink at dusk. */
     cardFace: string;
     cardText: string;
-    /** A card's inked edge, which darkens with the mood around it. */
+    /** A card's inked edge. */
     cardOutline: string;
 
     /** The game's own colours, legible in this mood. */
@@ -167,8 +167,8 @@ export const PALETTES: Record<Mood, Palette> = {
         track: "#302C3E",
         healthFill: ["#FF877C", "#F0645A", "#C64A41"],
         barrierFill: ["#F6D27A", "#E8B54E", "#B5862A"],
-        cardFace: "#FBF3E2",
-        cardText: "#2A241C",
+        cardFace: "#302C3E",
+        cardText: "#EFE6D2",
         cardOutline: "#0B0A10",
         game: colors,
     },

@@ -5,14 +5,8 @@ import { HAND_SIZE } from "@/features/cards/cardSkills";
 import ItemDetailModal from "@/features/inventory/components/ItemDetailModal";
 import { isFaded, type InventoryItem } from "@/features/inventory/inventoryItems";
 import { rarityInfo } from "@/features/inventory/rarity";
-import { FONTS, PALETTES } from "@/theme/palette";
+import { FONTS } from "@/theme/palette";
 import { createStyles, inked, useTheme } from "@/theme/theme";
-
-/**
- * Card faces are parchment in every mood, so what's drawn on them uses the
- * day palette's ink and ember; only the outline follows the mood.
- */
-const FACE = PALETTES.day;
 
 type RunHandProps = {
     /** The Run's hand, in order, with charges as the server last said. */
@@ -86,6 +80,7 @@ function HandCard({
     disabled: boolean;
 }) {
     const styles = useStyles();
+    const palette = useTheme();
     const [isInspecting, setIsInspecting] = useState(false);
     const charges = card.charges;
     const faded = isFaded(card);
@@ -113,7 +108,7 @@ function HandCard({
                         {tag}
                     </View>
                 )}
-                <Icon name={card.icon} size={32} color={FACE.ember} />
+                <Icon name={card.icon} size={32} color={palette.ember} />
                 <Text style={styles.cardName} numberOfLines={2}>
                     {card.name}
                 </Text>
@@ -194,7 +189,7 @@ const useStyles = createStyles((p) => ({
         right: 4,
     },
     charges: {
-        color: FACE.textMuted,
+        color: p.textMuted,
         fontFamily: FONTS.bodyBold,
         fontSize: 10,
         fontVariant: ["tabular-nums"],

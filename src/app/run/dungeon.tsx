@@ -133,6 +133,8 @@ function DungeonRunScreenContent() {
     };
 
     const leave = () => {
+        // A move or an earlier Leave is still in flight.
+        if (isBusy) return;
         if (!view || view.status !== "active") {
             router.back();
             return;

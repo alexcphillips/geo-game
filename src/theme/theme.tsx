@@ -43,7 +43,7 @@ export function useTheme(): Palette {
 
 /**
  * The mood for screens that follow the world outside rather than a fixed one
- * (the map): dusk when the phone is in dark mode, day otherwise.
+ * (the map, the character screen): dusk when the phone is in dark mode, day otherwise.
  */
 export function useAmbientMood(): Mood {
     return useColorScheme() === "dark" ? "dusk" : "day";

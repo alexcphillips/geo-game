@@ -27,7 +27,7 @@ import PetSlot from "@/features/pets/components/PetSlot";
 import WardrobeModal from "@/features/wardrobe/components/WardrobeModal";
 import WardrobeStrip from "@/features/wardrobe/components/WardrobeStrip";
 import { FONTS } from "@/theme/palette";
-import { createStyles, MoodProvider } from "@/theme/theme";
+import { createStyles, MoodProvider, useAmbientMood } from "@/theme/theme";
 import {
     BOTTOM_ACTION_DIAMETER,
     HOME_INDICATOR_CLEARANCE,
@@ -87,9 +87,10 @@ type LowerTabId = (typeof LOWER_TABS)[number]["id"];
  * server's, and counts in fights.
  */
 export default function CharacterScreen() {
-    // The character screen is home: parchment, whatever the time.
+    // Follows the phone's light or dark mode, like the map it opens from.
+    const mood = useAmbientMood();
     return (
-        <MoodProvider mood="day">
+        <MoodProvider mood={mood}>
             <CharacterScreenContent />
         </MoodProvider>
     );

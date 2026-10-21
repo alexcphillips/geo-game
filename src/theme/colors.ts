@@ -245,6 +245,10 @@ export const colors = {
     grass: "#7FA65A",
     grassEdge: "#5E8441",
     sky: "#CFE4E6",
+    /** The same at night, when the phone is in dark mode. */
+    grassNight: "#3D5530",
+    grassEdgeNight: "#2A3D21",
+    skyNight: "#2B3550",
     /** Weather drawn over the plot: rain streaks, a frost wash, a heat shimmer. */
     rainStreak: "rgba(190, 215, 240, 0.7)",
     frostWash: "rgba(214, 238, 248, 0.32)",

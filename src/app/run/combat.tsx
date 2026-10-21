@@ -441,7 +441,7 @@ function CombatRun({
         <View style={styles.screen}>
             <RunScreen
                 kind="Combat"
-                onLeave={() => void flee()}
+                onLeave={flee}
                 leaveLabel={isOver ? "Leave" : "Flee"}
                 arena={
                     <Animated.View

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,8 +17,12 @@ type RunScreenProps = {
     kind: string;
     /** Replaces "<kind> Run" in the header, e.g. a dungeon's own name. */
     title?: string;
-    /** Leave the Run. Its label is the Run type's own word for it. */
-    onLeave: () => void;
+    /**
+     * Leave the Run. Its label is the Run type's own word for it. Return a
+     * promise (e.g. a flee request) and the button stays disabled until it
+     * settles, so spamming it can't send repeat requests or navigate back twice.
+     */
+    onLeave: () => void | Promise<unknown>;
     leaveLabel?: string;
     /** The scene: combatants, a fishing spot, a rock face — whatever the Run is. */
     arena: ReactNode;
@@ -48,6 +52,20 @@ export default function RunScreen({
     const styles = useStyles();
     const mood = useMood();
     const insets = useSafeAreaInsets();
+    // A ref as well as state: two taps in one frame both see stale state.
+    const leavingRef = useRef(false);
+    const [isLeaving, setIsLeaving] = useState(false);
+    const leave = () => {
+        if (leavingRef.current) return;
+        const pending = onLeave();
+        if (!pending) return;
+        leavingRef.current = true;
+        setIsLeaving(true);
+        void pending.finally(() => {
+            leavingRef.current = false;
+            setIsLeaving(false);
+        });
+    };
 
     return (
         <View style={styles.screen}>
@@ -61,9 +79,11 @@ export default function RunScreen({
 
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
                 <Pressable
-                    onPress={onLeave}
-                    style={({ pressed }) => [styles.leave, pressed && styles.pressed]}
+                    onPress={leave}
+                    disabled={isLeaving}
+                    style={({ pressed }) => [styles.leave, pressed && styles.pressed, isLeaving && styles.leaving]}
                     accessibilityRole="button"
+                    accessibilityState={{ disabled: isLeaving }}
                     accessibilityLabel={`${leaveLabel} — leave the run`}
                     hitSlop={10}
                 >
@@ -132,6 +152,9 @@ const useStyles = createStyles((p) => ({
     pressed: {
         transform: [{ translateY: 2 }],
         boxShadow: `0px 1px 0px ${p.outline}`,
+    },
+    leaving: {
+        opacity: 0.5,
     },
     title: {
         flex: 1,

@@ -142,16 +142,16 @@ function Gain({ gain, x, y, tileSize, onDone }: { gain: FloatingGain; x: number;
     );
 }
 
-const useStyles = createStyles((p) => ({
+const useStyles = createStyles((p, mood) => ({
     grass: {
         alignSelf: "center",
         alignItems: "center",
         padding: GRASS_PADDING,
         borderRadius: 24,
-        backgroundColor: colors.grass,
+        backgroundColor: mood === "dusk" ? colors.grassNight : colors.grass,
         borderWidth: INK.border,
         borderColor: p.outline,
-        boxShadow: `0px ${INK.liftLarge}px 0px ${colors.grassEdge}`,
+        boxShadow: `0px ${INK.liftLarge}px 0px ${mood === "dusk" ? colors.grassEdgeNight : colors.grassEdge}`,
     },
     weather: {
         ...StyleSheet.absoluteFill,
