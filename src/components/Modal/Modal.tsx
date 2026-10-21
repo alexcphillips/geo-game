@@ -1,5 +1,7 @@
 import {
+    createContext,
     useCallback,
+    useContext,
     useEffect,
     useRef,
     useState,
@@ -8,6 +10,7 @@ import {
 import {
     Animated,
     Modal as NativeModal,
+    PanResponder,
     Pressable,
     StyleSheet,
     Text,
@@ -77,10 +80,32 @@ export type ModalProps = {
      * dismissible by a stray tap on the backdrop.
      */
     dismissOnBackdropPress?: boolean;
+    /**
+     * - `card` (default): a floating panel with a gap on every edge.
+     * - `sheet`: edge to edge along the bottom, with a grab handle; it slides
+     *   up from below and a swipe down on the handle closes it. Use `Sheet`,
+     *   which sets this.
+     */
+    presentation?: "card" | "sheet";
 };
+
+/** Closes the modal (or sheet) the caller is inside, animating it out first. */
+const CloseContext = createContext<() => void>(() => {});
+
+/**
+ * For content that closes its own modal: a menu pick that opens something
+ * else once this has gone (a native modal can't open while another is still
+ * leaving), or a Done button. The modal's `onClose` runs after the exit.
+ */
+export function useCloseModal(): () => void {
+    return useContext(CloseContext);
+}
 
 const ENTER_DURATION = 190;
 const EXIT_DURATION = 150;
+/** A sheet dragged this far down (or flicked) closes; less springs back. */
+const SHEET_DISMISS_DISTANCE = 80;
+const SHEET_DISMISS_VELOCITY = 0.8;
 
 /**
  * The modal shell. Owns *being a modal*; knows nothing about what it contains.
@@ -126,7 +151,9 @@ export default function Modal({
     closePlacement = "header",
     headerAccessory,
     dismissOnBackdropPress = true,
+    presentation = "card",
 }: ModalProps) {
+    const isSheet = presentation === "sheet";
     const styles = useStyles();
     const insets = useSafeAreaInsets();
     const { height: windowHeight } = useWindowDimensions();
@@ -159,12 +186,51 @@ export default function Modal({
 
     const goBack = onBack ?? requestClose;
 
+    // A sheet follows a finger dragging its handle down, then closes or springs back.
+    const [drag] = useState(() => new Animated.Value(0));
+    /** The sheet's height, so it can slide in from fully below the screen. */
+    const [sheetHeight, setSheetHeight] = useState(windowHeight);
+    /** Swiped away: the handler can't call `requestClose` itself (it's made once), so it flags it. */
+    const [isSwipedAway, setIsSwipedAway] = useState(false);
+    useEffect(() => {
+        if (isSwipedAway) requestClose();
+    }, [isSwipedAway, requestClose]);
+    const [handlePan] = useState(() =>
+        PanResponder.create({
+            onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 4 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+            onPanResponderMove: (_, gesture) => drag.setValue(Math.max(0, gesture.dy)),
+            onPanResponderRelease: (_, gesture) => {
+                if (gesture.dy > SHEET_DISMISS_DISTANCE || gesture.vy > SHEET_DISMISS_VELOCITY) {
+                    setIsSwipedAway(true);
+                    return;
+                }
+                Animated.spring(drag, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+            },
+            onPanResponderTerminate: () => Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start(),
+        }),
+    );
+
     const availableHeight = windowHeight - insets.top - insets.bottom;
     const panelHeight =
         size === "fill"
             ? { height: availableHeight - FILL_EDGE_GAP * 2 }
             : { maxHeight: availableHeight * SIZE_FRACTION[size] };
     const hasHeader = title !== undefined || showBack;
+    const motion = isSheet
+        ? {
+              transform: [
+                  {
+                      translateY: Animated.add(
+                          progress.interpolate({ inputRange: [0, 1], outputRange: [sheetHeight, 0] }),
+                          drag,
+                      ),
+                  },
+              ],
+          }
+        : {
+              opacity: progress,
+              transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
+          };
 
     return (
         <NativeModal
@@ -194,23 +260,26 @@ export default function Modal({
                     // unreachable, which is what makes it a modal rather than
                     // just a panel that happens to be on top.
                     accessibilityViewIsModal
+                    onLayout={isSheet ? (event) => setSheetHeight(event.nativeEvent.layout.height) : undefined}
                     style={[
                         styles.panel,
-                        {
-                            ...panelHeight,
-                            marginBottom: insets.bottom + FILL_EDGE_GAP,
-                            opacity: progress,
-                            transform: [
-                                {
-                                    translateY: progress.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [24, 0],
-                                    }),
-                                },
-                            ],
-                        },
+                        isSheet
+                            ? [styles.sheet, { ...panelHeight, paddingBottom: insets.bottom }]
+                            : { ...panelHeight, marginBottom: insets.bottom + FILL_EDGE_GAP },
+                        motion,
                     ]}
                 >
+                    {isSheet && (
+                        <View style={styles.handleArea} {...handlePan.panHandlers}>
+                            <Pressable
+                                onPress={requestClose}
+                                style={styles.handle}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close"
+                                hitSlop={12}
+                            />
+                        </View>
+                    )}
                     {hasHeader && (
                         <View
                             style={[
@@ -267,7 +336,7 @@ export default function Modal({
                     )}
 
                     <View style={[styles.content, size === "fill" && styles.contentFill]}>
-                        {children}
+                        <CloseContext.Provider value={requestClose}>{children}</CloseContext.Provider>
                     </View>
 
                     {closePlacement === "footer" && (
@@ -314,6 +383,27 @@ const useStyles = createStyles((p) => ({
         borderRadius: 24,
         ...inked(p, INK.liftLarge),
         overflow: "hidden",
+    },
+    sheet: {
+        marginHorizontal: 0,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+        borderBottomWidth: 0,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+    },
+    handleArea: {
+        alignItems: "center",
+        paddingTop: 10,
+        paddingBottom: 4,
+    },
+    handle: {
+        width: 44,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: p.track,
+        borderWidth: 1,
+        borderColor: p.outline,
     },
     header: {
         flexDirection: "row",

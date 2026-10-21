@@ -15,7 +15,7 @@ const HORIZON = {
 type RunScreenProps = {
     /** e.g. "Combat". Shown as "Combat Run" in the header. */
     kind: string;
-    /** Replaces "<kind> Run" in the header, for screens that aren't a Run (the farm). */
+    /** Replaces "<kind> Run" in the header, e.g. a dungeon's own name. */
     title?: string;
     /** Leave the Run. Its label is the Run type's own word for it. */
     onLeave: () => void;

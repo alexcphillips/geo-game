@@ -1,19 +1,12 @@
 import type { GameIconName } from "@/components/Icon/Icon";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
-import type { GeoFarmCardShape, GeoFarmGround, GeoFarmPest, GeoFarmTile, GeoFarmWeather } from "@/lib/geo/contracts";
+import type { GeoFarmCardShape, GeoFarmPest, GeoFarmWeather } from "@/lib/geo/contracts";
 
 export const WEATHER_INFO: Record<GeoFarmWeather, { label: string; icon: GameIconName; effect: string }> = {
     clear: { label: "Clear", icon: "sun", effect: "Crops grow as usual." },
     rain: { label: "Rain", icon: "raining", effect: "Open ground is wet." },
     heatwave: { label: "Heatwave", icon: "heat-haze", effect: "Open ground dries out: crops there don't grow, unless a Well is near." },
     frost: { label: "Frost", icon: "snowflake-1", effect: "Nothing grows in the open; under a Greenhouse it grows as usual." },
-};
-
-/** A tile's ground on the coming cycle, for its facts line. */
-export const GROUND_FACT: Record<GeoFarmGround, string> = {
-    normal: "normal ground next cycle",
-    wet: "wet next cycle",
-    dry: "dry next cycle, won't grow",
 };
 
 export const SHAPE_HINT: Record<GeoFarmCardShape, string> = {
@@ -58,7 +51,6 @@ export function threatenedTiles(pests: GeoFarmPest[]): Set<number> {
     return new Set(pests.filter((pest) => pest.intent.kind !== "move").map((pest) => pest.intent.tile));
 }
 
-/** Tiles a card would touch if aimed at `index`, for the preview. */
 /**
  * The tiles a structure of `footprint` covers placed from `index`, as the
  * server works it out: centred, an even side reaching one further right or
@@ -110,17 +102,6 @@ export function untilText(iso: string, now: number): string {
     if (minutes <= 0) return "any moment";
     const hours = Math.floor(minutes / 60);
     return hours > 0 ? `in ${hours}h ${minutes % 60}m` : `in ${minutes}m`;
-}
-
-/** One line on a tile's crop, for the tile panel. */
-export function cropLine(tile: GeoFarmTile, cropName: string): string {
-    const crop = tile.crop;
-    if (!crop) return "Empty";
-    if (crop.rotten) return `Rotten ${cropName}`;
-    if (!crop.ripe) return `${cropName} · stage ${crop.stage}/${crop.stages}`;
-    const bonus = crop.ripeTurns > 0 ? ` · +${crop.ripeTurns} yield from waiting` : "";
-    const risk = crop.held ? " · held" : ` · ${Math.round(crop.rotChance * 100)}% rot next cycle`;
-    return `Ripe ${cropName}${bonus}${risk}`;
 }
 
 /** What Farming Fortune multiplies a harvest by, for display: 150 → "2.5". */

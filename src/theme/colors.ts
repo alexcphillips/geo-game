@@ -241,6 +241,14 @@ export const colors = {
     /** A tile not yet bought, and the dashed rim of one that can be. */
     tileLocked: "#171311",
     tileUnlockable: "#6E655E",
+    /** The grass the plot sits in, and the sky strip over it. */
+    grass: "#7FA65A",
+    grassEdge: "#5E8441",
+    sky: "#CFE4E6",
+    /** Weather drawn over the plot: rain streaks, a frost wash, a heat shimmer. */
+    rainStreak: "rgba(190, 215, 240, 0.7)",
+    frostWash: "rgba(214, 238, 248, 0.32)",
+    heatWash: "rgba(255, 178, 84, 0.2)",
 
     /**
      * The woodland walk: canopy greens, a warm path, and the daylight bar
