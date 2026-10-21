@@ -6,8 +6,8 @@ import Button from "@/components/Button/Button";
 import Modal from "@/components/Modal/Modal";
 import { craftingActions } from "@/features/crafting/craftingActions";
 import { useRecipeStatuses, type RecipeStatus } from "@/features/crafting/recipes";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import { rarityInfo, RARITIES } from "@/features/inventory/rarity";
+import ItemTile from "@/features/items/components/ItemTile";
+import { rarityInfo, RARITIES } from "@/features/items/rarity";
 import { formatCoins } from "@/features/market/market";
 import { useSkillXp } from "@/features/player/usePlayer";
 import { catalogueItem } from "@/features/player/toInventoryItem";
@@ -85,7 +85,7 @@ function CookingRow({ status, busy, onCook }: { status: RecipeStatus; busy: bool
     return (
         <Panel compact style={[styles.row, { borderLeftColor: rarity.color }]}>
             <View style={styles.tile}>
-                <ItemTile item={{ ...catalogueItem(output, `cook-${output.id}`), quantity: recipe.output.quantity }} compact />
+                <ItemTile item={{ ...catalogueItem(output, `cook-${output.id}`), quantity: recipe.output.quantity }} showName={false} />
             </View>
 
             <View style={styles.text}>

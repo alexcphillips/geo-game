@@ -1,7 +1,7 @@
 import type { GameIconName } from "@/components/Icon/Icon";
 import type { CardSkill } from "@/features/cards/cardSkills";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import type { Rarity } from "@/features/inventory/rarity";
+import type { InventoryItem } from "@/features/items/inventoryItems";
+import type { Rarity } from "@/features/items/rarity";
 
 /**
  * What every PLACEHOLDER gathering card has, whatever its skill: enough for

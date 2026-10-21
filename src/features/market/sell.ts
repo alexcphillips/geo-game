@@ -1,4 +1,4 @@
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import {
     GEO_BIN_TAX_RATE,
     geoAuctionFee,

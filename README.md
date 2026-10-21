@@ -26,8 +26,16 @@ that ships native code.
 
 Icons come from [Game Icons](https://game-icons.net) — about 4,000 fantasy icons
 (the same set as react-icons' `Gi` prefix). Only the ones the app uses are
-bundled: list a name in `scripts/generate-icons.mjs`, run `npm run icons`, then
+bundled: list a name in `scripts/generate-icons.mjs`, then
 `<Icon name="broadsword" color={...} />`.
+
+## Generated art
+
+Icons, map sprites (`src/features/spawns/assets/`) and item art
+(`src/features/items/art/`) are turned into code by generators. You never need
+to run them: `npm start` (and tunnel, android, ios) brings them up to date and
+reruns them whenever those files change while it's running. `npm run check`
+fails if any are stale; `npm run assets` runs them all by hand.
 
 ## Credits
 

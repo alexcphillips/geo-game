@@ -11,8 +11,8 @@ import Modal from "@/components/Modal/Modal";
 import { CARD_SKILLS, type CardSkill } from "@/features/cards/cardSkills";
 import ItemEquipAction from "@/features/character/components/ItemEquipAction";
 import { useEquipment, useInventory, useTalismanBag } from "@/features/player/usePlayer";
-import ItemDetail from "./ItemDetail";
-import ItemTile from "./ItemTile";
+import ItemDetail from "@/features/items/components/ItemDetail";
+import ItemTile from "@/features/items/components/ItemTile";
 import {
     DEFAULT_INVENTORY_SORT,
     INVENTORY_TABS,
@@ -20,7 +20,7 @@ import {
     type InventoryItem,
     type InventorySort,
     type InventoryTabId,
-} from "../inventoryItems";
+} from "@/features/items/inventoryItems";
 import { createStyles } from "@/theme/theme";
 
 const GRID_COLUMNS = 4;
@@ -160,13 +160,12 @@ export default function InventoryModal({ onClose }: InventoryModalProps) {
                                         onLongPress={(held) => setSelectedId(held.id)}
                                         selected={isWorn(item)}
                                         selectedLabel="equipped"
-                                        compact
                                     />
                                 </View>
                             ))}
                             {Array.from({ length: emptySlots }, (_, index) => (
                                 <View key={`empty-${index}`} style={styles.cell}>
-                                    <ItemTile compact />
+                                    <ItemTile />
                                 </View>
                             ))}
 

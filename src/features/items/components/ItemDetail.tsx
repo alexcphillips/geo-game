@@ -10,6 +10,7 @@ import { CARD_SKILLS } from "@/features/cards/cardSkills";
 import { INVENTORY_TABS, isFaded, type InventoryItem } from "../inventoryItems";
 import { QUALITY_TIER_COLORS, QUALITY_TIER_LABELS } from "@/features/fishing/fishingText";
 import { rarityInfo } from "../rarity";
+import ItemArt from "./ItemArt";
 
 type ItemDetailProps = {
     item: InventoryItem;
@@ -65,11 +66,7 @@ export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
         >
             <View style={styles.hero}>
                 <View style={[styles.iconFrame, faded && styles.iconFrameFaded]}>
-                    <Icon
-                        name={item.icon}
-                        size={64}
-                        color={faded ? palette.textMuted : palette.ember}
-                    />
+                    <ItemArt item={item} size={64} color={faded ? palette.textMuted : palette.ember} />
                 </View>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.category}>

@@ -2,7 +2,7 @@ import type { GameIconName } from "@/components/Icon/Icon";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
 import { CARD_SKILLS, type CardSkill } from "@/features/cards/cardSkills";
 import type { EquipKind } from "@/features/character/characterSlots";
-import type { InventoryItem, InventoryTabId, ItemStat } from "@/features/inventory/inventoryItems";
+import type { InventoryItem, InventoryTabId, ItemStat } from "@/features/items/inventoryItems";
 import { MAGIC_POWER } from "@/features/talismans/talismans";
 import type { GeoInventoryEntry, GeoItemView, GeoPetState, GeoReforgeView } from "@/lib/geo/contracts";
 

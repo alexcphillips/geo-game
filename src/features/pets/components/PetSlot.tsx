@@ -1,11 +1,10 @@
-import { Image, Pressable, Text, View } from "react-native";
-import Icon from "@/components/Icon/Icon";
-import { SLOT_SIZE } from "@/features/character/components/EquipmentSlot";
-import { rarityInfo } from "@/features/inventory/rarity";
+import { Pressable, Text, View } from "react-native";
+import { SLOT_ART_SIZE, SLOT_SIZE } from "@/features/character/components/EquipmentSlot";
+import ItemArt from "@/features/items/components/ItemArt";
+import { rarityInfo } from "@/features/items/rarity";
 import { useActivePetId, useInventory } from "@/features/player/usePlayer";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme, inked } from "@/theme/theme";
-import { petArt } from "../petArt";
 
 type PetSlotProps = {
     /** Opens the roster, to pick the active pet. */
@@ -25,7 +24,6 @@ export default function PetSlot({ onPress, onLongPress }: PetSlotProps) {
     const palette = useTheme();
     const activeId = useActivePetId();
     const pet = useInventory().find((item) => item.id === activeId && item.pet);
-    const art = petArt(pet?.petInfo?.image);
 
     return (
         <Pressable
@@ -38,11 +36,7 @@ export default function PetSlot({ onPress, onLongPress }: PetSlotProps) {
         >
             <View style={[styles.square, pet && { borderColor: rarityInfo(pet.rarity).color }]}>
                 {pet ? (
-                    art ? (
-                        <Image source={art} style={styles.art} resizeMode="contain" />
-                    ) : (
-                        <Icon name={pet.icon} size={40} color={palette.ember} />
-                    )
+                    <ItemArt item={pet} size={SLOT_ART_SIZE} color={palette.ember} />
                 ) : (
                     <Text style={styles.label}>Pet</Text>
                 )}
@@ -62,10 +56,6 @@ const useStyles = createStyles((p) => ({
         backgroundColor: p.surfaceAlt,
         ...inked(p),
         borderRadius: 14,
-    },
-    art: {
-        width: SLOT_SIZE - 14,
-        height: SLOT_SIZE - 14,
     },
     pressed: {
         opacity: 0.7,

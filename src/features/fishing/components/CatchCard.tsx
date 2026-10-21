@@ -7,7 +7,7 @@ import FishDrawing from "@/features/fishing/components/FishDrawing";
 import { fishArt } from "@/features/fishing/fishArt";
 import { QUALITY_TIER_COLORS, QUALITY_TIER_LABELS } from "@/features/fishing/fishingText";
 import type { GeoFishingOutcome, GeoQualityTier } from "@/lib/geo/contracts";
-import { rarityInfo } from "@/features/inventory/rarity";
+import { rarityInfo } from "@/features/items/rarity";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 

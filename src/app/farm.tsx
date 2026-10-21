@@ -29,8 +29,8 @@ import { footprintTiles, fortuneMultiplier, SHAPE_HINT, shapeTiles, untilText } 
 import { farmFeatures, isPlantable } from "@/features/farming/farmView";
 import { nextStep } from "@/features/farming/nextStep";
 import { useReportActivity } from "@/features/friends/presenceStore";
-import ItemDetail from "@/features/inventory/components/ItemDetail";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import ItemDetail from "@/features/items/components/ItemDetail";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { toInventoryItem } from "@/features/player/toInventoryItem";
 import { useInventory } from "@/features/player/usePlayer";

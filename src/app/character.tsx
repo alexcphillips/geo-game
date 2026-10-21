@@ -11,7 +11,7 @@ import MenuTile from "@/components/MenuTile/MenuTile";
 import Modal from "@/components/Modal/Modal";
 import Tabs from "@/components/Tabs/Tabs";
 import ItemEquipAction from "@/features/character/components/ItemEquipAction";
-import ItemDetail from "@/features/inventory/components/ItemDetail";
+import ItemDetail from "@/features/items/components/ItemDetail";
 import EquipmentSlot, { SLOT_SIZE } from "@/features/character/components/EquipmentSlot";
 import EquipPickerModal from "@/features/character/components/EquipPickerModal";
 import CharacterStats from "@/features/character/components/CharacterStats";

@@ -4,8 +4,8 @@ import Panel from "@/components/Panel/Panel";
 import Divider from "@/components/Divider/Divider";
 import { Chip, ChipRow } from "@/components/Chips/Chips";
 import Icon from "@/components/Icon/Icon";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemTile from "@/features/items/components/ItemTile";
+import { rarityInfo } from "@/features/items/rarity";
 import { formatCoins } from "@/features/market/market";
 import { catalogueItem } from "@/features/player/toInventoryItem";
 import { skillLabel } from "@/features/skills/skills";
@@ -75,6 +75,7 @@ export function RecipeCard({
                         item={{ ...catalogueItem(output, `made-${output.id}`), quantity: recipe.output.quantity }}
                         onPress={() => onInspect(output.id)}
                         onLongPress={() => onInspect(output.id)}
+                        showName={false}
                     />
                 </View>
                 <View style={styles.outputText}>
@@ -126,7 +127,6 @@ function Requirements({
                             <View style={[styles.inputTile, def.id === highlight && styles.inputTileHighlight]}>
                                 <ItemTile
                                     item={{ ...catalogueItem(def, `need-${def.id}`), quantity: total }}
-                                    compact
                                     onPress={() => onInspect(def.id)}
                                     onLongPress={() => onInspect(def.id)}
                                 />

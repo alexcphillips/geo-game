@@ -6,6 +6,8 @@ import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme, inked } from "@/theme/theme";
 import { isFaded, type InventoryItem } from "../inventoryItems";
 import { rarityInfo } from "../rarity";
+import { BARE_TILE_ASPECT, NAME_LINES, TILE_ASPECT, TILE_GAP, TILE_PADDING, tileLayout } from "../tileLayout";
+import ItemArt from "./ItemArt";
 import ItemDetailModal from "./ItemDetailModal";
 
 type ItemTileProps = {
@@ -18,14 +20,21 @@ type ItemTileProps = {
     selected?: boolean;
     /** What "selected" means, for screen readers. */
     selectedLabel?: string;
-    /** A smaller icon, for denser grids where the name needs the room. */
-    compact?: boolean;
+    /**
+     * False where the screen prints the name beside the tile: the tile goes
+     * square and the icon gets the room.
+     */
+    showName?: boolean;
 };
 
 /**
- * One square in the inventory grid: an item, or an empty slot.
+ * One tile in an item grid or row: an item, or an empty slot.
  *
- * Square via `aspectRatio`, so the grid's column count alone sets the size.
+ * Card-shaped via `aspectRatio`, so the grid's column count alone sets the
+ * size. The icon and name are sized from the measured width (`tileLayout`):
+ * the name gets three lines at the largest size that breaks only between
+ * words, and the icon the rest of the height. Where the screen shows the
+ * name itself (`showName={false}`) the tile is square and all icon.
  * The border is the item's rarity colour. A quality catch adds a metal rim
  * inside it in its tier's colour (a gem on top for Ruby), so the tier never
  * fights the rarity for the same border.
@@ -41,23 +50,29 @@ export default function ItemTile({
     onLongPress,
     selected = false,
     selectedLabel = "in hand",
-    compact = false,
+    showName = true,
 }: ItemTileProps) {
     const styles = useStyles();
     const palette = useTheme();
     const [isInspecting, setIsInspecting] = useState(false);
-    if (!item) return <View style={[styles.tile, styles.empty]} />;
+    const [width, setWidth] = useState(0);
+    const shape = showName ? undefined : styles.bare;
+    if (!item) return <View style={[styles.tile, shape, styles.empty]} />;
 
     const faded = isFaded(item);
     const charges = item.charges;
+    const name = faded ? "FADED" : item.name;
+    const layout = width > 0 ? tileLayout(width, showName ? name : null) : null;
 
     return (
         <>
             <Pressable
                 onPress={onPress ? () => onPress(item) : undefined}
                 onLongPress={onLongPress ? () => onLongPress(item) : () => setIsInspecting(true)}
+                onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
                 style={({ pressed }) => [
                     styles.tile,
+                    shape,
                     { borderColor: rarityInfo(item.rarity).color },
                     faded && styles.faded,
                     pressed && styles.pressed,
@@ -81,16 +96,37 @@ export default function ItemTile({
                     <View pointerEvents="none" style={[styles.qualityRim, { borderColor: QUALITY_TIER_COLORS[item.quality] }]} />
                 )}
                 {item.quality === "ruby" && <View pointerEvents="none" style={styles.rubyGem} />}
-                <Icon
-                    name={item.icon}
-                    size={compact ? 28 : 40}
-                    color={faded ? palette.textMuted : palette.ember}
-                />
-                {/* Wraps rather than truncating; two lines fit any tile size the
-                    grids use, and the tile clips anything past that. */}
-                <Text style={[styles.name, faded && styles.fadedText]}>
-                    {faded ? "Faded" : item.name}
-                </Text>
+                {/* Drawn once the tile's width is known, since every size here
+                    comes from it. */}
+                {layout && (
+                    <>
+                        <View style={styles.iconZone}>
+                            <ItemArt
+                                item={item}
+                                size={layout.iconSize}
+                                color={faded ? palette.textMuted : palette.ember}
+                            />
+                        </View>
+                        {showName && (
+                            <View style={{ height: layout.nameHeight }}>
+                                {/* Sized by tileLayout, so the system text size can't
+                                    undo the fit. The name is also in the label and
+                                    the details modal, which do scale. */}
+                                <Text
+                                    style={[
+                                        styles.name,
+                                        { fontSize: layout.fontSize, lineHeight: layout.lineHeight },
+                                        faded && styles.fadedText,
+                                    ]}
+                                    numberOfLines={NAME_LINES}
+                                    maxFontSizeMultiplier={1}
+                                >
+                                    {name}
+                                </Text>
+                            </View>
+                        )}
+                    </>
+                )}
 
                 {selected && (
                     <View style={styles.selectedBadge}>
@@ -121,17 +157,16 @@ export default function ItemTile({
 }
 
 const useStyles = createStyles((p) => ({
-    // Fills its cell's width and is square from that, so every tile in a row
-    // is the same size whatever its name — never sized by its content.
+    // Fills its cell's width and takes its height from that, so every tile
+    // in a row is the same size whatever its name — never sized by its content.
     tile: {
         width: "100%",
-        aspectRatio: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 4,
-        padding: 4,
-        // Extra room under a name that wraps to two lines.
-        paddingBottom: 8,
+        aspectRatio: TILE_ASPECT,
+        gap: TILE_GAP,
+        paddingHorizontal: TILE_PADDING.x,
+        paddingTop: TILE_PADDING.top,
+        // Clears the charge bar.
+        paddingBottom: TILE_PADDING.bottom,
         borderRadius: 14,
         backgroundColor: p.surfaceAlt,
         ...inked(p),
@@ -167,6 +202,15 @@ const useStyles = createStyles((p) => ({
         justifyContent: "center",
         backgroundColor: p.ember,
     },
+    bare: {
+        aspectRatio: BARE_TILE_ASPECT,
+        paddingBottom: TILE_PADDING.top,
+    },
+    iconZone: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
     empty: {
         backgroundColor: "transparent",
         borderStyle: "dashed",
@@ -178,17 +222,15 @@ const useStyles = createStyles((p) => ({
         transform: [{ scale: 0.95 }],
         borderColor: p.ember,
     },
+    // Size and line height come from tileLayout. No letter spacing: the
+    // layout measures with the font's own widths.
     name: {
         color: p.text,
-        fontSize: 11,
-        lineHeight: 13,
         fontFamily: FONTS.bodyBold,
-        letterSpacing: 0.3,
         textAlign: "center",
     },
     fadedText: {
         color: p.textMuted,
-        textTransform: "uppercase",
     },
     quantity: {
         position: "absolute",

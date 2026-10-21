@@ -1,5 +1,5 @@
 import type { MapWater } from "@/features/map/mapHtml";
-import type { Rarity } from "@/features/inventory/rarity";
+import type { Rarity } from "@/features/items/rarity";
 import type { GeoFishingTier, GeoFishingWater, GeoPlaceSettings } from "@/lib/geo/contracts";
 
 export type FishingTierId = GeoFishingTier;

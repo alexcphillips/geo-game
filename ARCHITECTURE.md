@@ -475,8 +475,10 @@ src/
     hud/                CoinCounter (top left), BottomBar + Actions sheet (bottom), action registry
     character/          Slot definitions, equipment squares, portrait badge
       assets/           Knight art (bust for the badge, figure for the screen)
-    pets/               Pets modal; pet icons by name (petIcons.generated.ts)
-      assets/           Pet icon PNGs, kebab-case names; run `npm run pet-icons`
+    items/              What every screen draws an item with: ItemTile, ItemArt, ItemDetail, rarity, the InventoryItem type
+      art/              Item and pet PNGs in a folder per kind, named for the item id (a pet's `image`); indexed automatically under `npm start`
+    inventory/          The inventory screen
+    pets/               Pets modal
 
   lib/
     api/                Typed client for the cozy-app backend
@@ -577,10 +579,11 @@ map against OSM tiles:
 - Mock enemy spawn (prototype): a spider placed ~35 m north-east of the
   player's first position, fixed in the world, with white rings pulsing out
   from it. Map sprites live in `features/spawns/assets/` and are cropped and
-  embedded as data URIs by `npm run sprites`, because the map's WebView page
-  can't load bundled app assets. Pet icons are the opposite case: drawn by app
-  screens, so they stay bundled PNGs in `features/pets/assets/`, indexed by
-  name into `petIcons.generated.ts` by `npm run pet-icons`. `makeMockSpawns` is what a server spawn
+  embedded as data URIs by the sprites generator, because the map's WebView page
+  can't load bundled app assets. Item and pet art is the opposite case: drawn by app
+  screens, so it stays bundled PNGs in `features/items/art/<folder>/`, indexed by
+  name into `itemArt.generated.ts`. Both generators (and the icons one) run on
+  their own under `npm start` (`scripts/dev.mjs`), which watches the folders. `makeMockSpawns` is what a server spawn
   request will replace.
 - Combat Run screen: tapping a spawn opens `/run/combat?enemy=<id>`, a route
   built on the shared `RunScreen` shell (header with Flee, arena, hand) that

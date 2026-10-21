@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
-import Icon from "@/components/Icon/Icon";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemArt from "@/features/items/components/ItemArt";
+import type { InventoryItem } from "@/features/items/inventoryItems";
+import { rarityInfo } from "@/features/items/rarity";
 import { createStyles, useTheme, inked } from "@/theme/theme";
 import type { EquipmentSlot as EquipmentSlotModel } from "../characterSlots";
 
@@ -16,6 +16,9 @@ type EquipmentSlotProps = {
 };
 
 export const SLOT_SIZE = 68;
+
+/** An item's picture inside a slot; the pet slot matches it. */
+export const SLOT_ART_SIZE = 48;
 
 /**
  * One equipment square.
@@ -40,7 +43,7 @@ export default function EquipmentSlot({
             ]}
         >
             {item ? (
-                <Icon name={item.icon} size={40} color={palette.ember} />
+                <ItemArt item={item} size={SLOT_ART_SIZE} color={palette.ember} />
             ) : (
                 <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>
                     {slot.label}

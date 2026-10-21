@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { rarityInfo } from "@/features/inventory/rarity";
+import { rarityInfo } from "@/features/items/rarity";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { tabOf } from "@/features/player/toInventoryItem";
 import { useInUseIds, useInventory, useSkillXp } from "@/features/player/usePlayer";

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Button from "@/components/Button/Button";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import ItemTile from "@/features/items/components/ItemTile";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import { playerActions } from "@/features/player/playerStore";
 import { useEquipment, useInventory, useTalismanBag } from "@/features/player/usePlayer";
 import { createStyles } from "@/theme/theme";
@@ -72,7 +72,6 @@ export default function ItemEquipAction({ item }: ItemEquipActionProps) {
                         <View key={slot.id} style={styles.ring}>
                             <ItemTile
                                 item={worn}
-                                compact
                                 onPress={() => {
                                     equip(slot.id, item.id);
                                     setChoosingRing(false);

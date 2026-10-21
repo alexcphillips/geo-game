@@ -1,5 +1,5 @@
 import { HAND_SIZE, type CardSkill } from "@/features/cards/cardSkills";
-import { isFaded, type InventoryItem } from "@/features/inventory/inventoryItems";
+import { isFaded, type InventoryItem } from "@/features/items/inventoryItems";
 
 /** Why a card can't go into the hand, or null if it can. */
 export type HandRejection = "wrong-skill" | "faded" | "duplicate" | "full";

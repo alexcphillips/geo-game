@@ -2,9 +2,9 @@ import { useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { HAND_SIZE } from "@/features/cards/cardSkills";
-import ItemDetailModal from "@/features/inventory/components/ItemDetailModal";
-import { isFaded, type InventoryItem } from "@/features/inventory/inventoryItems";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemDetailModal from "@/features/items/components/ItemDetailModal";
+import { isFaded, type InventoryItem } from "@/features/items/inventoryItems";
+import { rarityInfo } from "@/features/items/rarity";
 import { FONTS } from "@/theme/palette";
 import { createStyles, inked, useTheme } from "@/theme/theme";
 

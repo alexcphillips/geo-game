@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
-import ItemTile from "@/features/inventory/components/ItemTile";
+import ItemTile from "@/features/items/components/ItemTile";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import { ENDING_SOON_MS, formatCoins, formatTimeLeft, timeLeft, type MarketListing } from "../market";
@@ -76,7 +76,7 @@ export default function BidPage({
         >
             <View style={styles.itemRow}>
                 <View style={styles.itemTile}>
-                    <ItemTile item={listing.item} compact />
+                    <ItemTile item={listing.item} showName={false} />
                 </View>
                 <View style={styles.itemText}>
                     <Text style={styles.itemName}>{listing.item.name}</Text>

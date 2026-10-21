@@ -3,9 +3,9 @@ import { Pressable, Text, View, type LayoutChangeEvent } from "react-native";
 import SearchField from "@/components/SearchField/SearchField";
 import Modal from "@/components/Modal/Modal";
 import ItemEquipAction from "@/features/character/components/ItemEquipAction";
-import ItemDetail from "@/features/inventory/components/ItemDetail";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import { RARITIES, rarityInfo, type Rarity } from "@/features/inventory/rarity";
+import ItemDetail from "@/features/items/components/ItemDetail";
+import ItemTile from "@/features/items/components/ItemTile";
+import { RARITIES, rarityInfo, type Rarity } from "@/features/items/rarity";
 import { useInventory, useTalismanBag } from "@/features/player/usePlayer";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
@@ -154,7 +154,6 @@ export default function TalismanBagModal({ onClose }: TalismanBagModalProps) {
                                 >
                                     <ItemTile
                                         item={talisman}
-                                        compact
                                         onPress={(tapped) => setSelectedId(tapped.id)}
                                         onLongPress={(held) => setSelectedId(held.id)}
                                     />

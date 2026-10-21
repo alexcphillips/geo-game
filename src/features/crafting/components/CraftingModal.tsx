@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import Modal from "@/components/Modal/Modal";
 import { Hint } from "@/components/Text/Text";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { catalogueItem } from "@/features/player/toInventoryItem";
 import type { GeoItemView } from "@/lib/geo/contracts";

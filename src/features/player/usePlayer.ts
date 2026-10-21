@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { isFaded, type InventoryItem } from "@/features/inventory/inventoryItems";
+import { isFaded, type InventoryItem } from "@/features/items/inventoryItems";
 import type { GeoBait, GeoEquipmentSlot, GeoHealth, GeoLunchbox, GeoPetUpgrade, GeoSavedHand, GeoStatLine, GeoTalismanBag, GeoWardrobe } from "@/lib/geo/contracts";
 import { usePlayerStore } from "./playerStore";
 import { toInventoryItem } from "./toInventoryItem";

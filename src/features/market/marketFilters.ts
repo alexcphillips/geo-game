@@ -5,7 +5,7 @@ import {
     type InventoryItem,
     type InventoryTab,
     type InventoryTabId,
-} from "@/features/inventory/inventoryItems";
+} from "@/features/items/inventoryItems";
 import { colors } from "@/theme/colors";
 import type { ListingType } from "./market";
 

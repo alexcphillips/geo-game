@@ -2,8 +2,8 @@ import { ScrollView, Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import ItemTile from "@/features/items/components/ItemTile";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import { formatCoins } from "../market";
@@ -55,7 +55,7 @@ export default function SellConfirm({ item, draft, coins, onConfirm }: SellConfi
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.page} alwaysBounceHorizontal={false}>
             <View style={styles.itemRow}>
                 <View style={styles.itemTile}>
-                    <ItemTile item={{ ...item, quantity: isStack ? result.quantity : undefined }} compact />
+                    <ItemTile item={{ ...item, quantity: isStack ? result.quantity : undefined }} showName={false} />
                 </View>
                 <View style={styles.itemText}>
                     <Text style={styles.itemName}>

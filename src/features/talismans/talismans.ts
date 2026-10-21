@@ -1,5 +1,5 @@
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import type { Rarity } from "@/features/inventory/rarity";
+import type { InventoryItem } from "@/features/items/inventoryItems";
+import type { Rarity } from "@/features/items/rarity";
 import { GEO_TALISMAN_BAG_PAGE_SIZE } from "@/lib/geo/contracts";
 
 /**

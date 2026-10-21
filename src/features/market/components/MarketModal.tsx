@@ -4,7 +4,7 @@ import Icon from "@/components/Icon/Icon";
 import Tabs from "@/components/Tabs/Tabs";
 import SearchField from "@/components/SearchField/SearchField";
 import Modal from "@/components/Modal/Modal";
-import ItemDetail from "@/features/inventory/components/ItemDetail";
+import ItemDetail from "@/features/items/components/ItemDetail";
 import {
     useCoins,
     useEquipment,

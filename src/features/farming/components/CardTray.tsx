@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import RunHand from "@/features/run/components/RunHand";
 import { HOME_INDICATOR_CLEARANCE } from "@/theme/layout";
 import { FONTS } from "@/theme/palette";

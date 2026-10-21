@@ -1,4 +1,4 @@
-import type { InventoryItem, InventoryTabId } from "@/features/inventory/inventoryItems";
+import type { InventoryItem, InventoryTabId } from "@/features/items/inventoryItems";
 import { toInventoryItem } from "@/features/player/toInventoryItem";
 import type {
     GeoItemView,

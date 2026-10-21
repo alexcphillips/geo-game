@@ -34,10 +34,10 @@
         "typescript": "~6.0.3"
     },
     "scripts": {
-        "start": "expo start",
-        "tunnel": "expo start --tunnel",
-        "android": "expo start --android",
-        "ios": "expo start --ios",
+        "start": "node scripts/dev.mjs",
+        "tunnel": "node scripts/dev.mjs --tunnel",
+        "android": "node scripts/dev.mjs --android",
+        "ios": "node scripts/dev.mjs --ios",
         "lint": "expo lint",
         "validate:map": "tsx scripts/validate-map-style.ts",
         "typecheck": "tsc --noEmit",
@@ -45,9 +45,10 @@
         "icons": "node scripts/generate-icons.mjs",
         "sprites": "node scripts/generate-sprites.mjs",
         "sprite:add": "node scripts/add-sprite.mjs",
-        "pet-icons": "node scripts/generate-pet-icons.mjs",
+        "item-art": "node scripts/generate-item-art.mjs",
+        "assets": "node scripts/generate-assets.mjs",
         "sync:contracts": "node scripts/sync-geo-contracts.mjs",
-        "check": "node scripts/sync-geo-contracts.mjs --check && tsc --noEmit && expo lint"
+        "check": "node scripts/sync-geo-contracts.mjs --check && node scripts/generate-assets.mjs --check && tsc --noEmit && expo lint"
     },
     "private": true
 }

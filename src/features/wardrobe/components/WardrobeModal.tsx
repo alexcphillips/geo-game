@@ -6,7 +6,8 @@ import Icon from "@/components/Icon/Icon";
 import TextField from "@/components/TextField/TextField";
 import Modal from "@/components/Modal/Modal";
 import { SectionTitle } from "@/components/Text/Text";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemArt from "@/features/items/components/ItemArt";
+import { rarityInfo } from "@/features/items/rarity";
 import { formatCoins } from "@/features/market/market";
 import { playerActions } from "@/features/player/playerStore";
 import { useCoins, useInventory, useWardrobe } from "@/features/player/usePlayer";
@@ -124,7 +125,7 @@ function LoadoutCard({ slot, loadout, isActive }: LoadoutCardProps) {
                     {items.length === 0 && !pet && <Text style={styles.muted}>Nothing in it.</Text>}
                     {items.map((item) => (
                         <View key={item.id} style={[styles.itemIcon, { borderColor: rarityInfo(item.rarity).color }]}>
-                            <Icon name={item.icon} size={18} color={palette.ember} />
+                            <ItemArt item={item} size={18} color={palette.ember} />
                         </View>
                     ))}
                     {pet && (

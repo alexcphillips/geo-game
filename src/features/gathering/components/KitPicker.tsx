@@ -2,7 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { HAND_SIZE } from "@/features/cards/cardSkills";
 import type { MockCardBase } from "@/features/gathering/mockCards";
-import { rarityInfo } from "@/features/inventory/rarity";
+import { rarityInfo } from "@/features/items/rarity";
 import OutcomeButton from "@/features/run/components/OutcomeButton";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";

@@ -102,7 +102,7 @@ export type InventoryItem = {
     quality?: GeoQualityTier;
     /** Account-bound: can't be traded, sold or listed. */
     soulbound?: boolean;
-    /** Pets: which pet, its art name and its skill (`features/pets/assets/<image>.png`). */
+    /** Pets: which pet, its art name and its skill (`features/items/art/pets/<image>.png`). */
     petInfo?: { petId: string; image: string; skill: string };
     /** Pets: this copy's level, held item and what it gives now. */
     pet?: GeoPetState;

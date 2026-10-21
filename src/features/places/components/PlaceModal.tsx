@@ -6,7 +6,7 @@ import Modal from "@/components/Modal/Modal";
 import { SectionTitle } from "@/components/Text/Text";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
-import { rarityInfo } from "@/features/inventory/rarity";
+import { rarityInfo } from "@/features/items/rarity";
 import { useActivityAlert } from "@/features/notifications/useActivityAlert";
 import {
     ACTIVITY_LEVEL_COUNT,

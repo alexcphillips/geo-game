@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
-import ItemTile from "@/features/inventory/components/ItemTile";
+import ItemTile from "@/features/items/components/ItemTile";
+import { TILE_ASPECT } from "@/features/items/tileLayout";
 import { createStyles, useTheme } from "@/theme/theme";
 import type { PackedSlot } from "../lunchbox";
 import { PACKS, type PackKind } from "../packs";
@@ -52,7 +53,6 @@ export default function LunchboxSlots({
                             <View style={disabled && entry ? styles.dimmed : undefined}>
                                 <ItemTile
                                     item={entry?.item}
-                                    compact
                                     onPress={entry && onPress && !disabled ? () => onPress(entry) : undefined}
                                     onLongPress={entry && onLongPress ? () => onLongPress(entry) : undefined}
                                 />
@@ -80,7 +80,7 @@ const useStyles = createStyles((p) => ({
     },
     locked: {
         width: "100%",
-        aspectRatio: 1,
+        aspectRatio: TILE_ASPECT,
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 8,

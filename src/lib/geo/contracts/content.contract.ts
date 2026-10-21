@@ -89,7 +89,7 @@ export type GeoItemView = {
     soulbound?: boolean;
     /** Fishing cards: whether playing it raises or lowers a catch's quality odds. */
     finesse?: "raises" | "lowers";
-    /** Pets: which pet, its art (`features/pets/assets/<image>.png` in the app), and the skill it levels fastest from. */
+    /** Pets: which pet, its art (`features/items/art/pets/<image>.png` in the app), and the skill it levels fastest from. */
     pet?: { petId: string; image: string; skill: string };
     /**
      * What an NPC pays for one, in coins: the lowest Market price per unit,

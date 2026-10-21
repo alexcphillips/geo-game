@@ -1,8 +1,8 @@
 import { Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemTile from "@/features/items/components/ItemTile";
+import { rarityInfo } from "@/features/items/rarity";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import {
@@ -79,7 +79,7 @@ export function ListingRow({
         >
             {/* Taps open the row like anywhere else on it; a hold shows the item. */}
             <View style={styles.rowTile}>
-                <ItemTile item={item} compact onPress={onPress} />
+                <ItemTile item={item} onPress={onPress} showName={false} />
             </View>
             <View style={styles.rowText}>
                 <Text style={styles.rowName} numberOfLines={2}>
@@ -125,7 +125,7 @@ export function ProductRow({ product, onPress }: { product: MarketProduct; onPre
             accessibilityLabel={`${item.name}, ${rarity.label}, from ${price} coins each, ${forSale} for sale`}
         >
             <View style={styles.rowTile}>
-                <ItemTile item={item} compact onPress={onPress} />
+                <ItemTile item={item} onPress={onPress} showName={false} />
             </View>
             <View style={styles.rowText}>
                 <Text style={styles.rowName} numberOfLines={2}>

@@ -8,10 +8,10 @@ import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
 import MenuTile from "@/components/MenuTile/MenuTile";
 import Modal from "@/components/Modal/Modal";
 import { Hint } from "@/components/Text/Text";
-import ItemDetail from "@/features/inventory/components/ItemDetail";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import { rarityInfo, type Rarity } from "@/features/inventory/rarity";
+import ItemDetail from "@/features/items/components/ItemDetail";
+import ItemTile from "@/features/items/components/ItemTile";
+import type { InventoryItem } from "@/features/items/inventoryItems";
+import { rarityInfo, type Rarity } from "@/features/items/rarity";
 import { Field, QuantityInput } from "@/components/NumberField/NumberField";
 import { formatCoins } from "@/features/market/market";
 import { usePlayerStore } from "@/features/player/playerStore";
@@ -348,9 +348,9 @@ function TradeRow({
             <View style={styles.rowTile}>
                 <ItemTile
                     item={{ ...item, quantity: undefined }}
-                    compact
                     onPress={() => onInspect(item)}
                     onLongPress={() => onInspect(item)}
+                    showName={false}
                 />
             </View>
             <View style={styles.rowText}>
@@ -459,9 +459,9 @@ function Trade({
                 <View style={styles.rowTile}>
                     <ItemTile
                         item={{ ...item, quantity: undefined }}
-                        compact
                         onPress={() => onInspect(item)}
                         onLongPress={() => onInspect(item)}
+                        showName={false}
                     />
                 </View>
                 <View style={styles.rowText}>
@@ -532,9 +532,9 @@ function Reforge({
                 <View style={styles.rowTile}>
                     <ItemTile
                         item={{ ...item, quantity: undefined }}
-                        compact
                         onPress={() => onInspect(item)}
                         onLongPress={() => onInspect(item)}
+                        showName={false}
                     />
                 </View>
                 <View style={styles.rowText}>
@@ -686,7 +686,7 @@ function PetUpgrade({
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.trade}>
             <Panel compact style={styles.row}>
                 <View style={styles.rowTile}>
-                    <ItemTile item={item} compact onPress={() => onInspect(item)} onLongPress={() => onInspect(item)} />
+                    <ItemTile item={item} onPress={() => onInspect(item)} onLongPress={() => onInspect(item)} showName={false} />
                 </View>
                 <View style={styles.rowText}>
                     <Text style={styles.rowName}>{item.name}</Text>

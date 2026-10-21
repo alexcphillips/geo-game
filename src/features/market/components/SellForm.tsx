@@ -1,8 +1,8 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
+import ItemTile from "@/features/items/components/ItemTile";
+import type { InventoryItem } from "@/features/items/inventoryItems";
 import { GEO_AUCTION_HOURS, geoAuctionFee } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
@@ -45,7 +45,7 @@ export default function SellForm({ item, draft, coins, onChange, onReview }: Sel
         >
             <View style={styles.itemRow}>
                 <View style={styles.itemTile}>
-                    <ItemTile item={item} compact />
+                    <ItemTile item={item} showName={false} />
                 </View>
                 <View style={styles.itemText}>
                     <Text style={styles.itemName}>{item.name}</Text>

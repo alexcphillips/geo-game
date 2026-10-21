@@ -5,7 +5,7 @@ import Divider from "@/components/Divider/Divider";
 import EmptyState from "@/components/EmptyState/EmptyState";
 import Icon from "@/components/Icon/Icon";
 import { SectionTitle } from "@/components/Text/Text";
-import RewardGrid from "@/features/inventory/components/RewardGrid";
+import RewardGrid from "@/features/items/components/RewardGrid";
 import { formatListedAgo } from "@/features/market/market";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoChestSelection, GeoChestsResponse } from "@/lib/geo/contracts";

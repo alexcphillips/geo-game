@@ -7,8 +7,8 @@ import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import { Hint, SectionTitle } from "@/components/Text/Text";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemTile from "@/features/items/components/ItemTile";
+import { rarityInfo } from "@/features/items/rarity";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import {
@@ -96,7 +96,7 @@ function SoldRow({ listing, now, onPress }: { listing: OwnListing; now: number; 
             accessibilityLabel={`${item.name}, sold to ${sale.buyer} for ${formatCoins(sale.buyerPaid)} coins${sale.collected ? "" : ", coins to collect"}`}
         >
             <View style={styles.rowTile}>
-                <ItemTile item={item} compact onPress={onPress} />
+                <ItemTile item={item} onPress={onPress} showName={false} />
             </View>
             <View style={styles.rowText}>
                 <Text style={styles.rowName} numberOfLines={2}>

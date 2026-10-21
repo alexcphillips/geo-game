@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Animated, Easing, ScrollView, Text, View } from "react-native";
 import Icon, { type GameIconName } from "@/components/Icon/Icon";
-import { rarityInfo, type Rarity } from "@/features/inventory/rarity";
+import { rarityInfo, type Rarity } from "@/features/items/rarity";
 import { FONTS } from "@/theme/palette";
 import { createStyles } from "@/theme/theme";
 

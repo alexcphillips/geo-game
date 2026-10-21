@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Meter from "@/components/Meter/Meter";
 import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import { Hint, SectionTitle } from "@/components/Text/Text";
-import ItemTile from "@/features/inventory/components/ItemTile";
-import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import { rarityInfo } from "@/features/inventory/rarity";
+import ItemArt from "@/features/items/components/ItemArt";
+import ItemTile from "@/features/items/components/ItemTile";
+import type { InventoryItem } from "@/features/items/inventoryItems";
+import { rarityInfo } from "@/features/items/rarity";
 import { formatCoins } from "@/features/market/market";
 import { playerActions, usePlayerStore } from "@/features/player/playerStore";
 import { useActivePetId, useInventory, usePetUpgrade } from "@/features/player/usePlayer";
@@ -16,7 +17,6 @@ import { skillLabel } from "@/features/skills/skills";
 import type { GeoPetState } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
-import { petArt } from "../petArt";
 
 type PetsModalProps = {
     onClose: () => void;
@@ -76,14 +76,9 @@ export default function PetsModal({ onClose, initialPetId }: PetsModalProps) {
 function PetArt({ item, size }: { item: InventoryItem; size: number }) {
     const styles = useStyles();
     const palette = useTheme();
-    const art = petArt(item.petInfo?.image);
     return (
         <View style={[styles.art, { width: size, height: size, borderColor: rarityInfo(item.rarity).color }]}>
-            {art ? (
-                <Image source={art} style={{ width: size - 12, height: size - 12 }} resizeMode="contain" />
-            ) : (
-                <Icon name={item.icon} size={size * 0.55} color={palette.ember} />
-            )}
+            <ItemArt item={item} size={size - 12} color={palette.ember} />
         </View>
     );
 }
@@ -277,6 +272,7 @@ function GivePage({ pet, onDone }: { pet: OwnedPet; onDone: () => void }) {
                                 onPress={async () => {
                                     if (await playerActions.givePetItem(pet.id, item.id)) onDone();
                                 }}
+                                showName={false}
                             />
                             <Text style={styles.gridLabel} numberOfLines={2}>
                                 {item.name}

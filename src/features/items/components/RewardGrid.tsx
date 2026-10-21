@@ -40,7 +40,7 @@ export default function RewardGrid({
         <View style={[styles.grid, compact && styles.gridCompact]}>
             {tiles.map((tile) => (
                 <View key={tile.id} style={[styles.cell, { width: compact ? COMPACT_TILE_SIZE : TILE_SIZE }]}>
-                    <ItemTile item={tile} onLongPress={onInspect} compact={compact} />
+                    <ItemTile item={tile} onLongPress={onInspect} />
                     <Text style={[styles.rarity, { color: rarityInfo(tile.rarity).color }]}>
                         {rarityInfo(tile.rarity).label}
                     </Text>

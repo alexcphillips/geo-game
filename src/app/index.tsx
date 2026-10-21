@@ -23,7 +23,7 @@ import CookingModal from "@/features/cooking/components/CookingModal";
 import SkillsModal from "@/features/skills/components/SkillsModal";
 import QuestLogModal from "@/features/quests/components/QuestLogModal";
 import LunchboxModal from "@/features/lunchbox/components/LunchboxModal";
-import ItemDetail from "@/features/inventory/components/ItemDetail";
+import ItemDetail from "@/features/items/components/ItemDetail";
 import CoinCounter from "@/features/hud/components/CoinCounter";
 import PlayerStatusHud from "@/features/hud/components/PlayerStatusHud";
 import { distanceMetres } from "@/features/location/distance";
