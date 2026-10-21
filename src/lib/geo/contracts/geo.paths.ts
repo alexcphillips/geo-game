@@ -47,14 +47,11 @@ export const GEO_API_PATHS = {
         loadoutAuto: "/geo/me/wardrobe/:slot/auto",
         /** POST: buys one more loadout slot. */
         buyLoadoutSlot: "/geo/me/wardrobe/buy-slot",
-        /** POST: buys auto-swap. */
-        buyAutoSwap: "/geo/me/wardrobe/buy-auto-swap",
         /** PUT { inventoryId }: the active pet (null puts it away). */
         activePet: "/geo/me/pet",
         /** PUT { inventoryId } gives the pet a held item; DELETE takes it off, for coins. */
         petItem: "/geo/me/pets/:inventoryId/item",
     },
-    /** Dev servers only: testing tools. Production answers 404. */
     quests: {
         /** GET: the player's quests (GeoQuestsResponse). */
         root: "/geo/quests",
@@ -63,6 +60,7 @@ export const GEO_API_PATHS = {
         /** POST: turn in a ready quest, from anywhere, for its reward. */
         claim: "/geo/quests/:questId/claim",
     },
+    /** Dev servers only: testing tools. Production answers 404. */
     dev: {
         /** POST: puts an enemy within reach of the player now. */
         spawn: "/geo/dev/spawns",

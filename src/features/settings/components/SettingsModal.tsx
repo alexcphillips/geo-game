@@ -18,7 +18,7 @@ import NotificationsPage from "./NotificationsPage";
 import SettingsToggle from "./SettingsToggle";
 import { useAdminSettingsStore } from "../adminSettingsStore";
 import { showToast } from "@/components/Toast/toastStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoAdminSeaCreatures,
@@ -393,7 +393,7 @@ function AdminPage({
                         onPress={() =>
                             void adminCall(
                                 () =>
-                                    api.post(GEO_API_PATHS.admin.playerCoins.replace(":playerId", playerId), {
+                                    api.post(apiPath(GEO_API_PATHS.admin.playerCoins, { playerId }), {
                                         amount: 1_000,
                                         note: "admin page",
                                     }),

@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, apiPath } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoChestsResponse,
@@ -15,7 +15,7 @@ export const chestsApi = {
     open: (selectionId: string, index: number) => {
         const request: GeoOpenChestRequest = { index };
         return api.post<GeoOpenChestResponse>(
-            GEO_API_PATHS.chests.open.replace(":selectionId", encodeURIComponent(selectionId)),
+            apiPath(GEO_API_PATHS.chests.open, { selectionId }),
             request,
         );
     },

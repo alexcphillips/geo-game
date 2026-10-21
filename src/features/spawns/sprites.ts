@@ -23,10 +23,7 @@ export type SpriteName = keyof typeof SPRITES;
  * Unlisted sprites draw at 1.
  */
 export const SPRITE_SCALES: Partial<Record<SpriteName, number>> = {
-    "acid-slime": 0.7,
     "crystal-slime": 0.7,
-    "fungal-slime": 0.7,
-    "gilded-slime": 0.7,
     "green-slime": 0.7,
     "magma-slime": 0.7,
     spider: 0.7,

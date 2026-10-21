@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, apiPath } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoPlayTurnRequest,
@@ -6,7 +6,6 @@ import {
     type GeoStartRunRequest,
 } from "@/lib/geo/contracts";
 
-const withRunId = (path: string, runId: string) => path.replace(":runId", encodeURIComponent(runId));
 
 /** Every call a combat Run makes. All throw ApiError with the server's reason. */
 export const runsApi = {
@@ -20,7 +19,7 @@ export const runsApi = {
      * holds every turn up to the player's next decision.
      */
     playCard: (runId: string, request: GeoPlayTurnRequest) =>
-        api.post<GeoRunResponse>(withRunId(GEO_API_PATHS.runs.turns, runId), request),
+        api.post<GeoRunResponse>(apiPath(GEO_API_PATHS.runs.turns, { runId }), request),
 
-    flee: (runId: string) => api.post<GeoRunResponse>(withRunId(GEO_API_PATHS.runs.flee, runId)),
+    flee: (runId: string) => api.post<GeoRunResponse>(apiPath(GEO_API_PATHS.runs.flee, { runId })),
 };

@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, apiPath } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoFriendsResponse,
@@ -8,7 +8,6 @@ import {
     type GeoSendFriendResponse,
 } from "@/lib/geo/contracts";
 
-const requestPath = (path: string, requestId: string) => path.replace(":requestId", encodeURIComponent(requestId));
 
 export const friendsApi = {
     list: () => api.get<GeoFriendsResponse>(GEO_API_PATHS.friends.root),
@@ -17,12 +16,12 @@ export const friendsApi = {
         return api.post<GeoSendFriendResponse>(GEO_API_PATHS.friends.requests, request);
     },
     accept: (requestId: string) =>
-        api.post<GeoFriendsResponse>(requestPath(GEO_API_PATHS.friends.accept, requestId)),
+        api.post<GeoFriendsResponse>(apiPath(GEO_API_PATHS.friends.accept, { requestId })),
     /** Declines theirs or cancels yours. */
     dismiss: (requestId: string) =>
-        api.delete<GeoFriendsResponse>(requestPath(GEO_API_PATHS.friends.request, requestId)),
+        api.delete<GeoFriendsResponse>(apiPath(GEO_API_PATHS.friends.request, { requestId })),
     remove: (playerId: string) =>
-        api.delete<GeoFriendsResponse>(GEO_API_PATHS.friends.friend.replace(":playerId", encodeURIComponent(playerId))),
+        api.delete<GeoFriendsResponse>(apiPath(GEO_API_PATHS.friends.friend, { playerId })),
     beat: (request: GeoPresenceRequest) => api.post<GeoPresenceResponse>(GEO_API_PATHS.presence, request),
     leave: () => api.delete<void>(GEO_API_PATHS.presence),
 };

@@ -8,7 +8,7 @@ import { SectionTitle } from "@/components/Text/Text";
 import { ANNOUNCEMENT_KINDS } from "@/features/inbox/mail";
 import { APP_VERSION } from "@/features/inbox/useWhatsNew";
 import { formatDateTime } from "@/features/market/market";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import {
     GEO_API_PATHS,
     GEO_MAIL_BODY_MAX,
@@ -100,7 +100,7 @@ export default function AdminAnnouncementsPage() {
                 onPress: () =>
                     void api
                         .delete<GeoAdminAnnouncementsResponse>(
-                            GEO_API_PATHS.admin.announcement.replace(":announcementId", encodeURIComponent(announcement.id)),
+                            apiPath(GEO_API_PATHS.admin.announcement, { announcementId: announcement.id }),
                         )
                         .then((response) => {
                             setSent(response.announcements);

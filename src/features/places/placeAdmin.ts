@@ -1,11 +1,11 @@
 import { Alert } from "react-native";
 import { showToast } from "@/components/Toast/toastStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import { GEO_API_PATHS } from "@/lib/geo/contracts";
 import { usePlacesStore } from "./placesStore";
 
 export function placePath(placeId: string): string {
-    return GEO_API_PATHS.admin.place.replace(":placeId", encodeURIComponent(placeId));
+    return apiPath(GEO_API_PATHS.admin.place, { placeId });
 }
 
 /**

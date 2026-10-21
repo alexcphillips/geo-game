@@ -44,8 +44,10 @@
         "doctor": "expo-doctor",
         "icons": "node scripts/generate-icons.mjs",
         "sprites": "node scripts/generate-sprites.mjs",
+        "sprite:add": "node scripts/add-sprite.mjs",
         "pet-icons": "node scripts/generate-pet-icons.mjs",
-        "sync:contracts": "node scripts/sync-geo-contracts.mjs"
+        "sync:contracts": "node scripts/sync-geo-contracts.mjs",
+        "check": "node scripts/sync-geo-contracts.mjs --check && tsc --noEmit && expo lint"
     },
     "private": true
 }

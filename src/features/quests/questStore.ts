@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import { usePlayerStore } from "@/features/player/playerStore";
-import { api } from "@/lib/api";
+import { api, apiPath } from "@/lib/api";
 import { GEO_API_PATHS, type GeoCombatTier, type GeoQuestsResponse, type GeoQuestView } from "@/lib/geo/contracts";
 
-const withQuestId = (path: string, questId: string) => path.replace(":questId", encodeURIComponent(questId));
 
 type QuestState = {
     /** Active and ready quests, as the server sends them (unsorted). */
@@ -52,9 +51,9 @@ export const useQuestStore = create<QuestState>()((set) => {
             })();
             return inFlight;
         },
-        track: async (questId) => adopt(await api.put<GeoQuestsResponse>(withQuestId(GEO_API_PATHS.quests.track, questId))),
+        track: async (questId) => adopt(await api.put<GeoQuestsResponse>(apiPath(GEO_API_PATHS.quests.track, { questId }))),
         claim: async (questId) => {
-            adopt(await api.post<GeoQuestsResponse>(withQuestId(GEO_API_PATHS.quests.claim, questId)));
+            adopt(await api.post<GeoQuestsResponse>(apiPath(GEO_API_PATHS.quests.claim, { questId })));
             // The reward landed in the purse and inventory.
             void usePlayerStore.getState().refresh();
         },

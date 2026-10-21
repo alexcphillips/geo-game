@@ -1,6 +1,6 @@
 import { showToast } from "@/components/Toast/toastStore";
 import { usePlayerStore } from "@/features/player/playerStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import { GEO_API_PATHS, type GeoMeResponse } from "@/lib/geo/contracts";
 
 /** Crafting. Each resolves true when the server took it. */
@@ -13,7 +13,7 @@ export const craftingActions = {
     craft: async (recipeId: string, quantity: number, madeName: string, madeCount: number, verb = "Crafted"): Promise<boolean> => {
         try {
             const me = await api.post<GeoMeResponse>(
-                GEO_API_PATHS.crafting.craft.replace(":recipeId", encodeURIComponent(recipeId)),
+                apiPath(GEO_API_PATHS.crafting.craft, { recipeId }),
                 { quantity },
             );
             usePlayerStore.setState({ me });

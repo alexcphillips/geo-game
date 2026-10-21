@@ -8,7 +8,7 @@ import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import { formatCoins } from "../market";
 import { BIN_TAX_PERCENT, canAuction, quote, type SellDraft } from "../sell";
-import { Field, NumberInput } from "./FormFields";
+import { Field, NumberInput } from "@/components/NumberField/NumberField";
 import { SaleBadge } from "./MarketRows";
 
 type SellFormProps = {

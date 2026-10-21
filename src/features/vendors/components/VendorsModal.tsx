@@ -12,7 +12,7 @@ import ItemDetail from "@/features/inventory/components/ItemDetail";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { rarityInfo, type Rarity } from "@/features/inventory/rarity";
-import { Field, QuantityInput } from "@/features/market/components/FormFields";
+import { Field, QuantityInput } from "@/components/NumberField/NumberField";
 import { formatCoins } from "@/features/market/market";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { catalogueItem } from "@/features/player/toInventoryItem";

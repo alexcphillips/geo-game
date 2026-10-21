@@ -13,16 +13,12 @@ import type { GeoEquipmentSlot } from "./content.contract";
  *
  * Auto-swap wears the loadout tagged for an activity as that activity starts
  * (a fight, a cast), so fishing then fighting swaps gear and back without a
- * tap. For skills (fishing) it's free; for combat it's a bought upgrade, as
- * are more loadout slots.
+ * tap. More loadout slots are a bought upgrade.
  */
 
 export type GeoLoadoutActivity = "combat" | "fishing";
 
 export const GEO_LOADOUT_ACTIVITIES: readonly GeoLoadoutActivity[] = ["combat", "fishing"];
-
-/** Activities auto-swap works for without buying it: the skills. */
-export const GEO_FREE_AUTO_ACTIVITIES: readonly GeoLoadoutActivity[] = ["fishing"];
 
 /** Longest loadout name. */
 export const GEO_LOADOUT_NAME_MAX = 20;
@@ -35,7 +31,7 @@ export type GeoLoadout = {
     equipment: Partial<Record<GeoEquipmentSlot, string>>;
     /** The pet's inventory id, or null for none. */
     petId: string | null;
-    /** Worn automatically when this activity starts (combat needs auto-swap bought). */
+    /** Worn automatically when this activity starts. */
     autoFor: GeoLoadoutActivity | null;
 };
 
@@ -47,12 +43,8 @@ export type GeoWardrobe = {
     loadouts: GeoLoadout[];
     /** The loadout being worn, or null after gear was changed with none active. */
     activeSlot: number | null;
-    /** Combat auto-swap bought. Skills auto-swap without it. */
-    autoSwap: boolean;
     /** Coins for the next slot; null at the max. */
     nextSlotCost: number | null;
-    /** Coins to unlock combat auto-swap (still shown once owned). */
-    autoSwapCost: number;
 };
 
 /**

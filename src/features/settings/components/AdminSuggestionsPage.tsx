@@ -10,7 +10,7 @@ import { formatDateTime } from "@/features/market/market";
 import { usePlaceDraft } from "@/features/places/placeDraft";
 import { distanceMetres } from "@/features/location/distance";
 import { SUGGESTION_KINDS, suggestionKindInfo, type SuggestionKind } from "@/features/suggestions/suggestionKinds";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoAdminAdjustSuggestionRequest,
@@ -72,7 +72,7 @@ export default function AdminSuggestionsPage({ onShowOnMap, onOpenPlaceEditor, o
 
     const review = async (id: string, request: GeoAdminReviewSuggestionRequest, success: string) => {
         try {
-            await api.put(GEO_API_PATHS.admin.suggestion.replace(":suggestionId", encodeURIComponent(id)), request);
+            await api.put(apiPath(GEO_API_PATHS.admin.suggestion, { suggestionId: id }), request);
             showToast(success, "success");
             setVersion((current) => current + 1);
         } catch (error) {
@@ -82,7 +82,7 @@ export default function AdminSuggestionsPage({ onShowOnMap, onOpenPlaceEditor, o
 
     const adjust = async (id: string, request: GeoAdminAdjustSuggestionRequest, success: string) => {
         try {
-            await api.patch(GEO_API_PATHS.admin.suggestion.replace(":suggestionId", encodeURIComponent(id)), request);
+            await api.patch(apiPath(GEO_API_PATHS.admin.suggestion, { suggestionId: id }), request);
             showToast(success, "success");
             setVersion((current) => current + 1);
         } catch (error) {

@@ -6,7 +6,6 @@ import {
     ScrollView,
     Text,
     TextInput,
-    View,
 } from "react-native";
 import Button from "@/components/Button/Button";
 import TextField from "@/components/TextField/TextField";
@@ -125,34 +124,28 @@ function Field({ label, ...input }: { label: string } & React.ComponentProps<typ
 
 /** A Field with an eye toggle, to check what was typed before submitting. */
 function PasswordField({ label, ...input }: { label: string } & React.ComponentProps<typeof TextInput>) {
-    const styles = useStyles();
     const palette = useTheme();
     const [isVisible, setIsVisible] = useState(false);
 
     return (
-        <View style={styles.field}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={styles.passwordRow}>
-                <TextInput
-                    {...input}
-                    secureTextEntry={!isVisible}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    placeholderTextColor={palette.textMuted}
-                    style={[styles.input, styles.passwordInput]}
-                    accessibilityLabel={label}
-                />
+        <TextField
+            {...input}
+            label={label}
+            secureTextEntry={!isVisible}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel={label}
+            trailing={
                 <Pressable
                     onPress={() => setIsVisible((visible) => !visible)}
-                    style={styles.eye}
                     accessibilityRole="button"
                     accessibilityLabel={isVisible ? "Hide password" : "Show password"}
                     hitSlop={8}
                 >
                     <Icon name={isVisible ? "semi-closed-eye" : "eyeball"} size={22} color={palette.textMuted} />
                 </Pressable>
-            </View>
-        </View>
+            }
+        />
     );
 }
 
@@ -171,40 +164,8 @@ const useStyles = createStyles((p) => ({
         fontFamily: FONTS.bodyHeavy,
         marginBottom: 8,
     },
-    field: {
-        gap: 6,
-    },
-    label: {
-        color: p.textMuted,
-        fontSize: 12,
-        fontFamily: FONTS.bodyBold,
-        textTransform: "uppercase",
-        letterSpacing: 0.8,
-    },
-    // Matches TextField; the password field draws its own for the eye toggle.
-    input: {
-        color: p.text,
-        fontFamily: FONTS.bodyBold,
-        fontSize: 16,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderRadius: 14,
-        borderWidth: 2.5,
-        borderColor: p.outline,
-        backgroundColor: p.background,
-    },
     submit: {
         marginTop: 8,
-    },
-    passwordRow: {
-        justifyContent: "center",
-    },
-    passwordInput: {
-        paddingRight: 48,
-    },
-    eye: {
-        position: "absolute",
-        right: 12,
     },
     error: {
         color: p.danger,

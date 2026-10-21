@@ -8,12 +8,11 @@ import SearchField from "@/components/SearchField/SearchField";
 import { showToast } from "@/components/Toast/toastStore";
 import { formatCoins, formatDateTime } from "@/features/market/market";
 import { usePlayerStore } from "@/features/player/playerStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import { GEO_API_PATHS, type GeoAdminPlayer, type GeoAdminPlayerDetail } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 
-const fill = (path: string, playerId: string) => path.replace(":playerId", encodeURIComponent(playerId));
 
 /**
  * Game admins: find a player, then see their coins and recent ledger, give or
@@ -86,7 +85,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
     useEffect(() => {
         let isCurrent = true;
-        api.get<GeoAdminPlayerDetail>(fill(GEO_API_PATHS.admin.player, playerId))
+        api.get<GeoAdminPlayerDetail>(apiPath(GEO_API_PATHS.admin.player, { playerId }))
             .then((detail) => isCurrent && setPlayer(detail))
             .catch((error) => showToast(toErrorMessage(error), "error"));
         return () => {
@@ -136,7 +135,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                     disabled={coins < 1}
                     onPress={() =>
                         void change(
-                            () => api.post(fill(GEO_API_PATHS.admin.playerCoins, player.id), { amount: coins, note: "admin page" }),
+                            () => api.post(apiPath(GEO_API_PATHS.admin.playerCoins, { playerId: player.id }), { amount: coins, note: "admin page" }),
                             `Gave ${formatCoins(coins)} coins`,
                         )
                     }
@@ -146,7 +145,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                     disabled={coins < 1}
                     onPress={() =>
                         void change(
-                            () => api.post(fill(GEO_API_PATHS.admin.playerCoins, player.id), { amount: -coins, note: "admin page" }),
+                            () => api.post(apiPath(GEO_API_PATHS.admin.playerCoins, { playerId: player.id }), { amount: -coins, note: "admin page" }),
                             `Took ${formatCoins(coins)} coins`,
                         )
                     }
@@ -160,7 +159,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                         onPress={() =>
                             void change(
                                 () =>
-                                    api.put(fill(GEO_API_PATHS.admin.playerRole, player.id), {
+                                    api.put(apiPath(GEO_API_PATHS.admin.playerRole, { playerId: player.id }), {
                                         role: player.role === "admin" ? "player" : "admin",
                                     }),
                                 "Role changed",
@@ -172,7 +171,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                         danger={!player.bannedAt}
                         onPress={() =>
                             void change(
-                                () => api.post(fill(GEO_API_PATHS.admin.playerBan, player.id), { banned: !player.bannedAt }),
+                                () => api.post(apiPath(GEO_API_PATHS.admin.playerBan, { playerId: player.id }), { banned: !player.bannedAt }),
                                 player.bannedAt ? "Suspension lifted" : "Suspended, and signed out everywhere",
                             )
                         }

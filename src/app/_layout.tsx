@@ -4,6 +4,7 @@ import { Nunito_700Bold } from "@expo-google-fonts/nunito/700Bold";
 import { Nunito_800ExtraBold } from "@expo-google-fonts/nunito/800ExtraBold";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ToastHost from "@/components/Toast/ToastHost";
 import SignInScreen from "@/features/auth/components/SignInScreen";
@@ -12,7 +13,7 @@ import { configureNotifications } from "@/features/notifications/notifications";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { TRANSITION_DURATION_MS } from "@/theme/layout";
 import { PALETTES } from "@/theme/palette";
-import { MoodProvider } from "@/theme/theme";
+import { FollowScreenMood } from "@/theme/theme";
 
 /**
  * Root layout. Every screen in `src/app/` renders inside this.
@@ -41,29 +42,33 @@ export default function RootLayout() {
     return (
         <SafeAreaProvider>
             {/* Day unless a screen says otherwise: fights and dungeons are
-                dusk, and the map and character screen follow the phone's light or dark mode. */}
-            <MoodProvider mood="day">
-                {/* Nothing else is reachable until signed in. */}
-                {isSignedOut ? (
-                    <SignInScreen />
-                ) : (
-                    <Stack
-                        screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: PALETTES.day.background },
-                            animation: "fade",
-                            // The default is 500ms, which feels sluggish for screens
-                            // you flick in and out of mid-walk. iOS only — the prop is
-                            // ignored on Android, where `fade` uses the platform
-                            // default, so the two will not feel identical.
-                            animationDuration: TRANSITION_DURATION_MS,
-                        }}
-                    />
-                )}
-                {/* Over every screen. Modals mount their own, since a native
-                    modal covers this one. */}
+                dusk, and the map, character screen and farm follow the phone's
+                light or dark mode. Day is the context default, so no provider
+                here: a root one would mount after the screens' and cover them
+                in the stack FollowScreenMood reads. */}
+            <StatusBar style="dark" />
+            {/* Nothing else is reachable until signed in. */}
+            {isSignedOut ? (
+                <SignInScreen />
+            ) : (
+                <Stack
+                    screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: PALETTES.day.background },
+                        animation: "fade",
+                        // The default is 500ms, which feels sluggish for screens
+                        // you flick in and out of mid-walk. iOS only — the prop is
+                        // ignored on Android, where `fade` uses the platform
+                        // default, so the two will not feel identical.
+                        animationDuration: TRANSITION_DURATION_MS,
+                    }}
+                />
+            )}
+            {/* Over every screen, in the mood of the one on top. Modals mount
+                their own, since a native modal covers this one. */}
+            <FollowScreenMood>
                 <ToastHost />
-            </MoodProvider>
+            </FollowScreenMood>
         </SafeAreaProvider>
     );
 }

@@ -95,39 +95,49 @@ function FishingRunScreenContent() {
     // Open (or resume) the Run once per visit, and leave it when the screen
     // goes, however it goes: a fishing Run only lives while you're at the spot.
     const runId = useRef<string | null>(null);
+    const isGone = useRef(false);
+    const leaveRun = useCallback(
+        (id: string) =>
+            void fishingApi
+                .leave(id)
+                .catch(() => {})
+                // The fishing hand is free again.
+                .finally(() => void refreshPlayer()),
+        [refreshPlayer],
+    );
     useEffect(() => {
         if (!isPlayerReady || runId.current) return;
         runId.current = "opening";
         fishingApi
             .start(tier)
             .then((opened) => {
+                // Left while it was opening: leave it now, or it holds the hand until it goes stale.
+                if (isGone.current) return leaveRun(opened.id);
                 runId.current = opened.id;
                 setRun(opened);
                 void refreshAfterRunStart();
             })
             .catch((error: unknown) => setProblem(toErrorMessage(error)));
-    }, [isPlayerReady, tier]);
-    useEffect(
-        () => () => {
+    }, [isPlayerReady, tier, leaveRun]);
+    useEffect(() => {
+        isGone.current = false;
+        return () => {
+            isGone.current = true;
             const id = runId.current;
-            if (id && id !== "opening") {
-                void fishingApi
-                    .leave(id)
-                    .catch(() => {})
-                    // The fishing hand is free again.
-                    .finally(() => void refreshPlayer());
-            }
-        },
-        [refreshPlayer],
-    );
+            if (id && id !== "opening") leaveRun(id);
+        };
+    }, [leaveRun]);
 
+    // State lags a render behind; this catches a second tap in the same frame.
+    const isSending = useRef(false);
     const act = useCallback(
         async (action: GeoFishingAction) => {
-            if (!run || busy) return;
+            if (!run || busy || isSending.current) return;
             if (action.type === "cast" && !atSpot) {
                 showToast("Too far from the water to cast.", "error");
                 return;
             }
+            isSending.current = true;
             setBusy(true);
             if (action.type === "cast") setBiting(false);
             try {
@@ -146,6 +156,7 @@ function FishingRunScreenContent() {
             } catch (error) {
                 showToast(toErrorMessage(error), "error");
             } finally {
+                isSending.current = false;
                 setBusy(false);
             }
         },

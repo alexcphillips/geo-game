@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScrollView, Text } from "react-native";
 import Button from "@/components/Button/Button";
 import { Hint } from "@/components/Text/Text";
-import { Field, QuantityInput } from "@/features/market/components/FormFields";
+import { Field, QuantityInput } from "@/components/NumberField/NumberField";
 import { formatCoins } from "@/features/market/market";
 import { createStyles } from "@/theme/theme";
 import { craftingActions } from "../craftingActions";

@@ -7,7 +7,7 @@ import ItemTile from "@/features/inventory/components/ItemTile";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import { ENDING_SOON_MS, formatCoins, formatTimeLeft, timeLeft, type MarketListing } from "../market";
-import { Field, NumberInput } from "./FormFields";
+import { Field, NumberInput } from "@/components/NumberField/NumberField";
 import { SaleBadge } from "./MarketRows";
 
 type AuctionListing = Extract<MarketListing, { type: "auction" }>;

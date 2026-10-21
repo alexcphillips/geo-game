@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, apiPath } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoDungeonMoveRequest,
@@ -7,7 +7,6 @@ import {
 } from "@/lib/geo/contracts";
 
 const paths = GEO_API_PATHS.dungeonRuns;
-const withId = (path: string, dungeonRunId: string) => path.replace(":dungeonRunId", encodeURIComponent(dungeonRunId));
 
 /**
  * Every call a dungeon map makes. The server holds the map and checks every
@@ -17,15 +16,15 @@ export const dungeonRunsApi = {
     /** The dungeon in progress, if any. */
     active: () => api.get<GeoDungeonRunResponse | null>(paths.active),
     /** One dungeon run, finished or not: how it ended. */
-    one: (dungeonRunId: string) => api.get<GeoDungeonRunResponse>(withId(paths.one, dungeonRunId)),
+    one: (dungeonRunId: string) => api.get<GeoDungeonRunResponse>(apiPath(paths.one, { dungeonRunId })),
     move: (dungeonRunId: string, roomId: number) => {
         const request: GeoDungeonMoveRequest = { roomId };
-        return api.post<GeoDungeonRunResponse>(withId(paths.move, dungeonRunId), request);
+        return api.post<GeoDungeonRunResponse>(apiPath(paths.move, { dungeonRunId }), request);
     },
     answer: (dungeonRunId: string, answer: number) => {
         const request: GeoDungeonPuzzleRequest = { answer };
-        return api.post<GeoDungeonRunResponse>(withId(paths.puzzle, dungeonRunId), request);
+        return api.post<GeoDungeonRunResponse>(apiPath(paths.puzzle, { dungeonRunId }), request);
     },
     /** Leaving counts as failing the dungeon. */
-    leave: (dungeonRunId: string) => api.post<GeoDungeonRunResponse>(withId(paths.leave, dungeonRunId)),
+    leave: (dungeonRunId: string) => api.post<GeoDungeonRunResponse>(apiPath(paths.leave, { dungeonRunId })),
 };

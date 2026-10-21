@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, apiPath } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoFishingAction,
@@ -6,7 +6,6 @@ import {
     type GeoFishingTier,
 } from "@/lib/geo/contracts";
 
-const withRunId = (path: string, runId: string) => path.replace(":runId", encodeURIComponent(runId));
 
 /** Every call a fishing Run makes. All throw ApiError with the server's reason. */
 export const fishingApi = {
@@ -15,7 +14,7 @@ export const fishingApi = {
 
     /** One step: cast, wait, strike, play a card… */
     act: (runId: string, action: GeoFishingAction) =>
-        api.post<GeoFishingRunView>(withRunId(GEO_API_PATHS.fishing.actions, runId), action),
+        api.post<GeoFishingRunView>(apiPath(GEO_API_PATHS.fishing.actions, { runId }), action),
 
-    leave: (runId: string) => api.post<void>(withRunId(GEO_API_PATHS.fishing.leave, runId)),
+    leave: (runId: string) => api.post<void>(apiPath(GEO_API_PATHS.fishing.leave, { runId })),
 };

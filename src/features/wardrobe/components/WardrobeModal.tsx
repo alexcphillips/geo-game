@@ -13,7 +13,7 @@ import { useCoins, useInventory, useWardrobe } from "@/features/player/usePlayer
 import { GEO_LOADOUT_NAME_MAX, type GeoLoadout, type GeoLoadoutActivity, type GeoWardrobe } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
-import { AUTO_ACTIVITIES, autoSwapWorks, defaultLoadoutName } from "../wardrobe";
+import { AUTO_ACTIVITIES, defaultLoadoutName } from "../wardrobe";
 
 type WardrobeModalProps = {
     onClose: () => void;
@@ -24,7 +24,7 @@ type WardrobeModalProps = {
 /**
  * The wardrobe in full: every loadout slot as a card with what it holds,
  * to wear, rename, save what's worn into, clear, or tag for auto-swap; then
- * the upgrades, bought here (more slots, auto-swap).
+ * more slots, bought here.
  */
 export default function WardrobeModal({ onClose, focusSlot }: WardrobeModalProps) {
     const styles = useStyles();
@@ -52,7 +52,6 @@ export default function WardrobeModal({ onClose, focusSlot }: WardrobeModalProps
                                 slot={slot}
                                 loadout={wardrobe.loadouts.find((entry) => entry.slot === slot)}
                                 isActive={wardrobe.activeSlot === slot}
-                                autoSwap={wardrobe.autoSwap}
                             />
                         </View>
                     ))}
@@ -67,10 +66,9 @@ type LoadoutCardProps = {
     slot: number;
     loadout: GeoLoadout | undefined;
     isActive: boolean;
-    autoSwap: boolean;
 };
 
-function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
+function LoadoutCard({ slot, loadout, isActive }: LoadoutCardProps) {
     const styles = useStyles();
     const palette = useTheme();
     const inventory = useInventory();
@@ -144,14 +142,12 @@ function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
                     <Text style={styles.autoLabel}>Auto-swap for</Text>
                     {[{ id: null, label: "Off" } as const, ...AUTO_ACTIVITIES].map((option) => {
                         const isOn = loadout.autoFor === option.id;
-                        // Combat's tag needs auto-swap bought; one set already shows.
-                        const isLocked = option.id !== null && !isOn && !autoSwapWorks(option.id, autoSwap);
                         return (
                             <Pressable
                                 key={option.label}
                                 onPress={() => !isOn && void run(() => playerActions.setLoadoutAuto(slot, option.id as GeoLoadoutActivity | null))}
-                                disabled={isBusy || isLocked}
-                                style={[styles.autoChip, isOn && styles.autoChipOn, isLocked && styles.autoChipLocked]}
+                                disabled={isBusy}
+                                style={[styles.autoChip, isOn && styles.autoChipOn]}
                                 accessibilityRole="radio"
                                 accessibilityState={{ checked: isOn }}
                             >
@@ -216,25 +212,6 @@ function Upgrades({ wardrobe }: { wardrobe: GeoWardrobe }) {
                 )}
             </Panel>
 
-            <Panel compact style={styles.upgrade}>
-                <View style={styles.upgradeText}>
-                    <Text style={styles.upgradeName}>Combat auto-swap</Text>
-                    <Text style={styles.muted}>
-                        Your Fishing loadout goes on by itself when you fish. Unlock this to tag one for Combat too,
-                        worn as a fight starts.
-                    </Text>
-                </View>
-                {wardrobe.autoSwap ? (
-                    <Text style={styles.owned}>Owned</Text>
-                ) : (
-                    <Action
-                        label={`${formatCoins(wardrobe.autoSwapCost)}`}
-                        coins
-                        disabled={isBusy || coins < wardrobe.autoSwapCost}
-                        onPress={() => buy("Unlock combat auto-swap?", wardrobe.autoSwapCost, playerActions.buyAutoSwap)}
-                    />
-                )}
-            </Panel>
         </View>
     );
 }
@@ -323,9 +300,6 @@ const useStyles = createStyles((p) => ({
     autoChipOn: {
         borderColor: p.ember,
         backgroundColor: p.ember,
-    },
-    autoChipLocked: {
-        opacity: 0.4,
     },
     autoChipText: {
         color: p.text,

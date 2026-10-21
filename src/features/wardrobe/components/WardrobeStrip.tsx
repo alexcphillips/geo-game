@@ -6,7 +6,7 @@ import { useWardrobe } from "@/features/player/usePlayer";
 import type { GeoLoadout } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
-import { AUTO_ICONS, autoSwapWorks, defaultLoadoutName } from "../wardrobe";
+import { AUTO_ICONS, defaultLoadoutName } from "../wardrobe";
 
 type WardrobeStripProps = {
     /** Hold a loadout, or tap the cog: manage the wardrobe, open on that slot if given. */
@@ -42,7 +42,6 @@ export default function WardrobeStrip({ onManage }: WardrobeStripProps) {
                         loadout={loadout}
                         slot={slot}
                         isActive={wardrobe.activeSlot === slot}
-                        autoSwapBought={wardrobe.autoSwap}
                         isBusy={busySlot === slot}
                         disabled={busySlot !== null}
                         onPress={() => {
@@ -70,17 +69,16 @@ type LoadoutChipProps = {
     loadout: GeoLoadout | undefined;
     slot: number;
     isActive: boolean;
-    autoSwapBought: boolean;
     isBusy: boolean;
     disabled: boolean;
     onPress: () => void;
     onLongPress: () => void;
 };
 
-function LoadoutChip({ loadout, slot, isActive, autoSwapBought, isBusy, disabled, onPress, onLongPress }: LoadoutChipProps) {
+function LoadoutChip({ loadout, slot, isActive, isBusy, disabled, onPress, onLongPress }: LoadoutChipProps) {
     const styles = useStyles();
     const palette = useTheme();
-    const autoIcon = loadout?.autoFor && autoSwapWorks(loadout.autoFor, autoSwapBought) ? AUTO_ICONS[loadout.autoFor] : null;
+    const autoIcon = loadout?.autoFor ? AUTO_ICONS[loadout.autoFor] : null;
 
     return (
         <Pressable

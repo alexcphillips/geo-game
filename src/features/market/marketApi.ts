@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { showToast } from "@/components/Toast/toastStore";
 import { usePlayerStore } from "@/features/player/playerStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
+import { latestOnly, usePolling } from "@/lib/usePolling";
 import {
     GEO_API_PATHS,
     type GeoCreateListingRequest,
@@ -21,8 +22,6 @@ import {
 /** While the Market is open, it reads the server this often, so bids and sales show up. */
 const POLL_MS = 15_000;
 
-const fill = (path: string, params: Record<string, string>) =>
-    Object.entries(params).reduce((result, [key, value]) => result.replace(`:${key}`, encodeURIComponent(value)), path);
 
 async function fetchMarket(): Promise<{ market: GeoMarketResponse; own: GeoOwnListing[] } | { error: string }> {
     try {
@@ -60,8 +59,12 @@ export function useMarketData(): MarketData {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // A poll still out when a trade's refresh lands is older; it's dropped.
+    const [reads] = useState(latestOnly);
     const refresh = useCallback(async () => {
+        const ticket = reads.start();
         const result = await fetchMarket();
+        if (!reads.isCurrent(ticket)) return;
         if ("error" in result) {
             setError(result.error);
         } else {
@@ -70,29 +73,9 @@ export function useMarketData(): MarketData {
             setError(null);
         }
         setIsLoading(false);
-    }, []);
+    }, [reads]);
 
-    useEffect(() => {
-        let isOpen = true;
-        const load = () =>
-            fetchMarket().then((result) => {
-                if (!isOpen) return;
-                if ("error" in result) {
-                    setError(result.error);
-                } else {
-                    setMarket(result.market);
-                    setOwn(result.own);
-                    setError(null);
-                }
-                setIsLoading(false);
-            });
-        void load();
-        const timer = setInterval(() => void load(), POLL_MS);
-        return () => {
-            isOpen = false;
-            clearInterval(timer);
-        };
-    }, []);
+    usePolling(refresh, POLL_MS);
 
     return useMemo(
         () => ({
@@ -130,25 +113,25 @@ export const marketActions = {
         trade(() => api.post(GEO_API_PATHS.market.listings, request), `${itemName} is listed`),
 
     buy: (listingId: string, expectedPrice: number, itemName: string) =>
-        trade(() => api.post(fill(GEO_API_PATHS.market.buy, { listingId }), { expectedPrice }), `Bought ${itemName}`),
+        trade(() => api.post(apiPath(GEO_API_PATHS.market.buy, { listingId }), { expectedPrice }), `Bought ${itemName}`),
 
     bid: (listingId: string, amount: number) =>
         trade(
-            () => api.post(fill(GEO_API_PATHS.market.bids, { listingId }), { amount }),
+            () => api.post(apiPath(GEO_API_PATHS.market.bids, { listingId }), { amount }),
             `Bid ${amount.toLocaleString()} placed. Your coins are held until you're outbid or win.`,
         ),
 
     buyStack: (itemId: string, quantity: number, expectedTotal: number, itemName: string) =>
         trade(
-            () => api.post(fill(GEO_API_PATHS.market.buyStack, { itemId }), { quantity, expectedTotal }),
+            () => api.post(apiPath(GEO_API_PATHS.market.buyStack, { itemId }), { quantity, expectedTotal }),
             `Bought ${quantity.toLocaleString()} ${itemName}`,
         ),
 
     cancel: (listingId: string) =>
-        trade(() => api.post(fill(GEO_API_PATHS.market.cancel, { listingId })), "Listing cancelled. The item is back in your inventory."),
+        trade(() => api.post(apiPath(GEO_API_PATHS.market.cancel, { listingId })), "Listing cancelled. The item is back in your inventory."),
 
     collect: (listingId: string, amount: number) =>
-        trade(() => api.post(fill(GEO_API_PATHS.market.collect, { listingId })), `Collected ${amount.toLocaleString()} coins`),
+        trade(() => api.post(apiPath(GEO_API_PATHS.market.collect, { listingId })), `Collected ${amount.toLocaleString()} coins`),
 
     collectAll: (amount: number) =>
         trade(() => api.post(GEO_API_PATHS.market.collectAll), `Collected ${amount.toLocaleString()} coins`),

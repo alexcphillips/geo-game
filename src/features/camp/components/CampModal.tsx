@@ -6,7 +6,7 @@ import Modal from "@/components/Modal/Modal";
 import Panel from "@/components/Panel/Panel";
 import { Hint, Label, SectionTitle, Title } from "@/components/Text/Text";
 import type { PackKind } from "@/features/lunchbox/packs";
-import { NumberInput } from "@/features/market/components/FormFields";
+import { NumberInput } from "@/components/NumberField/NumberField";
 import { formatCoins } from "@/features/market/market";
 import { useBankCoins, useCoins } from "@/features/player/usePlayer";
 import { playerActions } from "@/features/player/playerStore";

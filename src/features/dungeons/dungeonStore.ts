@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
 import { showToast } from "@/components/Toast/toastStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
+import { latestOnly, usePolling } from "@/lib/usePolling";
 import {
     GEO_API_PATHS,
     type GeoCreateDungeonLobbyRequest,
@@ -15,7 +16,6 @@ import {
 /** Where a started lobby takes the player: their dungeon map, or a lone boss fight. */
 export type DungeonEntry = "map" | "fight";
 
-const withLobbyId = (path: string, lobbyId: string) => path.replace(":lobbyId", encodeURIComponent(lobbyId));
 
 type DungeonState = {
     /** The server's last word on the dungeon menu. Null until first read. */
@@ -40,29 +40,36 @@ type DungeonState = {
  * ApiError with the server's reason.
  */
 export const useDungeonStore = create<DungeonState>()((set, get) => {
-    const adopt = (data: GeoDungeonsResponse) => set({ data, error: null });
+    // A poll sent before a join or leave can land after its answer; it's dropped.
+    const reads = latestOnly();
+    const adopt = (data: GeoDungeonsResponse) => {
+        reads.start();
+        set({ data, error: null });
+    };
 
     return {
         data: null,
         error: null,
         leftOwnLobby: false,
         refresh: async () => {
+            const ticket = reads.start();
             try {
-                adopt(await api.get<GeoDungeonsResponse>(GEO_API_PATHS.dungeons.root));
+                const data = await api.get<GeoDungeonsResponse>(GEO_API_PATHS.dungeons.root);
+                if (reads.isCurrent(ticket)) set({ data, error: null });
             } catch (error) {
-                set({ error: toErrorMessage(error) });
+                if (reads.isCurrent(ticket)) set({ error: toErrorMessage(error) });
             }
         },
         create: async (request) => adopt(await api.post<GeoDungeonsResponse>(GEO_API_PATHS.dungeons.lobbies, request)),
         join: async (lobbyId, entrance) =>
-            adopt(await api.post<GeoDungeonsResponse>(withLobbyId(GEO_API_PATHS.dungeons.join, lobbyId), entrance)),
+            adopt(await api.post<GeoDungeonsResponse>(apiPath(GEO_API_PATHS.dungeons.join, { lobbyId }), entrance)),
         leave: async (lobbyId) => {
-            const data = await api.post<GeoDungeonsResponse>(withLobbyId(GEO_API_PATHS.dungeons.leave, lobbyId));
+            const data = await api.post<GeoDungeonsResponse>(apiPath(GEO_API_PATHS.dungeons.leave, { lobbyId }));
             set({ leftOwnLobby: true });
             adopt(data);
         },
         start: async (lobbyId) => {
-            const started = await api.post<GeoStartDungeonLobbyResponse>(withLobbyId(GEO_API_PATHS.dungeons.start, lobbyId));
+            const started = await api.post<GeoStartDungeonLobbyResponse>(apiPath(GEO_API_PATHS.dungeons.start, { lobbyId }));
             set({ leftOwnLobby: true });
             void get().refresh();
             return started;
@@ -88,11 +95,7 @@ export function useDungeonPolling(isMenuOpen: boolean, isEnabled = true) {
         if (isEnabled) void refresh();
     }, [isEnabled, refresh]);
 
-    useEffect(() => {
-        if (!isEnabled || (!isMenuOpen && !isInLobby)) return;
-        const timer = setInterval(() => void refresh(), isMenuOpen ? OPEN_POLL_MS : LOBBY_POLL_MS);
-        return () => clearInterval(timer);
-    }, [isEnabled, isMenuOpen, isInLobby, refresh]);
+    usePolling(refresh, isMenuOpen ? OPEN_POLL_MS : LOBBY_POLL_MS, isEnabled && (isMenuOpen || isInLobby));
 }
 
 /**

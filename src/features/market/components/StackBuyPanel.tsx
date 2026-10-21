@@ -5,7 +5,7 @@ import { Hint } from "@/components/Text/Text";
 import { geoStackCost } from "@/lib/geo/contracts";
 import { createStyles } from "@/theme/theme";
 import { formatCoins, totalForSale, type MarketProduct } from "../market";
-import { Field, NumberInput } from "./FormFields";
+import { Field, NumberInput } from "@/components/NumberField/NumberField";
 
 /**
  * Buying from a stack: how many, what that costs from the cheapest offers up,

@@ -6,7 +6,7 @@ import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
 import { FEEDBACK_STATUSES, feedbackKindInfo, feedbackStatusInfo } from "@/features/feedback/feedback";
 import { formatDateTime } from "@/features/market/market";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import {
     GEO_API_PATHS,
     GEO_MAIL_BODY_MAX,
@@ -20,7 +20,6 @@ import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import { Action } from "./AdminSuggestionsPage";
 
-const feedbackPath = (path: string, id: string) => path.replace(":feedbackId", encodeURIComponent(id));
 
 /**
  * Game admins: players' feedback, by status. Each can be moved along
@@ -94,14 +93,14 @@ export default function AdminFeedbackPage() {
                             onSetStatus={(next) => {
                                 const request: GeoAdminFeedbackStatusRequest = { status: next };
                                 void change(
-                                    () => api.patch(feedbackPath(GEO_API_PATHS.admin.feedbackItem, item.id), request),
+                                    () => api.patch(apiPath(GEO_API_PATHS.admin.feedbackItem, { feedbackId: item.id }), request),
                                     `Marked ${feedbackStatusInfo(next).label.toLowerCase()}`,
                                 );
                             }}
                             onReply={(body) => {
                                 const request: GeoAdminFeedbackReplyRequest = { body };
                                 return change(
-                                    () => api.post(feedbackPath(GEO_API_PATHS.admin.feedbackReplies, item.id), request),
+                                    () => api.post(apiPath(GEO_API_PATHS.admin.feedbackReplies, { feedbackId: item.id }), request),
                                     "Reply sent to their inbox",
                                 );
                             }}

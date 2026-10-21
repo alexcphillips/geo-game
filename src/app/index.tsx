@@ -56,7 +56,7 @@ import { useCoins } from "@/features/player/usePlayer";
 import { useAdminSettingsStore } from "@/features/settings/adminSettingsStore";
 import { useWorldSpawns } from "@/features/spawns/useWorldSpawns";
 import { showToast } from "@/components/Toast/toastStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
 import {
     GEO_API_PATHS,
     type GeoAdminAdjustSuggestionRequest,
@@ -197,7 +197,7 @@ export default function WorldScreen() {
             try {
                 const request: GeoAdminAdjustSuggestionRequest = review.pin;
                 await api.patch(
-                    GEO_API_PATHS.admin.suggestion.replace(":suggestionId", encodeURIComponent(review.suggestion.id)),
+                    apiPath(GEO_API_PATHS.admin.suggestion, { suggestionId: review.suggestion.id }),
                     request,
                 );
                 showToast("Pin moved", "success");

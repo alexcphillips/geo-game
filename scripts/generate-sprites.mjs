@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deflateSync, inflateSync } from "node:zlib";
+import { decodePng, encodePng } from "./png.mjs";
 
 /**
  * Turns the map sprites in `src/features/spawns/assets/*.png` into data URIs
@@ -20,8 +20,8 @@ import { deflateSync, inflateSync } from "node:zlib";
  * to this repo; set COZY_APP_DIR to point elsewhere): enemies spawn on the map
  * only once their sprite is here.
  *
- * Supports 8-bit RGBA, non-interlaced PNGs — what image editors export by
- * default. Anything else fails loudly rather than producing a broken sprite.
+ * Sprites must have a transparent background. Add Gemini output (white
+ * background) with `npm run sprite:add`, which removes it and then runs this.
  *
  * Run with `npm run sprites` after adding or changing a sprite.
  */
@@ -37,71 +37,9 @@ const MARGIN_PX = 4;
 /** Longest side after shrinking: enough for the combat screen (96pt tall) on most phones. */
 const MAX_SIDE_PX = 320;
 
-function decodePng(buffer, name) {
-    let offset = 8;
-    let header = null;
-    const idat = [];
+function cropToContent({ width, height, pixels, hasAlpha }, name) {
+    if (!hasAlpha) throw new Error(`${name}: has no transparency. Add it with \`npm run sprite:add\` instead.`);
 
-    while (offset < buffer.length) {
-        const length = buffer.readUInt32BE(offset);
-        const type = buffer.toString("ascii", offset + 4, offset + 8);
-        const body = buffer.subarray(offset + 8, offset + 8 + length);
-        offset += 12 + length;
-
-        if (type === "IHDR") {
-            header = {
-                width: body.readUInt32BE(0),
-                height: body.readUInt32BE(4),
-                bitDepth: body[8],
-                colorType: body[9],
-                interlace: body[12],
-            };
-        } else if (type === "IDAT") {
-            idat.push(body);
-        }
-    }
-
-    if (!header || header.bitDepth !== 8 || header.colorType !== 6 || header.interlace !== 0) {
-        throw new Error(`${name}: must be an 8-bit RGBA, non-interlaced PNG.`);
-    }
-
-    const { width, height } = header;
-    const stride = width * 4;
-    const raw = inflateSync(Buffer.concat(idat));
-    const pixels = Buffer.alloc(stride * height);
-    let previous = Buffer.alloc(stride);
-
-    for (let y = 0, i = 0; y < height; y++) {
-        const filter = raw[i++];
-        const line = Buffer.from(raw.subarray(i, i + stride));
-        i += stride;
-
-        for (let x = 0; x < stride; x++) {
-            const left = x >= 4 ? line[x - 4] : 0;
-            const up = previous[x];
-            const upLeft = x >= 4 ? previous[x - 4] : 0;
-
-            if (filter === 1) line[x] = (line[x] + left) & 255;
-            else if (filter === 2) line[x] = (line[x] + up) & 255;
-            else if (filter === 3) line[x] = (line[x] + ((left + up) >> 1)) & 255;
-            else if (filter === 4) {
-                const p = left + up - upLeft;
-                const pa = Math.abs(p - left);
-                const pb = Math.abs(p - up);
-                const pc = Math.abs(p - upLeft);
-                const predictor = pa <= pb && pa <= pc ? left : pb <= pc ? up : upLeft;
-                line[x] = (line[x] + predictor) & 255;
-            }
-        }
-
-        line.copy(pixels, y * stride);
-        previous = line;
-    }
-
-    return { width, height, pixels };
-}
-
-function cropToContent({ width, height, pixels }) {
     let minX = width, minY = height, maxX = -1, maxY = -1;
 
     for (let y = 0; y < height; y++) {
@@ -183,70 +121,13 @@ function shrinkToFit(sprite) {
     return { width, height, pixels };
 }
 
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    return c >>> 0;
-});
-
-function crc32(buffer) {
-    let crc = 0xffffffff;
-    for (const byte of buffer) crc = CRC_TABLE[(crc ^ byte) & 255] ^ (crc >>> 8);
-    return (crc ^ 0xffffffff) >>> 0;
-}
-
-function chunk(type, body) {
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(body.length);
-    const typed = Buffer.concat([Buffer.from(type, "ascii"), body]);
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(typed));
-    return Buffer.concat([length, typed, crc]);
-}
-
-function encodePng({ width, height, pixels }) {
-    const header = Buffer.alloc(13);
-    header.writeUInt32BE(width, 0);
-    header.writeUInt32BE(height, 4);
-    header[8] = 8; // bit depth
-    header[9] = 6; // RGBA
-
-    // Paeth (filter 4) on every row: predicting each byte from its
-    // neighbours compresses illustrated art far better than raw rows.
-    const stride = width * 4;
-    const raw = Buffer.alloc((stride + 1) * height);
-    for (let y = 0; y < height; y++) {
-        const out = y * (stride + 1);
-        raw[out] = 4;
-        for (let x = 0; x < stride; x++) {
-            const at = y * stride + x;
-            const left = x >= 4 ? pixels[at - 4] : 0;
-            const up = y > 0 ? pixels[at - stride] : 0;
-            const upLeft = x >= 4 && y > 0 ? pixels[at - stride - 4] : 0;
-            const p = left + up - upLeft;
-            const pa = Math.abs(p - left);
-            const pb = Math.abs(p - up);
-            const pc = Math.abs(p - upLeft);
-            const predictor = pa <= pb && pa <= pc ? left : pb <= pc ? up : upLeft;
-            raw[out + 1 + x] = (pixels[at] - predictor) & 255;
-        }
-    }
-
-    return Buffer.concat([
-        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-        chunk("IHDR", header),
-        chunk("IDAT", deflateSync(raw, { level: 9 })),
-        chunk("IEND", Buffer.alloc(0)),
-    ]);
-}
-
 const names = [];
 const entries = readdirSync(assetsDir)
     .filter((file) => file.endsWith(".png"))
     .sort()
     .map((file) => {
         const name = basename(file, ".png");
-        const sprite = shrinkToFit(cropToContent(decodePng(readFileSync(join(assetsDir, file)), file)));
+        const sprite = shrinkToFit(cropToContent(decodePng(readFileSync(join(assetsDir, file)), file), file));
         const uri = `data:image/png;base64,${encodePng(sprite).toString("base64")}`;
         console.log(`${name}: ${sprite.width}×${sprite.height}, ${Math.round(uri.length / 1024)} KB`);
         names.push(name);

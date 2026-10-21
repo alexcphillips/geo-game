@@ -1,6 +1,7 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, type ReactNode } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { create } from "zustand";
 import { INK, PALETTES, type Mood, type Palette } from "./palette";
 
 /**
@@ -19,18 +20,45 @@ type MoodProviderProps = {
 };
 
 /**
+ * The moods of the screens' providers, in the order they mounted. Lets
+ * things drawn above every screen (the root toast host) match the screen on
+ * top, which they can't read from context.
+ */
+const useScreenMoods = create<{ entries: { id: string; mood: Mood }[] }>(() => ({ entries: [] }));
+
+/**
  * Sets the mood for everything inside, and the status bar to match: dark
  * icons on parchment, light ones on dusk. The status bar is a stack, so the
  * innermost mounted provider wins and leaving a screen restores the one
- * under it.
+ * under it. Screen moods work the same way (see `FollowScreenMood`).
  */
 export function MoodProvider({ mood, children }: MoodProviderProps) {
+    const id = useId();
+    useEffect(() => {
+        useScreenMoods.setState(({ entries }) => ({ entries: [...entries, { id, mood: "day" }] }));
+        return () => useScreenMoods.setState(({ entries }) => ({ entries: entries.filter((e) => e.id !== id) }));
+    }, [id]);
+    // In place, so a screen that follows the phone keeps its spot in the stack.
+    useEffect(() => {
+        useScreenMoods.setState(({ entries }) => ({ entries: entries.map((e) => (e.id === id ? { id, mood } : e)) }));
+    }, [id, mood]);
+
     return (
         <MoodContext.Provider value={mood}>
             <StatusBar style={mood === "dusk" ? "light" : "dark"} />
             {children}
         </MoodContext.Provider>
     );
+}
+
+/**
+ * Draws its children in the mood of the screen on top (the innermost mounted
+ * `MoodProvider`), or day when none is. For things outside every screen,
+ * like the root toast host. It doesn't add to the stack itself.
+ */
+export function FollowScreenMood({ children }: { children: ReactNode }) {
+    const mood = useScreenMoods((state) => state.entries.at(-1)?.mood ?? "day");
+    return <MoodContext.Provider value={mood}>{children}</MoodContext.Provider>;
 }
 
 export function useMood(): Mood {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { showToast } from "@/components/Toast/toastStore";
-import { api, toErrorMessage } from "@/lib/api";
+import { api, apiPath, toErrorMessage } from "@/lib/api";
+import { latestOnly, usePolling } from "@/lib/usePolling";
 import { GEO_API_PATHS, type GeoMayorResponse } from "@/lib/geo/contracts";
 import { toCandidate, toMayor, type Candidate, type Mayor } from "./mayors";
 
@@ -50,6 +51,8 @@ export function useMayor(): MayorState {
     const response = reading?.response ?? null;
     const clockOffsetMs = reading?.clockOffsetMs ?? 0;
 
+    // A poll still out when a vote's answer lands is older; it's dropped.
+    const [reads] = useState(latestOnly);
     const adopt = useCallback((result: Reading | { error: string }) => {
         if ("error" in result) setError(result.error);
         else {
@@ -58,18 +61,13 @@ export function useMayor(): MayorState {
         }
     }, []);
 
-    const refresh = useCallback(async () => adopt(await fetchMayor()), [adopt]);
+    const refresh = useCallback(async () => {
+        const ticket = reads.start();
+        const result = await fetchMayor();
+        if (reads.isCurrent(ticket)) adopt(result);
+    }, [adopt, reads]);
 
-    useEffect(() => {
-        let isOpen = true;
-        const load = () => fetchMayor().then((result) => isOpen && adopt(result));
-        void load();
-        const timer = setInterval(() => void load(), POLL_MS);
-        return () => {
-            isOpen = false;
-            clearInterval(timer);
-        };
-    }, [adopt]);
+    usePolling(refresh, POLL_MS);
 
     // When the election ends, read again a moment after, for the new mayor.
     const endsAt = response ? new Date(response.election.endsAt).getTime() : null;
@@ -88,8 +86,10 @@ export function useMayor(): MayorState {
         async (candidateId: string) => {
             if (!response) return false;
             try {
-                const path = GEO_API_PATHS.mayor.vote.replace(":electionId", encodeURIComponent(response.election.id));
-                adopt(read(await api.post<GeoMayorResponse>(path, { candidateId })));
+                const path = apiPath(GEO_API_PATHS.mayor.vote, { electionId: response.election.id });
+                const voted = read(await api.post<GeoMayorResponse>(path, { candidateId }));
+                reads.start();
+                adopt(voted);
                 showToast("Vote cast", "success");
                 return true;
             } catch (failure) {
@@ -98,7 +98,7 @@ export function useMayor(): MayorState {
                 return false;
             }
         },
-        [adopt, refresh, response],
+        [adopt, reads, refresh, response],
     );
 
     return useMemo(

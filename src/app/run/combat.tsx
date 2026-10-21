@@ -78,8 +78,9 @@ function startRequest(params: CombatParams): GeoStartRunRequest | null {
  * Opened as `/run/combat?spawn=…&latitude=…&longitude=…` from a map tap, or
  * bare to resume. The server runs the fight: a Run in progress is always
  * resumed first (there is only ever one), every card played is sent to it,
- * and its battle log is played back as the animation. Flee forfeits the Run;
- * leaving any other way (a swipe back) leaves it open to resume.
+ * and its battle log is played back as the animation. Leaving the screen any
+ * way (Flee, Back, a swipe) flees the Run. Only a Run cut off without leaving
+ * (the app closed, the connection lost) is left open to resume.
  */
 export default function CombatRunScreen() {
     // Fights are always at dusk, whatever the time or the rest of the app.
@@ -104,18 +105,32 @@ function CombatRunContent() {
         [params.spawn, params.latitude, params.longitude, params.enemy],
     );
 
+    // A Run that arrives after the screen's been left (Back while "Finding
+    // your foe…") is fled, like any other left behind.
+    const isLeft = useRef(false);
+    useEffect(
+        () => () => {
+            isLeft.current = true;
+        },
+        [],
+    );
+    const adopt = useCallback((response: GeoRunResponse) => {
+        if (!isLeft.current) setOpened(response);
+        else if (response.run.status === "active") fleeOnLeave(response.run.id);
+    }, []);
+
     const startNew = useCallback(async () => {
         if (!request) {
             setProblem("Nothing here to fight.");
             return;
         }
         try {
-            setOpened(await runsApi.start(request));
+            adopt(await runsApi.start(request));
             void refreshAfterRunStart();
         } catch (error) {
             setProblem(toErrorMessage(error));
         }
-    }, [request]);
+    }, [request, adopt]);
 
     // Resume what's open, else start what was asked for. Once per visit.
     const didOpen = useRef(false);
@@ -125,13 +140,13 @@ function CombatRunContent() {
         void (async () => {
             try {
                 const active = await runsApi.active();
-                if (active) setOpened(active);
+                if (active) adopt(active);
                 else await startNew();
             } catch (error) {
                 setProblem(toErrorMessage(error));
             }
         })();
-    }, [isPlayerReady, startNew]);
+    }, [isPlayerReady, startNew, adopt]);
 
     if (!opened) {
         return (
@@ -165,6 +180,17 @@ function CombatRunContent() {
             }
         />
     );
+}
+
+/**
+ * Flees a Run the screen left without the Flee button. Nothing to show, the
+ * screen's gone; if it fails (offline), the Run stays open to resume.
+ */
+function fleeOnLeave(runId: string) {
+    void runsApi
+        .flee(runId)
+        .then(() => usePlayerStore.getState().refresh())
+        .catch(() => undefined);
 }
 
 const playerOf = (run: GeoRunView) => run.combatants.find((c) => c.side === "player");
@@ -342,37 +368,55 @@ function CombatRun({
     const isOver = run.status !== "active";
     const isPlayerTurn = !isOver && !isBusy && actorId === player?.id;
 
-    const playCard = async (card: InventoryItem) => {
-        if (!isPlayerTurn) return;
+    // State lags a render behind: two taps in one frame would both see the
+    // turn as free, and with back-to-back turns the server takes both.
+    const isSending = useRef(false);
+    const send = async (turn: () => Promise<void>) => {
+        if (!isPlayerTurn || isSending.current) return;
+        isSending.current = true;
         setIsBusy(true);
         try {
-            await play(await runsApi.playCard(run.id, { inventoryId: card.id, targetId: enemy?.id }));
+            await turn();
         } catch (error) {
             showToast(toErrorMessage(error), "error");
         } finally {
+            isSending.current = false;
             setIsBusy(false);
         }
     };
 
+    const playCard = (card: InventoryItem) =>
+        send(async () => {
+            await play(await runsApi.playCard(run.id, { inventoryId: card.id, targetId: enemy?.id }));
+        });
+
     /** Eats from a lunchbox slot: the server takes the food, then applies it. */
-    const eat = async (slot: number) => {
-        if (!isPlayerTurn) return;
-        setIsBusy(true);
-        try {
+    const eat = (slot: number) =>
+        send(async () => {
             await play(await runsApi.playCard(run.id, { lunchboxSlot: slot }));
             // The stored lunchbox changed too, for the character screen.
             void refreshPlayer();
-        } catch (error) {
-            showToast(toErrorMessage(error), "error");
-        } finally {
-            setIsBusy(false);
-        }
-    };
+        });
+
+    // Leaving by a swipe or the system back flees too. Still on if the server
+    // ended it while its log plays; that flee is refused, harmlessly.
+    const isLive = useRef(true);
+    useEffect(() => {
+        if (isOver) isLive.current = false;
+    }, [isOver]);
+    const runId = run.id;
+    useEffect(
+        () => () => {
+            if (isLive.current) fleeOnLeave(runId);
+        },
+        [runId],
+    );
 
     const flee = async () => {
         if (!isOver) {
             try {
                 await runsApi.flee(run.id);
+                isLive.current = false;
                 void refreshPlayer();
             } catch (error) {
                 // Leave anyway: an unfled Run is resumed, or abandoned after a while.

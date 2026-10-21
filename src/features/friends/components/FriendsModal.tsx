@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -18,6 +18,7 @@ import { SectionTitle } from "@/components/Text/Text";
 import { formatListedAgo } from "@/features/market/market";
 import { SKILLS } from "@/features/skills/skills";
 import { toErrorMessage } from "@/lib/api";
+import { latestOnly, usePolling } from "@/lib/usePolling";
 import type { GeoFriend, GeoFriendRequest, GeoFriendsResponse, GeoFriendStatus } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
@@ -53,23 +54,26 @@ export default function FriendsModal({ onClose }: FriendsModalProps) {
         usePresenceStore.getState().setIncomingRequests(response.incoming.length);
     }, []);
 
-    const refresh = useCallback(() => {
-        friendsApi
-            .list()
-            .then(show)
-            .catch((failure) => setError(toErrorMessage(failure)));
-    }, [show]);
+    // A refresh still out when a change's answer lands is older; it's dropped.
+    const [reads] = useState(latestOnly);
+    const refresh = useCallback(async () => {
+        const ticket = reads.start();
+        try {
+            const response = await friendsApi.list();
+            if (reads.isCurrent(ticket)) show(response);
+        } catch (failure) {
+            if (reads.isCurrent(ticket)) setError(toErrorMessage(failure));
+        }
+    }, [reads, show]);
 
-    useEffect(() => {
-        refresh();
-        const interval = setInterval(refresh, REFRESH_MS);
-        return () => clearInterval(interval);
-    }, [refresh]);
+    usePolling(refresh, REFRESH_MS);
 
     /** Runs a change that answers with the new list; failures are a toast. */
     const change = async (send: () => Promise<GeoFriendsResponse>, success?: string) => {
         try {
-            show(await send());
+            const response = await send();
+            reads.start();
+            show(response);
             if (success) showToast(success, "success");
         } catch (failure) {
             showToast(toErrorMessage(failure), "error");
