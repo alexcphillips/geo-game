@@ -1,15 +1,18 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
-import { colors } from "@/theme/colors";
+import { Hint } from "@/components/Text/Text";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme, inked } from "@/theme/theme";
 
 /** A labelled form field, with an optional hint under it. */
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+    const styles = useStyles();
     return (
         <View style={styles.field}>
             <Text style={styles.label}>{label}</Text>
             {children}
-            {hint && <Text style={styles.hint}>{hint}</Text>}
+            {hint && <Hint>{hint}</Hint>}
         </View>
     );
 }
@@ -28,16 +31,18 @@ export function NumberInput({
     coins?: boolean;
     placeholder?: string;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.input}>
-            {coins && <Icon name="two-coins" size={16} color={colors.coins} />}
+            {coins && <Icon name="two-coins" size={16} color={palette.reward} />}
             <TextInput
                 value={value}
                 onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ""))}
                 keyboardType="number-pad"
                 returnKeyType="done"
                 placeholder={placeholder}
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={palette.textMuted}
                 style={[styles.inputText, coins && styles.inputCoins]}
                 accessibilityLabel={accessibilityLabel}
                 selectTextOnFocus
@@ -62,6 +67,7 @@ export function QuantityInput({
     max: number;
     accessibilityLabel: string;
 }) {
+    const styles = useStyles();
     const quantity = Number(value) || 0;
     const step = (by: number) => onChange(String(Math.min(max, Math.max(1, quantity + by))));
     return (
@@ -76,6 +82,7 @@ export function QuantityInput({
 }
 
 function StepButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled: boolean }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -89,41 +96,38 @@ function StepButton({ label, onPress, disabled }: { label: string; onPress: () =
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     field: {
         gap: 6,
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
     },
     input: {
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
         paddingHorizontal: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderRadius: 14,
+        backgroundColor: p.background,
+        borderWidth: 2.5,
+        borderColor: p.outline,
     },
     inputText: {
         flex: 1,
         paddingVertical: 10,
-        color: colors.textPrimary,
+        color: p.text,
+        fontFamily: FONTS.bodyBold,
         fontSize: 16,
         fontVariant: ["tabular-nums"],
     },
     inputCoins: {
-        color: colors.coins,
-        fontWeight: "700",
+        color: p.reward,
+        fontFamily: FONTS.bodyHeavy,
     },
     stepper: {
         flexDirection: "row",
@@ -137,15 +141,14 @@ const styles = StyleSheet.create({
         alignSelf: "stretch",
         justifyContent: "center",
         paddingHorizontal: 14,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderRadius: 14,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
     },
     stepButtonText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     disabled: {
@@ -154,4 +157,4 @@ const styles = StyleSheet.create({
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

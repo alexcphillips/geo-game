@@ -1,6 +1,6 @@
-import { Image, Pressable, StyleSheet } from "react-native";
+import { Image, Pressable } from "react-native";
 import Badge from "@/components/Badge/Badge";
-import { colors } from "@/theme/colors";
+import { createStyles, inked } from "@/theme/theme";
 
 type CharacterPortraitButtonProps = {
     onPress: () => void;
@@ -26,6 +26,7 @@ export default function CharacterPortraitButton({
     size = DIAMETER,
     badge = 0,
 }: CharacterPortraitButtonProps) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -53,16 +54,16 @@ export default function CharacterPortraitButton({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // The image's own border radius clips it to the circle, so the square
     // corners don't sit outside the ring.
     portrait: {
-        borderWidth: 2,
-        borderColor: colors.ember,
-        backgroundColor: colors.surface,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
+        ...inked(p),
     },
     portraitPressed: {
-        transform: [{ scale: 0.94 }],
-        borderColor: colors.emberBright,
+        transform: [{ translateY: 2 }],
+        boxShadow: `0px 1px 0px ${p.outline}`,
     },
-});
+}));

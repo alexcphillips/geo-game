@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
-import Icon from "@/components/Icon/Icon";
+import { ScrollView, Text } from "react-native";
+import Button from "@/components/Button/Button";
+import { Hint } from "@/components/Text/Text";
 import { Field, QuantityInput } from "@/features/market/components/FormFields";
 import { formatCoins } from "@/features/market/market";
-import { colors } from "@/theme/colors";
+import { createStyles } from "@/theme/theme";
 import { craftingActions } from "../craftingActions";
 import { useRecipeStatuses } from "../recipes";
 import { RecipeCard } from "./RecipeCard";
@@ -18,10 +19,11 @@ export default function CraftPage({
     onInspect: (itemId: string) => void;
     onDone: () => void;
 }) {
+    const styles = useStyles();
     const status = useRecipeStatuses().find((candidate) => candidate.recipe.id === recipeId);
     const [text, setText] = useState("1");
     const [isBusy, setIsBusy] = useState(false);
-    if (!status) return <Text style={styles.emptyText}>That recipe no longer exists.</Text>;
+    if (!status) return <Hint>That recipe no longer exists.</Hint>;
 
     const times = Number(text) || 0;
     const made = times * status.recipe.output.quantity;
@@ -55,61 +57,28 @@ export default function CraftPage({
                 />
             </Field>
 
-            <Pressable
+            <Button
+                label={`Craft ${formatCoins(made)} ${status.output.name}`}
+                variant="primary"
+                size="large"
+                icon="anvil"
                 onPress={() => void submit()}
-                disabled={problem !== null || isBusy}
-                style={({ pressed }) => [
-                    styles.primary,
-                    (problem !== null || isBusy) && styles.disabled,
-                    pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-            >
-                <Icon name="anvil" size={16} color={colors.textOnEmber} />
-                <Text style={styles.primaryText}>
-                    Craft {formatCoins(made)} {status.output.name}
-                </Text>
-            </Pressable>
+                disabled={problem !== null}
+                busy={isBusy}
+                stretch
+            />
             {problem && <Text style={styles.problem}>{problem}</Text>}
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
-    emptyText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        textAlign: "center",
-        paddingTop: 16,
-    },
+const useStyles = createStyles((p) => ({
     craft: {
         gap: 14,
     },
-    primary: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "800",
-        fontVariant: ["tabular-nums"],
-    },
-    disabled: {
-        opacity: 0.4,
-    },
     problem: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         textAlign: "center",
     },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-});
+}));

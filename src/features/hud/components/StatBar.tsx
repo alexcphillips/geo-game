@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { Animated, Easing, StyleSheet, View, type ColorValue } from "react-native";
 import { HIT_TIMING } from "@/features/run/fx/hitTiming";
-import { colors } from "@/theme/colors";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type StatBarProps = {
     current: number;
@@ -14,9 +14,9 @@ type StatBarProps = {
      */
     barrier?: number;
     /**
-     * Three vertical stops for the fill, e.g. `colors.healthGradient`.
+     * Three vertical stops for the fill. Defaults to the mood's health red.
      */
-    gradient: readonly [ColorValue, ColorValue, ...ColorValue[]];
+    gradient?: readonly [ColorValue, ColorValue, ...ColorValue[]];
     width: number;
     /** Screen-reader name only; nothing is drawn beside the bar. */
     label: string;
@@ -31,14 +31,15 @@ type StatBarProps = {
 
 /** Outer height including the frame. */
 const BAR_HEIGHT = 17;
-const FRAME_THICKNESS = 1;
+/** The inked outline around the track. */
+const FRAME_THICKNESS = 2;
 
 /** Vertical, so the gradients read as light falling from above. */
 const GRADIENT_START = { x: 0, y: 0 };
 const GRADIENT_END = { x: 0, y: 1 };
 
 /**
- * One vital bar: a framed, lit track.
+ * One vital bar: an inked, lit track.
  *
  * Generic over which stat it shows, so any future vital is the same component
  * with different stops — they differ only in hue and what feeds them.
@@ -48,15 +49,13 @@ const GRADIENT_END = { x: 0, y: 1 };
  * A flat rectangle reads as a debug widget. Three cheap layers make it read as
  * an object instead:
  *
- * 1. **A gradient frame.** The outer view *is* the border — it has a gradient
- *    background and one point of padding, so the track inset inside it leaves a
- *    hairline of gradient showing on all sides. React Native cannot gradient a
- *    real `borderColor`, and this gets there without an SVG dependency.
+ * 1. **An inked outline**, the same edge every panel and button has, so the
+ *    bar belongs to the storybook UI around it.
  * 2. **A gradient fill**, lit at the top and shadowed at the bottom, which is
  *    what makes the bar look rounded rather than printed.
  * 3. **A gloss** across the upper half of the whole track, including the empty
- *    part, so the frame reads as one piece of glass rather than a lit fill
- *    sitting in a dull hole.
+ *    part, so the track reads as one piece rather than a lit fill sitting in a
+ *    dull hole.
  *
  * No visible readout: the bar's *length* is the information. `current` and
  * `max` still drive the fill and are reported to assistive tech, which is the
@@ -71,6 +70,9 @@ export default function StatBar({
     label,
     animateChanges = false,
 }: StatBarProps) {
+    const styles = useStyles();
+    const palette = useTheme();
+    const fillStops = gradient ?? palette.healthFill;
     // Clamped because a bar is a lie if it can overflow its track — buffs that
     // push current past max shouldn't paint outside the frame.
     const ratio = max > 0 ? Math.min(1, Math.max(0, current / max)) : 0;
@@ -141,10 +143,7 @@ export default function StatBar({
     }, [animateChanges, ratio, fill, chip]);
 
     return (
-        <LinearGradient
-            colors={colors.barFrameGradient}
-            start={GRADIENT_START}
-            end={GRADIENT_END}
+        <View
             style={[styles.frame, { width }]}
             accessibilityRole="progressbar"
             accessibilityLabel={label}
@@ -158,7 +157,7 @@ export default function StatBar({
                         />
                         <Animated.View style={[styles.fullFill, { transform: [{ scaleX: fill }] }]}>
                             <LinearGradient
-                                colors={gradient}
+                                colors={fillStops}
                                 start={GRADIENT_START}
                                 end={GRADIENT_END}
                                 style={StyleSheet.absoluteFill}
@@ -167,7 +166,7 @@ export default function StatBar({
                     </>
                 ) : (
                     <LinearGradient
-                        colors={gradient}
+                        colors={fillStops}
                         start={GRADIENT_START}
                         end={GRADIENT_END}
                         style={[styles.fill, { width: `${ratio * 100}%` }]}
@@ -186,7 +185,7 @@ export default function StatBar({
                     ]}
                 >
                     <LinearGradient
-                        colors={colors.barrierGradient}
+                        colors={palette.barrierFill}
                         start={GRADIENT_START}
                         end={GRADIENT_END}
                         style={StyleSheet.absoluteFill}
@@ -194,20 +193,22 @@ export default function StatBar({
                 </Animated.View>
                 <View style={styles.gloss} pointerEvents="none" />
             </View>
-        </LinearGradient>
+        </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     frame: {
         height: BAR_HEIGHT,
-        padding: FRAME_THICKNESS,
-        borderRadius: 4,
+        borderWidth: FRAME_THICKNESS,
+        borderColor: p.outline,
+        borderRadius: BAR_HEIGHT / 2,
+        backgroundColor: p.outline,
     },
     track: {
         flex: 1,
-        borderRadius: 3,
-        backgroundColor: colors.barTrack,
+        borderRadius: BAR_HEIGHT / 2 - FRAME_THICKNESS,
+        backgroundColor: p.track,
         // Clips the fill's square corners to the track's rounded ones.
         overflow: "hidden",
     },
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 0,
         bottom: 0,
-        borderLeftColor: "rgba(0, 0, 0, 0.45)",
+        borderLeftColor: p.outline,
         overflow: "hidden",
     },
     gloss: {
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         top: 0,
-        height: "45%",
-        backgroundColor: "rgba(255, 255, 255, 0.07)",
+        height: "40%",
+        backgroundColor: "rgba(255, 255, 255, 0.12)",
     },
-});
+}));

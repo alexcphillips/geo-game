@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import { distanceMetres, type Coordinates } from "@/features/location/distance";
 import SettingsToggle from "@/features/settings/components/SettingsToggle";
 import { api, toErrorMessage } from "@/lib/api";
@@ -15,7 +19,8 @@ import {
     type GeoAdminCreatePlaceRequest,
     type GeoAdminUpdatePlaceRequest,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { TIER_LABELS, WATER_LABELS } from "../fishingWaters";
 import { confirmRemovePlace, placePath } from "../placeAdmin";
 import { usePlaceDraft } from "../placeDraft";
@@ -35,6 +40,8 @@ type PlaceEditorPageProps = {
  * The draft lives in a store, so dropping a pin doesn't lose it.
  */
 export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEditorPageProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const draft = usePlaceDraft();
     const refetchPlaces = usePlacesStore((state) => state.refetch);
     const [isSaving, setIsSaving] = useState(false);
@@ -83,78 +90,68 @@ export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEd
             automaticallyAdjustKeyboardInsets
         >
             {draft.suggestionId && (
-                <Text style={styles.hint}>From a player&apos;s suggestion. Saving accepts it.</Text>
+                <Hint>From a player&apos;s suggestion. Saving accepts it.</Hint>
             )}
 
-            <Text style={styles.sectionTitle}>Kind</Text>
+            <SectionTitle>Kind</SectionTitle>
             <View style={styles.kinds}>
                 {GEO_PLACE_KINDS.map((kind) => {
                     const info = PLACE_TYPES[kind];
                     const isSelected = kind === draft.kind;
                     return (
-                        <Pressable
+                        <Panel compact
                             key={kind}
                             onPress={() => draft.update({ kind })}
-                            style={({ pressed }) => [
-                                styles.kind,
-                                isSelected && { borderColor: info.color },
-                                pressed && styles.pressed,
-                            ]}
+                            style={[styles.kind, isSelected && { borderColor: info.color }]}
                             accessibilityRole="radio"
-                            accessibilityState={{ selected: isSelected }}
                             accessibilityLabel={info.label}
                         >
-                            <Icon name={info.icon} size={22} color={isSelected ? info.color : colors.textSecondary} />
-                            <Text style={[styles.kindLabel, isSelected && { color: colors.textPrimary }]} numberOfLines={1}>
+                            <Icon name={info.icon} size={22} color={isSelected ? info.color : palette.textMuted} />
+                            <Text style={[styles.kindLabel, isSelected && { color: palette.text }]} numberOfLines={1}>
                                 {info.label}
                             </Text>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </View>
 
             {draft.kind === "fishing" && (
                 <>
-                    <Text style={styles.sectionTitle}>Fishing tier</Text>
+                    <SectionTitle>Fishing tier</SectionTitle>
                     <ChoiceRow
                         options={GEO_FISHING_TIERS.map((tier) => ({ id: tier, label: TIER_LABELS[tier] }))}
                         value={draft.settings.fishing?.tier}
                         onChange={(tier) => draft.update({ settings: { fishing: { ...draft.settings.fishing, tier } } })}
                     />
-                    <Text style={styles.sectionTitle}>Water</Text>
+                    <SectionTitle>Water</SectionTitle>
                     <ChoiceRow
                         options={GEO_FISHING_WATERS.map((water) => ({ id: water, label: WATER_LABELS[water] }))}
                         value={draft.settings.fishing?.water}
                         onChange={(water) => draft.update({ settings: { fishing: { ...draft.settings.fishing, water } } })}
                     />
-                    <Text style={styles.hint}>From the map: worked out from the water the place sits on, like any map spot.</Text>
+                    <Hint>From the map: worked out from the water the place sits on, like any map spot.</Hint>
                 </>
             )}
 
-            <Text style={styles.sectionTitle}>Name (optional)</Text>
-            <TextInput
+            <SectionTitle>Name (optional)</SectionTitle>
+            <TextField
                 value={draft.name}
                 onChangeText={(text) => draft.update({ name: text })}
                 placeholder="e.g. Millbrook Quarry"
-                placeholderTextColor={colors.textSecondary}
-                style={styles.input}
                 maxLength={GEO_PLACE_NAME_MAX}
             />
 
-            <Text style={styles.sectionTitle}>Description</Text>
-            <TextInput
+            <SectionTitle>Description</SectionTitle>
+            <TextField
                 value={draft.description}
                 onChangeText={(text) => draft.update({ description: text })}
                 placeholder="Optional. Shown when a player opens the place."
-                placeholderTextColor={colors.textSecondary}
-                style={[styles.input, styles.multiline]}
                 multiline
                 maxLength={GEO_PLACE_DESCRIPTION_MAX}
-                textAlignVertical="top"
             />
 
-            <Text style={styles.sectionTitle}>Where</Text>
-            <View style={styles.card}>
+            <SectionTitle>Where</SectionTitle>
+            <Panel compact style={styles.card}>
                 <Icon name="pin" size={22} color={PLACE_TYPES[draft.kind].color} />
                 <View style={styles.cardText}>
                     <Text style={styles.cardLabel}>
@@ -166,7 +163,7 @@ export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEd
                         </Text>
                     )}
                 </View>
-            </View>
+            </Panel>
             <View style={styles.row}>
                 <SecondaryButton label={draft.pin ? "Move pin" : "Drop a pin"} onPress={onDropPin} />
                 <SecondaryButton
@@ -191,7 +188,7 @@ export default function PlaceEditorPage({ position, onDropPin, onDone }: PlaceEd
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !canSave, busy: isSaving }}
             >
-                {isSaving && <ActivityIndicator color={colors.textOnEmber} />}
+                {isSaving && <ActivityIndicator color={palette.onPrimary} />}
                 <Text style={styles.saveText}>{isNew ? "Create place" : "Save"}</Text>
             </Pressable>
 
@@ -218,21 +215,21 @@ function ChoiceRow<T extends string>({
     value: T | undefined;
     onChange: (value: T | undefined) => void;
 }) {
+    const styles = useStyles();
     const all: { id: T | undefined; label: string }[] = [{ id: undefined, label: "From the map" }, ...options];
     return (
         <View style={styles.choices}>
             {all.map((option) => {
                 const isSelected = option.id === value;
                 return (
-                    <Pressable
+                    <Panel
                         key={option.id ?? "map"}
                         onPress={() => onChange(option.id)}
-                        style={({ pressed }) => [styles.choice, isSelected && styles.choiceSelected, pressed && styles.pressed]}
+                        style={[styles.choice, isSelected && styles.choiceSelected]}
                         accessibilityRole="radio"
-                        accessibilityState={{ selected: isSelected }}
                     >
                         <Text style={[styles.choiceText, isSelected && styles.choiceTextSelected]}>{option.label}</Text>
-                    </Pressable>
+                    </Panel>
                 );
             })}
         </View>
@@ -240,29 +237,13 @@ function ChoiceRow<T extends string>({
 }
 
 function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-            accessibilityRole="button"
-        >
-            <Text style={styles.secondaryButtonText}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} onPress={onPress} stretch />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 10,
         paddingBottom: 8,
-    },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
     },
     kinds: {
         flexDirection: "row",
@@ -275,15 +256,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 6,
         paddingVertical: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1.5,
-        borderColor: colors.border,
     },
     kindLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     choices: {
         flexDirection: "row",
@@ -291,77 +268,44 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     choice: {
+        gap: 0,
         paddingHorizontal: 12,
         paddingVertical: 7,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     choiceSelected: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     choiceText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     choiceTextSelected: {
-        color: colors.textPrimary,
-    },
-    input: {
-        padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.textPrimary,
-        fontSize: 14,
-    },
-    multiline: {
-        minHeight: 84,
+        color: p.text,
     },
     card: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
         padding: 14,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     cardText: {
         flex: 1,
         gap: 2,
     },
     cardLabel: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     coords: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         fontVariant: ["tabular-nums"],
     },
     row: {
         flexDirection: "row",
         gap: 8,
-    },
-    secondaryButton: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 11,
-        paddingHorizontal: 16,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    secondaryButtonText: {
-        color: colors.emberBright,
-        fontSize: 13,
-        fontWeight: "600",
     },
     saveButton: {
         marginTop: 8,
@@ -371,15 +315,15 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingVertical: 14,
         borderRadius: 999,
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     saveDisabled: {
         opacity: 0.45,
     },
     saveText: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
     },
     removeButton: {
@@ -387,19 +331,14 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.blood,
+        borderColor: p.game.blood,
     },
     removeText: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        lineHeight: 17,
-    },
-});
+}));

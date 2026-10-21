@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
 import { FEEDBACK_STATUSES, feedbackKindInfo, feedbackStatusInfo } from "@/features/feedback/feedback";
 import { formatDateTime } from "@/features/market/market";
@@ -14,7 +16,8 @@ import {
     type GeoAdminFeedbackStatusRequest,
     type GeoFeedbackStatus,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { Action } from "./AdminSuggestionsPage";
 
 const feedbackPath = (path: string, id: string) => path.replace(":feedbackId", encodeURIComponent(id));
@@ -25,6 +28,8 @@ const feedbackPath = (path: string, id: string) => path.replace(":feedbackId", e
  * player's inbox and marks new feedback seen.
  */
 export default function AdminFeedbackPage() {
+    const styles = useStyles();
+    const palette = useTheme();
     const [status, setStatus] = useState<GeoFeedbackStatus>("new");
     const [data, setData] = useState<GeoAdminFeedbackResponse | null>(null);
     const [version, setVersion] = useState(0);
@@ -59,23 +64,22 @@ export default function AdminFeedbackPage() {
                     const isSelected = option.id === status;
                     const count = data?.counts[option.id];
                     return (
-                        <Pressable
+                        <Panel
                             key={option.id}
                             onPress={() => setStatus(option.id)}
-                            style={({ pressed }) => [styles.filter, isSelected && styles.filterSelected, pressed && styles.pressed]}
+                            style={[styles.filter, isSelected && styles.filterSelected]}
                             accessibilityRole="tab"
-                            accessibilityState={{ selected: isSelected }}
                         >
                             <Text style={[styles.filterText, isSelected && styles.filterTextSelected]}>
                                 {option.label}
                                 {count === undefined ? "" : ` · ${count}`}
                             </Text>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </ScrollView>
             {!data ? (
-                <ActivityIndicator color={colors.textSecondary} />
+                <ActivityIndicator color={palette.textMuted} />
             ) : (
                 <ScrollView
                     showsVerticalScrollIndicator={false}
@@ -120,12 +124,13 @@ function FeedbackCard({
     /** True once sent, so the draft can be cleared. */
     onReply: (body: string) => Promise<boolean>;
 }) {
+    const styles = useStyles();
     const [reply, setReply] = useState("");
     const kindInfo = feedbackKindInfo(feedback.kind);
     const device = [feedback.appVersion && `v${feedback.appVersion}`, feedback.platform].filter(Boolean).join(" · ");
 
     return (
-        <View style={styles.card}>
+        <Panel compact style={styles.card}>
             <View style={styles.cardHeader}>
                 <Icon name={kindInfo.icon} size={20} color={kindInfo.color} />
                 <Text style={styles.title}>{feedback.title}</Text>
@@ -177,12 +182,10 @@ function FeedbackCard({
 
             {feedback.playerId ? (
                 <>
-                    <TextInput
+                    <TextField
                         value={reply}
                         onChangeText={setReply}
                         placeholder="Reply to their inbox"
-                        placeholderTextColor={colors.textSecondary}
-                        style={styles.input}
                         multiline
                         maxLength={GEO_MAIL_BODY_MAX}
                     />
@@ -200,11 +203,11 @@ function FeedbackCard({
             ) : (
                 <Text style={styles.muted}>{"The player's account is gone, so there's no one to reply to."}</Text>
             )}
-        </View>
+        </Panel>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         flex: 1,
         gap: 10,
@@ -213,24 +216,21 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     filter: {
+        gap: 0,
         alignItems: "center",
         paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     filterSelected: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     filterText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     filterTextSelected: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     list: {
         gap: 10,
@@ -239,10 +239,6 @@ const styles = StyleSheet.create({
     card: {
         gap: 6,
         padding: 14,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     cardHeader: {
         flexDirection: "row",
@@ -251,17 +247,17 @@ const styles = StyleSheet.create({
     },
     title: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     body: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
         lineHeight: 19,
     },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
@@ -269,10 +265,10 @@ const styles = StyleSheet.create({
         gap: 2,
         paddingLeft: 10,
         borderLeftWidth: 2,
-        borderLeftColor: colors.toastSuccess,
+        borderLeftColor: p.heal,
     },
     replyBody: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
     },
@@ -287,26 +283,14 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     statusText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
-    },
-    input: {
-        marginTop: 4,
-        minHeight: 44,
-        color: colors.textPrimary,
-        fontSize: 14,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
+        fontFamily: FONTS.bodyBold,
     },
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

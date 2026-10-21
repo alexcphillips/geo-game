@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Animated, Easing, Text, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import FishDrawing, { fishLength } from "@/features/fishing/components/FishDrawing";
 import { fishArt, type FishArt } from "@/features/fishing/fishArt";
 import { INTENTS } from "@/features/fishing/fishingText";
 import type { GeoFishIntent, GeoFishingFightView, GeoFishingPhase } from "@/lib/geo/contracts";
+import { FONTS } from "@/theme/palette";
 import { colors } from "@/theme/colors";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type FishingSceneProps = {
     phase: GeoFishingPhase;
@@ -29,6 +31,7 @@ const INTENT_DEPTH = { run: 0.3, thrash: 0.26, dive: 0.62, rest: 0.18, jump: 0.0
  * fish, ripples) are Animated views laid over the drawing.
  */
 export default function FishingScene({ phase, biting, fishId, fight }: FishingSceneProps) {
+    const styles = useStyles();
     const [size, setSize] = useState<{ width: number; height: number } | null>(null);
     const onLayout = (event: LayoutChangeEvent) => {
         const { width, height } = event.nativeEvent.layout;
@@ -43,6 +46,7 @@ export default function FishingScene({ phase, biting, fishId, fight }: FishingSc
 }
 
 function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingSceneProps & { width: number; height: number }) {
+    const palette = useTheme();
     const fish = fishId ? fishArt(fishId) : null;
     const horizon = Math.round(H * 0.3);
     const waterH = H - horizon;
@@ -54,19 +58,19 @@ function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingS
     const tip = { x: hands.x + 84 - 22 * pull, y: horizon - 82 + 34 * pull };
 
     const lineColor = !fight
-        ? colors.textSecondary
+        ? palette.textMuted
         : fight.tension > fight.cap * 0.9
-          ? colors.tensionDanger
+          ? palette.game.tensionDanger
           : fight.tension > fight.zoneHigh
-            ? colors.tensionHigh
+            ? palette.game.tensionHigh
             : fight.tension < fight.zoneLow
-              ? colors.tensionSlack
-              : colors.textPrimary;
+              ? palette.game.tensionSlack
+              : palette.text;
 
     // Where the line ends, and what's there.
     const bobber = { x: W * 0.64, y: horizon + 6 };
     let fishAt: { x: number; y: number; length: number } | null = null;
-    if (fish && (phase === "fight" || phase === "outclassed")) {
+    if (fish && phase === "fight") {
         const length = fishLength(fish, Math.min(1, W / 420));
         const reach = fight ? Math.min(1, fight.distance / fight.maxDistance) : 0.4;
         const near = dockEnd + length / 2 + 12;
@@ -82,12 +86,12 @@ function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingS
             <Svg width={W} height={H}>
                 <Defs>
                     <LinearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-                        <Stop offset="0" stopColor={colors.sceneSkyTop} />
-                        <Stop offset="1" stopColor={colors.sceneSkyHorizon} />
+                        <Stop offset="0" stopColor={palette.game.sceneSkyTop} />
+                        <Stop offset="1" stopColor={palette.game.sceneSkyHorizon} />
                     </LinearGradient>
                     <LinearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-                        <Stop offset="0" stopColor={colors.sceneWaterTop} />
-                        <Stop offset="1" stopColor={colors.sceneWaterDeep} />
+                        <Stop offset="0" stopColor={palette.game.sceneWaterTop} />
+                        <Stop offset="1" stopColor={palette.game.sceneWaterDeep} />
                     </LinearGradient>
                 </Defs>
 
@@ -95,7 +99,7 @@ function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingS
                 {/* The far shore. */}
                 <Path d={shoreline(W, horizon)} fill="#141017" />
                 <Rect x={0} y={horizon} width={W} height={waterH} fill="url(#water)" />
-                <Line x1={0} y1={horizon} x2={W} y2={horizon} stroke={colors.sceneFoam} strokeOpacity={0.3} />
+                <Line x1={0} y1={horizon} x2={W} y2={horizon} stroke={palette.game.sceneFoam} strokeOpacity={0.3} />
 
                 {/* The dock and the angler on it. */}
                 <Rect x={0} y={horizon - 8} width={dockEnd} height={8} fill="#3B2A1F" />
@@ -115,12 +119,12 @@ function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingS
                 {phase === "waiting" ? (
                     <Path
                         d={`M${tip.x} ${tip.y} Q${(tip.x + bobber.x) / 2} ${bobber.y - 4} ${bobber.x} ${bobber.y}`}
-                        stroke={colors.textSecondary}
+                        stroke={palette.textMuted}
                         strokeWidth={0.9}
                         fill="none"
                     />
                 ) : phase === "creature" ? (
-                    <Line x1={tip.x} y1={tip.y} x2={W * 0.7} y2={horizon + 10} stroke={colors.textPrimary} strokeWidth={1} />
+                    <Line x1={tip.x} y1={tip.y} x2={W * 0.7} y2={horizon + 10} stroke={palette.text} strokeWidth={1} />
                 ) : fishAt ? (
                     <Path
                         d={`M${tip.x} ${tip.y} Q${(tip.x + fishAt.x - fishAt.length / 2) / 2} ${Math.max(tip.y, fishAt.y) + (1 - pull) * 50 - 30} ${fishAt.x - fishAt.length / 2} ${fishAt.y}`}
@@ -131,7 +135,7 @@ function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingS
                 ) : (
                     <Path
                         d={`M${tip.x} ${tip.y} Q${tip.x + 6} ${horizon - 20} ${tip.x + 4} ${horizon}`}
-                        stroke={colors.textSecondary}
+                        stroke={palette.textMuted}
                         strokeWidth={0.8}
                         fill="none"
                         opacity={0.6}
@@ -154,13 +158,13 @@ function Drawing({ width: W, height: H, phase, biting, fishId, fight }: FishingS
                 />
             )}
 
-            {fishAt && (phase === "outclassed" || (intent && phase === "fight")) && (
+            {fishAt && intent && phase === "fight" && (
                 <ScenePill
                     x={fishAt.x}
                     y={fishAt.y - fishAt.length * (fish?.height ?? 0.3) * 0.8 - 26}
                     width={W}
-                    text={phase === "outclassed" ? "Outclassed" : `${INTENTS[intent!].glyph} ${INTENTS[intent!].label}`}
-                    color={phase === "outclassed" ? colors.emberBright : intentColor(intent!)}
+                    text={`${INTENTS[intent].glyph} ${INTENTS[intent].label}`}
+                    color={intentColor(intent)}
                 />
             )}
         </>
@@ -188,6 +192,7 @@ function curveTo(a: Point, c: Point, b: Point, t: number): string {
  * wrap at the tip. It bends with the pull on the line.
  */
 function Rod({ hands, tip, pull }: { hands: Point; tip: Point; pull: number }) {
+    const palette = useTheme();
     const bend = { x: (hands.x + tip.x) / 2 + 6 * pull, y: (hands.y + tip.y) / 2 - 12 + 16 * pull };
     const blank = `M${hands.x} ${hands.y} Q${bend.x} ${bend.y} ${tip.x} ${tip.y}`;
     // Back along the rod's first direction, for the grip behind the hands.
@@ -201,23 +206,23 @@ function Rod({ hands, tip, pull }: { hands: Point; tip: Point; pull: number }) {
     return (
         <G>
             {/* Grip: cork from the butt to just past the hands, with an end cap. */}
-            <Line x1={butt.x} y1={butt.y} x2={foregrip.x} y2={foregrip.y} stroke={colors.rodGrip} strokeWidth={4.5} strokeLinecap="round" />
-            <Circle cx={butt.x} cy={butt.y} r={2.6} fill={colors.rodBlank} />
+            <Line x1={butt.x} y1={butt.y} x2={foregrip.x} y2={foregrip.y} stroke={palette.game.rodGrip} strokeWidth={4.5} strokeLinecap="round" />
+            <Circle cx={butt.x} cy={butt.y} r={2.6} fill={palette.game.rodBlank} />
             {/* Reel, hanging under the rod. */}
-            <Line x1={hands.x} y1={hands.y} x2={reel.x} y2={reel.y} stroke={colors.rodReel} strokeWidth={1.5} />
-            <Circle cx={reel.x} cy={reel.y} r={4.5} fill={colors.rodBlank} stroke={colors.rodReel} strokeWidth={1.4} />
-            <Circle cx={reel.x} cy={reel.y} r={1.6} fill={colors.rodReel} />
-            <Line x1={reel.x} y1={reel.y} x2={reel.x + 5} y2={reel.y + 3} stroke={colors.rodReel} strokeWidth={1.2} strokeLinecap="round" />
+            <Line x1={hands.x} y1={hands.y} x2={reel.x} y2={reel.y} stroke={palette.game.rodReel} strokeWidth={1.5} />
+            <Circle cx={reel.x} cy={reel.y} r={4.5} fill={palette.game.rodBlank} stroke={palette.game.rodReel} strokeWidth={1.4} />
+            <Circle cx={reel.x} cy={reel.y} r={1.6} fill={palette.game.rodReel} />
+            <Line x1={reel.x} y1={reel.y} x2={reel.x + 5} y2={reel.y + 3} stroke={palette.game.rodReel} strokeWidth={1.2} strokeLinecap="round" />
             {/* The blank, tapering: thick through the butt section, fine at the tip. */}
-            <Path d={blank} stroke={colors.rodBlank} strokeWidth={1.4} strokeLinecap="round" fill="none" />
-            <Path d={curveTo(hands, bend, tip, 0.55)} stroke={colors.rodBlank} strokeWidth={2.8} strokeLinecap="round" fill="none" />
-            <Path d={curveTo(hands, bend, tip, 0.5)} stroke={colors.rodHighlight} strokeWidth={0.7} strokeLinecap="round" fill="none" />
+            <Path d={blank} stroke={palette.game.rodBlank} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+            <Path d={curveTo(hands, bend, tip, 0.55)} stroke={palette.game.rodBlank} strokeWidth={2.8} strokeLinecap="round" fill="none" />
+            <Path d={curveTo(hands, bend, tip, 0.5)} stroke={palette.game.rodHighlight} strokeWidth={0.7} strokeLinecap="round" fill="none" />
             {/* Line guides. */}
             {[0.3, 0.55, 0.76, 0.92].map((t) => {
                 const at = onCurve(hands, bend, tip, t);
-                return <Circle key={t} cx={at.x} cy={at.y + 1.6} r={1.5} fill="none" stroke={colors.rodReel} strokeWidth={0.8} />;
+                return <Circle key={t} cx={at.x} cy={at.y + 1.6} r={1.5} fill="none" stroke={palette.game.rodReel} strokeWidth={0.8} />;
             })}
-            <Path d={`M${tipWrap.x} ${tipWrap.y} L${tip.x} ${tip.y}`} stroke={colors.emberBright} strokeWidth={1.6} strokeLinecap="round" />
+            <Path d={`M${tipWrap.x} ${tipWrap.y} L${tip.x} ${tip.y}`} stroke={palette.ember} strokeWidth={1.6} strokeLinecap="round" />
         </G>
     );
 }
@@ -255,6 +260,7 @@ function useLoop(duration: number, enabled = true, easing = Easing.inOut(Easing.
 }
 
 function Ripple({ x, y, size = 28, delay = 0 }: { x: number; y: number; size?: number; delay?: number }) {
+    const styles = useStyles();
     const [value] = useState(() => new Animated.Value(0));
     useEffect(() => {
         const loop = Animated.loop(
@@ -286,6 +292,8 @@ function Ripple({ x, y, size = 28, delay = 0 }: { x: number; y: number; size?: n
 }
 
 function Bobber({ x, y, bite }: { x: number; y: number; bite: boolean }) {
+    const palette = useTheme();
+    const styles = useStyles();
     const bob = useLoop(bite ? 900 : 2400);
     const translateY = bite
         ? bob.interpolate({ inputRange: [0, 1], outputRange: [6, 16] })
@@ -296,9 +304,9 @@ function Bobber({ x, y, bite }: { x: number; y: number; bite: boolean }) {
             {bite && <Ripple x={x} y={y + 2} size={44} delay={400} />}
             <Animated.View pointerEvents="none" style={[styles.bobber, { left: x - 7, top: y - 16, transform: [{ translateY }] }]}>
                 <Svg width={14} height={22}>
-                    <Rect x={6} y={0} width={2} height={8} fill={colors.bobberBelly} />
-                    <Circle cx={7} cy={15} r={6} fill={colors.bobber} />
-                    <Path d="M1 15 A6 6 0 0 0 13 15 Z" fill={colors.bobberBelly} />
+                    <Rect x={6} y={0} width={2} height={8} fill={palette.game.bobberBelly} />
+                    <Circle cx={7} cy={15} r={6} fill={palette.game.bobber} />
+                    <Path d="M1 15 A6 6 0 0 0 13 15 Z" fill={palette.game.bobberBelly} />
                 </Svg>
             </Animated.View>
         </>
@@ -324,6 +332,7 @@ function FloatingFish({
     jumping: boolean;
     tilt: number;
 }) {
+    const styles = useStyles();
     const wiggle = useLoop(thrashing ? 250 : 2400);
     const rotate = thrashing
         ? wiggle.interpolate({ inputRange: [0, 0.5, 1], outputRange: [`${tilt - 7}deg`, `${tilt + 7}deg`, `${tilt - 7}deg`] })
@@ -354,6 +363,7 @@ function FloatingFish({
 }
 
 function SeaCreature({ x, top, width }: { x: number; top: number; width: number }) {
+    const styles = useStyles();
     const [rise] = useState(() => new Animated.Value(0));
     const glow = useLoop(1800);
     useEffect(() => {
@@ -397,6 +407,7 @@ function SeaCreature({ x, top, width }: { x: number; top: number; width: number 
 }
 
 function ScenePill({ x, y, width, text, color }: { x: number; y: number; width: number; text: string; color: string }) {
+    const styles = useStyles();
     const pillWidth = text.length * 7.5 + 22;
     const left = Math.max(6, Math.min(width - pillWidth - 6, x - pillWidth / 2));
     return (
@@ -408,7 +419,7 @@ function ScenePill({ x, y, width, text, color }: { x: number; y: number; width: 
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     scene: {
         flex: 1,
         overflow: "hidden",
@@ -416,7 +427,7 @@ const styles = StyleSheet.create({
     ripple: {
         position: "absolute",
         borderWidth: 1,
-        borderColor: colors.sceneFoam,
+        borderColor: p.game.sceneFoam,
     },
     bobber: {
         position: "absolute",
@@ -457,6 +468,6 @@ const styles = StyleSheet.create({
     },
     pillText: {
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-});
+}));

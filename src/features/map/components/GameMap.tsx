@@ -6,8 +6,8 @@ import { handMadeMapPlace, kindToSkill, type MapPlace } from "@/features/places/
 import { SPRITES } from "@/features/spawns/sprites";
 import type { GeoPlace, GeoSpawn } from "@/lib/geo/contracts";
 import { buildMapHtml, type MapMessage, type MapNearPlaces, type MapNearWater } from "../mapHtml";
-import { colors } from "@/theme/colors";
-import { TILE_ORIGIN } from "@/theme/mapStyle";
+import { MAP_COLORS, TILE_ORIGIN } from "@/theme/mapStyle";
+import { useMood } from "@/theme/theme";
 
 type GameMapProps = {
     position: PlayerPosition;
@@ -86,7 +86,17 @@ export default function GameMap({
 
     // Built once: re-rendering the HTML would reload the whole map and lose the
     // camera. Position updates go over the bridge instead.
-    const html = useMemo(() => buildMapHtml(), []);
+    // The map follows the mood it's drawn in: built in the first one, then
+    // repainted in place, since rebuilding the page would reload every tile.
+    const mood = useMood();
+    const [initialMood] = useState(mood);
+    const html = useMemo(() => buildMapHtml(initialMood), [initialMood]);
+
+    useEffect(() => {
+        if (!isMapReady) return;
+
+        webViewRef.current?.injectJavaScript(`window.gameMap.setMood(${JSON.stringify(mood)}); true;`);
+    }, [isMapReady, mood]);
 
     useEffect(() => {
         if (!isMapReady) return;
@@ -268,7 +278,7 @@ export default function GameMap({
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: MAP_COLORS[mood].land }]}>
             <WebView
                 ref={webViewRef}
                 // `baseUrl` gives the page a real secure origin rather than
@@ -278,7 +288,7 @@ export default function GameMap({
                 source={{ html, baseUrl: TILE_ORIGIN }}
                 originWhitelist={["*"]}
                 onMessage={handleMessage}
-                style={styles.webView}
+                style={[styles.webView, { backgroundColor: MAP_COLORS[mood].land }]}
                 // Default is already true; explicit because tile and library
                 // caching is the only thing keeping this app's data use sane.
                 cacheEnabled
@@ -310,12 +320,10 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        // The page body paints this too; set here so there is no white flash
-        // before the WebView's first frame.
-        backgroundColor: colors.void,
+        // The land colour is set inline, per mood: the page body paints it
+        // too, and setting it here means no white flash before the first frame.
     },
     webView: {
         flex: 1,
-        backgroundColor: colors.void,
     },
 });

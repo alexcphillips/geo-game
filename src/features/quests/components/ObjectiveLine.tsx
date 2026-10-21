@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import type { GeoQuestObjective } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { isObjectiveDone, objectiveCount } from "../quests";
 
 type ObjectiveLineProps = {
@@ -35,6 +36,8 @@ export function useCountGlow(count: number): Animated.Value {
  * registering is visible at a glance, and turns into a ticked line once met.
  */
 export default function ObjectiveLine({ objective, singleLine = false }: ObjectiveLineProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const isDone = isObjectiveDone(objective);
     const glow = useCountGlow(objective.current);
 
@@ -46,7 +49,7 @@ export default function ObjectiveLine({ objective, singleLine = false }: Objecti
         >
             <Animated.View style={[glowStyles.glow, { opacity: glow }]} pointerEvents="none" />
             {isDone ? (
-                <Icon name="check-mark" size={12} color={colors.toastSuccess} />
+                <Icon name="check-mark" size={12} color={palette.heal} />
             ) : (
                 <View style={styles.bulletSlot}>
                     <View style={styles.bullet} />
@@ -63,13 +66,6 @@ export default function ObjectiveLine({ objective, singleLine = false }: Objecti
     );
 }
 
-const TEXT_SHADOW = {
-    // Floats over the map in the HUD, so the text carries its own contrast.
-    textShadowColor: "rgba(0, 0, 0, 0.95)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-} as const;
-
 export const glowStyles = StyleSheet.create({
     glow: {
         position: "absolute",
@@ -82,7 +78,7 @@ export const glowStyles = StyleSheet.create({
     },
 });
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     row: {
         flexDirection: "row",
         alignItems: "center",
@@ -99,26 +95,24 @@ const styles = StyleSheet.create({
         width: 4,
         height: 4,
         borderRadius: 2,
-        backgroundColor: colors.textSecondary,
+        backgroundColor: p.textMuted,
     },
     // Shrinks first, so the count always stays whole.
     label: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        ...TEXT_SHADOW,
     },
     labelDone: {
-        color: colors.textSecondary,
+        color: p.textMuted,
     },
     count: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
-        ...TEXT_SHADOW,
     },
     countDone: {
-        color: colors.toastSuccess,
+        color: p.heal,
     },
-});
+}));

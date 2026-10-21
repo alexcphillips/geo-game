@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Animated, Easing, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, ScrollView, Text, View } from "react-native";
 import Icon, { type GameIconName } from "@/components/Icon/Icon";
 import { rarityInfo, type Rarity } from "@/features/inventory/rarity";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 
 export type HaulLine = {
     key: string;
@@ -39,6 +40,7 @@ export default function HaulCard({
     meta?: string;
     actions: ReactNode;
 }) {
+    const styles = useStyles();
     const [pop] = useState(() => new Animated.Value(0));
     useEffect(() => {
         Animated.timing(pop, { toValue: 1, duration: 420, easing: Easing.out(Easing.back(1.8)), useNativeDriver: true }).start();
@@ -72,7 +74,7 @@ export default function HaulCard({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     card: {
         alignItems: "center",
         gap: 6,
@@ -83,19 +85,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderRadius: 16,
         borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
+        borderColor: p.outline,
+        backgroundColor: p.surface,
     },
     title: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 22,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1.5,
         textTransform: "uppercase",
         textAlign: "center",
     },
     body: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         textAlign: "center",
     },
@@ -114,29 +116,29 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
         paddingHorizontal: 8,
         borderRadius: 8,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     lineText: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
     },
     grade: {
-        color: colors.tierGold,
-        fontWeight: "700",
+        color: p.game.tierGold,
+        fontFamily: FONTS.bodyHeavy,
     },
     qty: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     lost: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         textDecorationLine: "line-through",
     },
     meta: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
@@ -145,4 +147,4 @@ const styles = StyleSheet.create({
         gap: 10,
         marginTop: 6,
     },
-});
+}));

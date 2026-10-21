@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Badge from "@/components/Badge/Badge";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import EmptyState from "@/components/EmptyState/EmptyState";
 import Icon from "@/components/Icon/Icon";
+import Tabs from "@/components/Tabs/Tabs";
 import Modal from "@/components/Modal/Modal";
 import ChestsPage from "@/features/chests/components/ChestsPage";
 import { formatDateTime, formatListedAgo } from "@/features/market/market";
 import { toErrorMessage } from "@/lib/api";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { inboxApi } from "../inboxApi";
 import { useInboxStore } from "../inboxStore";
 import { mailInfo, toMail, type Mail } from "../mail";
@@ -29,6 +32,8 @@ type InboxTab = "mail" | "chests";
  * are all that's waiting. Friend requests aren't here; they're with friends.
  */
 export default function InboxModal({ onClose }: InboxModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [tab, setTab] = useState<InboxTab>(() => {
         const { unread, pendingChests } = useInboxStore.getState();
         return unread === 0 && pendingChests > 0 ? "chests" : "mail";
@@ -65,32 +70,27 @@ export default function InboxModal({ onClose }: InboxModalProps) {
             onClose={onClose}
         >
             {!open && (
-                <View style={styles.tabs} accessibilityRole="tablist">
-                    <TabButton
-                        label="Mail"
-                        badge={mail?.filter((entry) => !entry.item.read).length ?? 0}
-                        isActive={tab === "mail"}
-                        onPress={() => setTab("mail")}
-                    />
-                    <TabButton
-                        label="Chests"
-                        badge={pendingChests}
-                        isActive={tab === "chests"}
-                        onPress={() => setTab("chests")}
-                    />
-                </View>
+                <Tabs
+                    tabs={[
+                        { id: "mail", label: "Mail", badge: mail?.filter((entry) => !entry.item.read).length ?? 0 },
+                        { id: "chests", label: "Chests", badge: pendingChests },
+                    ]}
+                    value={tab}
+                    onChange={setTab}
+                    style={styles.tabs}
+                />
             )}
             {tab === "chests" && !open ? (
                 <ChestsPage />
             ) : !mail ? (
                 <View style={styles.loading}>
-                    {error ? <Text style={styles.empty}>{error}</Text> : <ActivityIndicator color={colors.emberBright} />}
+                    {error ? <EmptyState title={error} /> : <ActivityIndicator color={palette.ember} />}
                 </View>
             ) : open ? (
                 <MailPage mail={open} />
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-                    {mail.length === 0 && <Text style={styles.empty}>Nothing here yet. News and replies land here.</Text>}
+                    {mail.length === 0 && <EmptyState title="Nothing here yet. News and replies land here." />}
                     {mail.map((entry) => (
                         <MailRow key={entry.id} mail={entry} onPress={() => setOpen(entry)} />
                     ))}
@@ -100,32 +100,16 @@ export default function InboxModal({ onClose }: InboxModalProps) {
     );
 }
 
-function TabButton({ label, badge, isActive, onPress }: { label: string; badge: number; isActive: boolean; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            style={[styles.tab, isActive && styles.tabActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            accessibilityLabel={badge > 0 ? `${label}, ${badge} new` : label}
-        >
-            {/* The badge sits on the label's corner, not the whole tab's. */}
-            <View style={styles.tabLabelWrap}>
-                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
-                <Badge count={badge} />
-            </View>
-        </Pressable>
-    );
-}
 
 function MailRow({ mail, onPress }: { mail: Mail; onPress: () => void }) {
+    const styles = useStyles();
     const info = mailInfo(mail);
     const isNew = !mail.item.read;
 
     return (
-        <Pressable
+        <Panel compact
             onPress={onPress}
-            style={({ pressed }) => [styles.row, isNew && styles.rowNew, pressed && styles.pressed]}
+            style={[styles.row, isNew && styles.rowNew]}
             accessibilityRole="button"
             accessibilityLabel={`${isNew ? "New: " : ""}${info.label}, ${mail.item.title}`}
         >
@@ -142,11 +126,12 @@ function MailRow({ mail, onPress }: { mail: Mail; onPress: () => void }) {
                 <Text style={styles.when}>{formatListedAgo(mail.item.createdAt)}</Text>
                 {isNew && <View style={styles.dot} />}
             </View>
-        </Pressable>
+        </Panel>
     );
 }
 
 function MailPage({ mail }: { mail: Mail }) {
+    const styles = useStyles();
     const info = mailInfo(mail);
 
     return (
@@ -178,48 +163,13 @@ function MailPage({ mail }: { mail: Mail }) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     tabs: {
-        flexDirection: "row",
         marginBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 10,
-        // Overlaps the bar's hairline, so the active underline sits on it.
-        marginBottom: -1,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        borderBottomColor: colors.ember,
-    },
-    tabLabelWrap: {
-        paddingHorizontal: 10,
-        paddingTop: 4,
-    },
-    tabLabel: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontWeight: "700",
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
-    },
-    tabLabelActive: {
-        color: colors.emberBright,
     },
     loading: {
         paddingVertical: 32,
         alignItems: "center",
-    },
-    empty: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        textAlign: "center",
-        paddingVertical: 16,
     },
     list: {
         gap: 8,
@@ -230,16 +180,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 12,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     rowNew: {
-        borderColor: colors.ember,
-    },
-    pressed: {
-        transform: [{ scale: 0.98 }],
+        borderColor: p.ember,
     },
     rowText: {
         flex: 1,
@@ -250,23 +193,23 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     title: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     preview: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     when: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     dot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: colors.toastError,
+        backgroundColor: p.danger,
     },
     page: {
         gap: 14,
@@ -278,12 +221,12 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     pageTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     body: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
         lineHeight: 22,
     },
@@ -291,25 +234,25 @@ const styles = StyleSheet.create({
         gap: 4,
         padding: 12,
         borderLeftWidth: 3,
-        borderLeftColor: colors.border,
+        borderLeftColor: p.outline,
         borderRadius: 6,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     quoteLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     quoteTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     quoteBody: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         lineHeight: 19,
     },
-});
+}));

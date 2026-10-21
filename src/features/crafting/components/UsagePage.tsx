@@ -1,9 +1,12 @@
 import { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
 import SearchField from "@/components/SearchField/SearchField";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import { formatCoins } from "@/features/market/market";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { searchRecipes, useSources, useUsages, type RecipeSort } from "../recipes";
 import { RecipeRow, RecipeSortChips } from "./RecipeCard";
 
@@ -29,6 +32,7 @@ export default function UsagePage({
     onInspect: (itemId: string) => void;
     onCraft: (recipeId: string) => void;
 }) {
+    const styles = useStyles();
     const usages = useUsages(itemId);
     const shown = useMemo(() => searchRecipes(usages, query, sort), [usages, query, sort]);
 
@@ -36,7 +40,7 @@ export default function UsagePage({
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
             <Obtained itemId={itemId} onInspect={onInspect} onCraft={onCraft} />
 
-            <Text style={styles.sectionTitle}>Used in</Text>
+            <SectionTitle>Used in</SectionTitle>
             {usages.length === 0 ? (
                 <Text style={styles.sectionEmpty}>Nothing uses this yet.</Text>
             ) : (
@@ -53,7 +57,7 @@ export default function UsagePage({
                             onCraft={() => onCraft(status.recipe.id)}
                         />
                     ))}
-                    {shown.length === 0 && <Text style={styles.emptyText}>No uses match “{query.trim()}”.</Text>}
+                    {shown.length === 0 && <Hint>No uses match “{query.trim()}”.</Hint>}
                 </>
             )}
         </ScrollView>
@@ -74,19 +78,21 @@ function Obtained({
     onInspect: (itemId: string) => void;
     onCraft: (recipeId: string) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { sources, recipes } = useSources(itemId);
     return (
         <>
-            <Text style={styles.sectionTitle}>Obtained from</Text>
+            <SectionTitle>Obtained from</SectionTitle>
             {sources.length === 0 && recipes.length === 0 && (
                 <Text style={styles.sectionEmpty}>No known way to get this yet.</Text>
             )}
             {sources.map((source) => (
-                <View key={`${source.kind}-${source.name}`} style={styles.source}>
+                <Panel compact key={`${source.kind}-${source.name}`} style={styles.source}>
                     <Icon
                         name={source.kind === "enemy" ? "crossed-swords" : "shop"}
                         size={18}
-                        color={colors.emberBright}
+                        color={palette.ember}
                     />
                     <Text style={styles.sourceName}>{source.name}</Text>
                     <Text style={styles.sourceDetail}>
@@ -94,7 +100,7 @@ function Obtained({
                             ? `Drop · ${formatChance(source.chance)}${formatQuantity(source.quantity)}`
                             : "Vendor"}
                     </Text>
-                </View>
+                </Panel>
             ))}
             {recipes.map((status) => (
                 <RecipeRow
@@ -121,28 +127,13 @@ function formatQuantity({ min, max }: { min: number; max: number }): string {
     return min === max ? ` · ×${formatCoins(min)}` : ` · ×${formatCoins(min)}–${formatCoins(max)}`;
 }
 
-const styles = StyleSheet.create({
-    emptyText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        textAlign: "center",
-        paddingTop: 16,
-    },
+const useStyles = createStyles((p) => ({
     list: {
         gap: 10,
         paddingBottom: 8,
     },
-    sectionTitle: {
-        marginTop: 4,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
     sectionEmpty: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         fontStyle: "italic",
     },
@@ -152,20 +143,16 @@ const styles = StyleSheet.create({
         gap: 10,
         paddingVertical: 10,
         paddingHorizontal: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     sourceName: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     sourceDetail: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

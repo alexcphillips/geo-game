@@ -19,11 +19,10 @@ export type GeoFishIntent = "run" | "thrash" | "dive" | "rest" | "jump";
 
 /**
  * ready: nothing in the water. waiting: the bobber is under, strike it.
- * creature: a sea creature is on the line. outclassed: a fish too weak to
- * fight, land it or play it out. fight: one card per turn. over: the cast
- * ended (see outcome).
+ * creature: a sea creature is on the line. fight: one card per turn. over:
+ * the cast ended (see outcome).
  */
-export type GeoFishingPhase = "ready" | "waiting" | "creature" | "outclassed" | "fight" | "over";
+export type GeoFishingPhase = "ready" | "waiting" | "creature" | "fight" | "over";
 
 export type GeoFishingStatuses = {
     /** Turns left in which it can't throw the hook or escape. */
@@ -78,7 +77,7 @@ export type GeoFishingOutcome =
           tier: GeoQualityTier | null;
           /** The inventory item it went in as. */
           itemId: string;
-          /** e.g. "Reeled in", "Gaffed", "Quick land". */
+          /** e.g. "Reeled in", "Gaffed". */
           how: string;
           turns: number;
           xp: number;
@@ -122,8 +121,6 @@ export type GeoStartFishingRequest = {
 export type GeoFishingAction =
     | { type: "cast" }
     | { type: "strike" }
-    | { type: "quickLand" }
-    | { type: "playOut" }
     | { type: "cutLine" }
     | { type: "fightCreature" }
     | { type: "play"; inventoryId: string };
@@ -131,8 +128,6 @@ export type GeoFishingAction =
 export const GEO_FISHING_ACTION_TYPES = [
     "cast",
     "strike",
-    "quickLand",
-    "playOut",
     "cutLine",
     "fightCreature",
     "play",

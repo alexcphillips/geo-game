@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 /** One labelled row of chips, e.g. "Sort  Rarity  Name". Wraps when full. */
 export function ChipRow({
@@ -14,6 +15,7 @@ export function ChipRow({
     radio?: boolean;
     children: ReactNode;
 }) {
+    const styles = useStyles();
     return (
         <View style={styles.row} accessibilityRole={radio ? "radiogroup" : undefined}>
             {label && <Text style={styles.label}>{label}</Text>}
@@ -41,6 +43,7 @@ export function Chip({
     accessibilityLabel?: string;
     accessibilityHint?: string;
 }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -57,11 +60,13 @@ export function Chip({
 }
 
 function Chevron({ descending }: { descending: boolean }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <Svg width={10} height={10} viewBox="0 0 10 10" style={descending ? undefined : styles.flipped}>
             <Path
                 d="M1.5 3.5 L5 7 L8.5 3.5"
-                stroke={colors.emberBright}
+                stroke={palette.onPrimary}
                 strokeWidth={1.8}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -71,7 +76,7 @@ function Chevron({ descending }: { descending: boolean }) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     row: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -79,9 +84,9 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 11,
-        fontWeight: "700",
         letterSpacing: 1,
         textTransform: "uppercase",
         marginRight: 2,
@@ -90,25 +95,25 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        paddingHorizontal: 10,
+        paddingHorizontal: 11,
         paddingVertical: 5,
         borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderWidth: 2,
+        borderColor: p.outline,
+        backgroundColor: p.surfaceAlt,
     },
     chipOn: {
-        borderColor: colors.ember,
-        backgroundColor: "rgba(201, 100, 30, 0.18)",
+        backgroundColor: p.primary,
     },
     text: {
-        color: colors.textSecondary,
+        color: p.text,
+        fontFamily: FONTS.bodyBold,
         fontSize: 12,
-        fontWeight: "600",
     },
     textOn: {
-        color: colors.emberBright,
+        color: p.onPrimary,
     },
     flipped: {
         transform: [{ rotate: "180deg" }],
     },
-});
+}));

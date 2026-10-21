@@ -1,8 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
+import { SectionTitle } from "@/components/Text/Text";
 import CraftingModal from "@/features/crafting/components/CraftingModal";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { CARD_SKILLS } from "@/features/cards/cardSkills";
 import { INVENTORY_TABS, isFaded, type InventoryItem } from "../inventoryItems";
 import { QUALITY_TIER_COLORS, QUALITY_TIER_LABELS } from "@/features/fishing/fishingText";
@@ -37,6 +40,8 @@ function formatObtained(iso: string): string {
  * Card unlocks from equipment are listed first in that section.
  */
 export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [isUsageOpen, setIsUsageOpen] = useState(false);
     const faded = isFaded(item);
     const charges = item.charges;
@@ -63,7 +68,7 @@ export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
                     <Icon
                         name={item.icon}
                         size={64}
-                        color={faded ? colors.textSecondary : colors.emberBright}
+                        color={faded ? palette.textMuted : palette.ember}
                     />
                 </View>
                 <Text style={styles.name}>{item.name}</Text>
@@ -101,14 +106,14 @@ export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
                 accessibilityRole="button"
                 accessibilityLabel="Usage: how it's obtained and what it's used in"
             >
-                <Icon name="anvil" size={15} color={colors.emberBright} />
+                <Icon name="anvil" size={15} color={palette.ember} />
                 <Text style={styles.usageText}>Usage</Text>
             </Pressable>
 
             <Text style={styles.description}>{item.description}</Text>
 
-            <Text style={styles.sectionTitle}>Stats</Text>
-            <View style={styles.table}>
+            <SectionTitle>Stats</SectionTitle>
+            <Panel compact style={styles.table}>
                 {charges && (
                     <View style={styles.row}>
                         <Text style={styles.rowLabel}>Charges</Text>
@@ -137,17 +142,17 @@ export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
                     <Text style={styles.rowLabel}>Obtained</Text>
                     <Text style={styles.rowValue}>{formatObtained(item.obtainedAt)}</Text>
                 </View>
-            </View>
+            </Panel>
 
             {(unlocks.length > 0 || effects.length > 0) && (
                 <>
-                    <Text style={styles.sectionTitle}>Effects</Text>
+                    <SectionTitle>Effects</SectionTitle>
                     <View style={styles.effects}>
                         {/* Card unlocks lead the section: for equipment they
                             are the effect that matters most. */}
                         {unlocks.map((card) => (
                             <View key={`unlock-${card}`} style={styles.unlock}>
-                                <Icon name="card-pick" size={16} color={colors.effect} />
+                                <Icon name="card-pick" size={16} color={palette.game.effect} />
                                 <Text style={styles.effect}>Unlocks card: {card}</Text>
                             </View>
                         ))}
@@ -170,7 +175,7 @@ export default function ItemDetail({ item, action, onUsage }: ItemDetailProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 10,
         paddingBottom: 12,
@@ -186,31 +191,31 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 16,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
         borderWidth: 1.5,
-        borderColor: colors.ember,
+        borderColor: p.ember,
         marginBottom: 4,
     },
     iconFrameFaded: {
-        borderColor: colors.border,
+        borderColor: p.outline,
         opacity: 0.6,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         textAlign: "center",
     },
     category: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     fadedBanner: {
         marginTop: 4,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
         textAlign: "center",
@@ -225,36 +230,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     usageText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     pressed: {
         transform: [{ scale: 0.97 }],
     },
     description: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
         lineHeight: 21,
         textAlign: "center",
         marginVertical: 4,
     },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
     table: {
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
+        gap: 0,
         paddingHorizontal: 14,
     },
     row: {
@@ -264,23 +258,23 @@ const styles = StyleSheet.create({
         gap: 12,
         paddingVertical: 11,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: p.outline,
     },
     rowLast: {
         borderBottomWidth: 0,
     },
     rowLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
     },
     rowValue: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
     },
     fadedValue: {
-        color: colors.textSecondary,
+        color: p.textMuted,
     },
     chargeValue: {
         flexDirection: "row",
@@ -291,12 +285,12 @@ const styles = StyleSheet.create({
         width: 72,
         height: 5,
         borderRadius: 3,
-        backgroundColor: colors.barTrack,
+        backgroundColor: p.track,
         overflow: "hidden",
     },
     chargeFill: {
         height: "100%",
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     effects: {
         gap: 6,
@@ -308,9 +302,9 @@ const styles = StyleSheet.create({
     },
     effect: {
         flexShrink: 1,
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         lineHeight: 20,
     },
-});
+}));

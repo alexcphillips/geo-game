@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { Text, View } from "react-native";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 
 type BadgeProps = {
     /** What's waiting; nothing shows at 0. */
@@ -12,6 +13,7 @@ type BadgeProps = {
  * `overflow: "hidden"`.
  */
 export default function Badge({ count }: BadgeProps) {
+    const styles = useStyles();
     if (count <= 0) return null;
 
     return (
@@ -21,7 +23,7 @@ export default function Badge({ count }: BadgeProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     badge: {
         position: "absolute",
         top: -4,
@@ -32,14 +34,14 @@ const styles = StyleSheet.create({
         borderRadius: 9,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.toastError,
-        borderWidth: 1.5,
-        borderColor: colors.void,
+        backgroundColor: p.danger,
+        borderWidth: 2,
+        borderColor: p.outline,
     },
     text: {
-        color: colors.textPrimary,
+        color: "#FFFFFF",
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 10,
-        fontWeight: "700",
         fontVariant: ["tabular-nums"],
     },
-});
+}));

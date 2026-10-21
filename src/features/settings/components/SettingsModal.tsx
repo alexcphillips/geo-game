@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import type { PlayerPosition } from "@/features/location/hooks/usePlayerLocation";
@@ -28,7 +28,8 @@ import {
 } from "@/lib/geo/contracts";
 import MenuTile from "@/components/MenuTile/MenuTile";
 import { usePlayerStore } from "@/features/player/playerStore";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 export type SettingsPage =
     | "menu"
@@ -103,6 +104,8 @@ export default function SettingsModal({
     onShowSuggestionOnMap,
     onMoveSuggestionPin,
 }: SettingsModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [page, setPage] = useState<SettingsPage>(initialPage);
     const placeEditorReturn = usePlaceDraft((draft) => draft.returnTo);
 
@@ -133,7 +136,7 @@ export default function SettingsModal({
                         accessibilityLabel="Credits"
                         hitSlop={10}
                     >
-                        <Icon name="info" size={18} color={colors.textSecondary} />
+                        <Icon name="info" size={18} color={palette.textMuted} />
                     </Pressable>
                 )
             }
@@ -243,6 +246,7 @@ function AdminPage({
     onOpenFeedback: () => void;
     onOpenAnnouncements: () => void;
 }) {
+    const styles = useStyles();
     const showSpawnRadius = useAdminSettingsStore((state) => state.showSpawnRadius);
     const setShowSpawnRadius = useAdminSettingsStore((state) => state.setShowSpawnRadius);
     const fillSpawns = useAdminSettingsStore((state) => state.fillSpawns);
@@ -449,6 +453,7 @@ function AdminPage({
 }
 
 function AdminAction({ label, hint, onPress }: { label: string; hint: string; onPress: () => void }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -465,7 +470,7 @@ function AdminAction({ label, hint, onPress }: { label: string; hint: string; on
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     grid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -485,36 +490,36 @@ const styles = StyleSheet.create({
         borderRadius: 17,
     },
     infoButtonPressed: {
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     adminAction: {
         gap: 4,
         padding: 16,
         borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
         borderWidth: 1,
-        borderColor: colors.blood,
+        borderColor: p.game.blood,
     },
     adminServerAction: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     adminServerLabel: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     adminActionPressed: {
         transform: [{ scale: 0.98 }],
     },
     adminActionLabel: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     adminActionHint: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
     adminPage: {
         gap: 12,
     },
-});
+}));

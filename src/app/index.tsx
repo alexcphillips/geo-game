@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { router, useIsFocused } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { usePlayerLocation } from "@/features/location/hooks/usePlayerLocation";
 import GameMap from "@/features/map/components/GameMap";
 import type { MapNearPlaces, MapNearWater } from "@/features/map/mapHtml";
@@ -61,9 +61,10 @@ import {
     GEO_API_PATHS,
     type GeoAdminAdjustSuggestionRequest,
     type GeoAdminSuggestion,
+    type GeoDungeonRunResponse,
     type GeoRunResponse,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { createStyles, MoodProvider, useAmbientMood } from "@/theme/theme";
 import { ABOVE_BAR_GAP } from "@/theme/layout";
 
 /**
@@ -74,6 +75,7 @@ import { ABOVE_BAR_GAP } from "@/theme/layout";
  * has nothing to show.
  */
 export default function WorldScreen() {
+    const styles = useStyles();
     const { position, permission, error } = usePlayerLocation();
     const [mapError, setMapError] = useState<string | null>(null);
     const [isInventoryOpen, setIsInventoryOpen] = useState(false);
@@ -90,6 +92,8 @@ export default function WorldScreen() {
     const [isCookingOpen, setIsCookingOpen] = useState(false);
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const barHeight = useBottomBarHeight();
+    // The world outside: parchment by day, ink when the phone is in dark mode.
+    const mapMood = useAmbientMood();
     // Opened from Camp (to restock), or the lunchbox from the health bar (to eat).
     const [openPack, setOpenPack] = useState<"lunchbox" | "bait" | null>(null);
     const [settingsPage, setSettingsPage] = useState<SettingsPage>("menu");
@@ -126,23 +130,23 @@ export default function WorldScreen() {
         dungeonMenu !== null ||
         openPlace !== null;
     useDungeonPolling(dungeonMenu !== null, isPlayerReady);
-    // The host started the lobby: this player's fight is already open.
-    useLobbyExitWatcher(() => {
+    // The host started the lobby: this player's dungeon is already open.
+    useLobbyExitWatcher((where) => {
         setDungeonMenu(null);
-        router.push("/run/combat");
+        router.push(where === "map" ? "/run/dungeon" : "/run/combat");
     });
 
-    // A fight left open (the app closed mid-Run) picks back up on launch.
+    // A dungeon or fight left open (the app closed mid-Run) picks back up on launch.
     // Once per launch: after that, the player is free to walk away from it.
     const checkedActiveRun = useRef(false);
     useEffect(() => {
         if (!isPlayerReady || checkedActiveRun.current) return;
         checkedActiveRun.current = true;
-        api.get<GeoRunResponse | null>(GEO_API_PATHS.runs.active)
-            .then((active) => {
-                if (active) router.push("/run/combat");
-            })
-            .catch(() => {});
+        // A dungeon first: its map reopens any room fight from there.
+        void (async () => {
+            if (await api.get<GeoDungeonRunResponse | null>(GEO_API_PATHS.dungeonRuns.active)) router.push("/run/dungeon");
+            else if (await api.get<GeoRunResponse | null>(GEO_API_PATHS.runs.active)) router.push("/run/combat");
+        })().catch(() => {});
     }, [isPlayerReady]);
 
     // Pin drop: the modal it started from closes so the map is visible, then
@@ -266,308 +270,313 @@ export default function WorldScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <GameMap
-                position={position}
-                isAdminMode={isFreeCamera}
-                // The bar is hidden while the map is taken over, so the whole map is free then.
-                bottomPadding={isMapTakenOver ? 0 : barHeight}
-                spawns={spawns}
-                places={handMadePlaces}
-                spawnRadiusMetres={showSpawnRadius ? spawnRadiusMetres : null}
-                onNearWater={setNearWater}
-                onNearPlaces={setNearPlaces}
-                onSpawnPress={(spawn) => {
-                    // Mid pin-drop the player is placing a pin, not starting a fight.
-                    if (isDroppingPin) return;
-                    // Checked here to answer at once; the server checks again
-                    // with the position sent, and has the last word.
-                    const distance = Math.round(distanceMetres(position, spawn));
-                    if (distance > reachMetres) {
-                        showToast(`Too far away (${distance} m). Get within ${reachMetres} m to fight.`, "info");
-                        return;
-                    }
-                    router.push({
-                        pathname: "/run/combat",
-                        params: {
-                            spawn: spawn.id,
-                            latitude: String(position.latitude),
-                            longitude: String(position.longitude),
-                        },
-                    });
-                }}
-                onPlacePress={(place) => {
-                    if (!isDroppingPin) setOpenPlace(place);
-                }}
-                camp={
-                    camp
-                        ? { latitude: camp.position.latitude, longitude: camp.position.longitude, radiusMetres: CAMP_RADIUS_METRES }
-                        : null
-                }
-                onCampPress={() => {
-                    if (!isDroppingPin) setIsCampOpen(true);
-                }}
-                pinDrop={
-                    pinDropFor === "review" && reviewPin
-                        ? {
-                              initial: reviewPin.pin,
-                              color: suggestionKindInfo(reviewPin.suggestion.kind).color,
-                              onPinPlaced: (pin) => setReviewPin((current) => current && { ...current, pin }),
-                          }
-                        : pinDropFor === "place"
-                        ? {
-                              initial: placePin ?? position,
-                              color: PLACE_TYPES[placeKind].color,
-                              onPinPlaced: setPlacePin,
-                          }
-                        : pinDropFor === "suggestion"
-                          ? {
-                                initial: suggestionPin ?? position,
-                                color: suggestionKindInfo(suggestionKind).color,
-                                onPinPlaced: setSuggestionPin,
-                            }
-                          : null
-                }
-                focus={suggestionFocus}
-                onError={setMapError}
-            />
-
-            {suggestionFocus && <SuggestionFocusOverlay onBack={finishSuggestionFocus} />}
-
-            {isDroppingPin && (
-                <PinDropOverlay
-                    kind={
-                        pinDropFor === "review" && reviewPin
-                            ? reviewPin.suggestion.kind
-                            : pinDropFor === "place"
-                              ? placeKind
-                              : suggestionKind
-                    }
-                    hint={
-                        pinDropFor === "review"
-                            ? "Correcting the player's pin. Their first pin is kept."
-                            : pinDropFor === "place"
-                              ? "Where the new place's marker goes."
-                              : undefined
-                    }
-                    onCancel={() => (pinDropFor === "review" ? void finishReviewPinDrop(false) : finishPinDrop(false))}
-                    onDone={() => (pinDropFor === "review" ? void finishReviewPinDrop(true) : finishPinDrop(true))}
-                />
-            )}
-
-            {!isMapTakenOver && (
-                <>
-                    <PlayerStatusHud
-                        onPressHealth={() => setOpenPack("lunchbox")}
-                        onOpenQuestLog={() => setIsQuestLogOpen(true)}
-                    />
-
-                    {/* Bottom-left, just above the bar. Lets taps through to the
-                        map, which is a rotation surface everywhere. */}
-                    <View style={[styles.coins, { bottom: barHeight + ABOVE_BAR_GAP }]} pointerEvents="none">
-                        <CoinCounter coins={coins} />
-                    </View>
-
-                    <InboxButton onPress={() => setIsInboxOpen(true)} />
-
-                    <LobbyButton onPress={() => setDungeonMenu({ place: null })} />
-
-                    <FriendsButton onPress={() => setIsFriendsOpen(true)} />
-
-                    <SettingsButton onPress={() => openSettings()} />
-
-                    <BottomBar
-                        onOpenCharacter={() => router.push("/character")}
-                        onOpenInventory={() => setIsInventoryOpen(true)}
-                        onOpenSkills={() => setIsSkillsOpen(true)}
-                        onOpenDeck={() => setIsDeckOpen(true)}
-                        actions={{
-                            camp: { onPress: () => setIsCampOpen(true) },
-                            lunchbox: { onPress: () => setOpenPack("lunchbox") },
-                            bait: { onPress: () => setOpenPack("bait") },
-                            farm: { onPress: () => router.push("/farm") },
-                            crafting: { onPress: () => setIsCraftingOpen(true) },
-                            cooking: { onPress: () => setIsCookingOpen(true) },
-                            vendors: { onPress: () => setIsVendorsOpen(true) },
-                            market: { onPress: () => setIsMarketOpen(true) },
-                            communityCenter: { onPress: () => setCommunityCenterTab("mayor") },
-                        }}
-                    />
-                </>
-            )}
-
-            {/* The map lives in a WebView and depends on the network for both
-                its library and its tiles, so a failure there is silent black
-                unless it is surfaced. */}
-            {!isMapTakenOver && <ServerStatusBanner bottom={barHeight + ABOVE_BAR_GAP + (mapError ? 60 : 0)} />}
-
-            {mapError && (
-                <View style={[styles.mapError, { bottom: barHeight + ABOVE_BAR_GAP }]}>
-                    <Text style={styles.mapErrorText}>{mapError}</Text>
-                </View>
-            )}
-
-            {openPlace && (
-                <PlaceModal
-                    place={openPlace}
-                    distance={distanceMetres(position, openPlace)}
-                    // Like a PokéStop: any place can be looked at, but a Run
-                    // only starts in reach. The free camera is for inspecting
-                    // anywhere, so it lifts the limit.
-                    inReach={
-                        isFreeCamera ||
-                        distanceMetres(position, openPlace) <= PLACE_REACH_METRES
-                    }
-                    // A POI is a dungeon lobby entrance: its menu can be
-                    // browsed from anywhere, but joined only in reach.
-                    startLabel={openPlace.skill === null ? "Dungeons" : undefined}
-                    startNeedsReach={openPlace.skill !== null}
-                    onStart={() => {
-                        setOpenPlace(null);
-                        if (openPlace.skill === null) {
-                            setDungeonMenu({ place: openPlace });
+        // The world outside sets the mood for the map, its HUD and every modal
+        // opened over it: parchment by day, ink when the phone is in dark mode.
+        <MoodProvider mood={mapMood}>
+            <View style={styles.container}>
+                <GameMap
+                    position={position}
+                    isAdminMode={isFreeCamera}
+                    // The bar is hidden while the map is taken over, so the whole map is free then.
+                    bottomPadding={isMapTakenOver ? 0 : barHeight}
+                    spawns={spawns}
+                    places={handMadePlaces}
+                    spawnRadiusMetres={showSpawnRadius ? spawnRadiusMetres : null}
+                    onNearWater={setNearWater}
+                    onNearPlaces={setNearPlaces}
+                    onSpawnPress={(spawn) => {
+                        // Mid pin-drop the player is placing a pin, not starting a fight.
+                        if (isDroppingPin) return;
+                        // Checked here to answer at once; the server checks again
+                        // with the position sent, and has the last word.
+                        const distance = Math.round(distanceMetres(position, spawn));
+                        if (distance > reachMetres) {
+                            showToast(`Too far away (${distance} m). Get within ${reachMetres} m to fight.`, "info");
                             return;
                         }
-                        router.push(
-                            openPlace.skill === "fishing"
-                                ? {
-                                      pathname: "/run/fishing",
-                                      params: {
-                                          name: openPlace.name,
-                                          tier: fishingTier(openPlace.water ?? null, openPlace.handMade?.settings.fishing).id,
-                                          // So the Run can tell when you've walked away from the water.
-                                          latitude: String(openPlace.latitude),
-                                          longitude: String(openPlace.longitude),
-                                      },
-                                  }
-                                : openPlace.skill === "farming"
-                                  ? // Every farming place opens the player's one farm, ready to work.
-                                    {
-                                          pathname: "/farm",
+                        router.push({
+                            pathname: "/run/combat",
+                            params: {
+                                spawn: spawn.id,
+                                latitude: String(position.latitude),
+                                longitude: String(position.longitude),
+                            },
+                        });
+                    }}
+                    onPlacePress={(place) => {
+                        if (!isDroppingPin) setOpenPlace(place);
+                    }}
+                    camp={
+                        camp
+                            ? { latitude: camp.position.latitude, longitude: camp.position.longitude, radiusMetres: CAMP_RADIUS_METRES }
+                            : null
+                    }
+                    onCampPress={() => {
+                        if (!isDroppingPin) setIsCampOpen(true);
+                    }}
+                    pinDrop={
+                        pinDropFor === "review" && reviewPin
+                            ? {
+                                  initial: reviewPin.pin,
+                                  color: suggestionKindInfo(reviewPin.suggestion.kind).color,
+                                  onPinPlaced: (pin) => setReviewPin((current) => current && { ...current, pin }),
+                              }
+                            : pinDropFor === "place"
+                            ? {
+                                  initial: placePin ?? position,
+                                  color: PLACE_TYPES[placeKind].color,
+                                  onPinPlaced: setPlacePin,
+                              }
+                            : pinDropFor === "suggestion"
+                              ? {
+                                    initial: suggestionPin ?? position,
+                                    color: suggestionKindInfo(suggestionKind).color,
+                                    onPinPlaced: setSuggestionPin,
+                                }
+                              : null
+                    }
+                    focus={suggestionFocus}
+                    onError={setMapError}
+                />
+
+                {suggestionFocus && <SuggestionFocusOverlay onBack={finishSuggestionFocus} />}
+
+                {isDroppingPin && (
+                    <PinDropOverlay
+                        kind={
+                            pinDropFor === "review" && reviewPin
+                                ? reviewPin.suggestion.kind
+                                : pinDropFor === "place"
+                                  ? placeKind
+                                  : suggestionKind
+                        }
+                        hint={
+                            pinDropFor === "review"
+                                ? "Correcting the player's pin. Their first pin is kept."
+                                : pinDropFor === "place"
+                                  ? "Where the new place's marker goes."
+                                  : undefined
+                        }
+                        onCancel={() => (pinDropFor === "review" ? void finishReviewPinDrop(false) : finishPinDrop(false))}
+                        onDone={() => (pinDropFor === "review" ? void finishReviewPinDrop(true) : finishPinDrop(true))}
+                    />
+                )}
+
+                {!isMapTakenOver && (
+                    <>
+                        <PlayerStatusHud
+                            onPressHealth={() => setOpenPack("lunchbox")}
+                            onOpenQuestLog={() => setIsQuestLogOpen(true)}
+                        />
+
+                        {/* Bottom-left, just above the bar. Lets taps through to the
+                            map, which is a rotation surface everywhere. */}
+                        <View style={[styles.coins, { bottom: barHeight + ABOVE_BAR_GAP }]} pointerEvents="none">
+                            <CoinCounter coins={coins} />
+                        </View>
+
+                        <InboxButton onPress={() => setIsInboxOpen(true)} />
+
+                        <LobbyButton onPress={() => setDungeonMenu({ place: null })} />
+
+                        <FriendsButton onPress={() => setIsFriendsOpen(true)} />
+
+                        <SettingsButton onPress={() => openSettings()} />
+
+                        <BottomBar
+                            onOpenCharacter={() => router.push("/character")}
+                            onOpenInventory={() => setIsInventoryOpen(true)}
+                            onOpenSkills={() => setIsSkillsOpen(true)}
+                            onOpenDeck={() => setIsDeckOpen(true)}
+                            actions={{
+                                camp: { onPress: () => setIsCampOpen(true) },
+                                lunchbox: { onPress: () => setOpenPack("lunchbox") },
+                                bait: { onPress: () => setOpenPack("bait") },
+                                farm: { onPress: () => router.push("/farm") },
+                                crafting: { onPress: () => setIsCraftingOpen(true) },
+                                cooking: { onPress: () => setIsCookingOpen(true) },
+                                vendors: { onPress: () => setIsVendorsOpen(true) },
+                                market: { onPress: () => setIsMarketOpen(true) },
+                                communityCenter: { onPress: () => setCommunityCenterTab("mayor") },
+                            }}
+                        />
+                    </>
+                )}
+
+                {/* The map lives in a WebView and depends on the network for both
+                    its library and its tiles, so a failure there is silent black
+                    unless it is surfaced. */}
+                {!isMapTakenOver && <ServerStatusBanner bottom={barHeight + ABOVE_BAR_GAP + (mapError ? 60 : 0)} />}
+
+                {mapError && (
+                    <View style={[styles.mapError, { bottom: barHeight + ABOVE_BAR_GAP }]}>
+                        <Text style={styles.mapErrorText}>{mapError}</Text>
+                    </View>
+                )}
+
+                {openPlace && (
+                    <PlaceModal
+                        place={openPlace}
+                        distance={distanceMetres(position, openPlace)}
+                        // Like a PokéStop: any place can be looked at, but a Run
+                        // only starts in reach. The free camera is for inspecting
+                        // anywhere, so it lifts the limit.
+                        inReach={
+                            isFreeCamera ||
+                            distanceMetres(position, openPlace) <= PLACE_REACH_METRES
+                        }
+                        // A POI is a dungeon lobby entrance: its menu can be
+                        // browsed from anywhere, but joined only in reach.
+                        startLabel={openPlace.skill === null ? "Dungeons" : undefined}
+                        startNeedsReach={openPlace.skill !== null}
+                        onStart={() => {
+                            setOpenPlace(null);
+                            if (openPlace.skill === null) {
+                                setDungeonMenu({ place: openPlace });
+                                return;
+                            }
+                            router.push(
+                                openPlace.skill === "fishing"
+                                    ? {
+                                          pathname: "/run/fishing",
                                           params: {
-                                              place: placeTitle(openPlace.name, openPlace.skill),
+                                              name: openPlace.name,
+                                              tier: fishingTier(openPlace.water ?? null, openPlace.handMade?.settings.fishing).id,
+                                              // So the Run can tell when you've walked away from the water.
                                               latitude: String(openPlace.latitude),
                                               longitude: String(openPlace.longitude),
                                           },
                                       }
-                                  : {
-                                      pathname: "/run/place",
-                                      params: { name: openPlace.name, skill: openPlace.skill ?? "" },
-                                  },
-                        );
-                    }}
-                    onClose={() => setOpenPlace(null)}
-                    // Admins, hand-made places only.
-                    onEdit={
-                        canEditOpenPlace
-                            ? () => {
-                                  const place = handMadePlaces.find((candidate) => candidate.id === openPlace.id);
-                                  if (!place) return;
-                                  startEditPlace(place, "map");
-                                  setOpenPlace(null);
-                                  openSettings("placeEditor");
-                              }
-                            : undefined
-                    }
-                    onRemove={
-                        canEditOpenPlace
-                            ? () => confirmRemovePlace(openPlace, () => setOpenPlace(null))
-                            : undefined
-                    }
-                />
-            )}
+                                    : openPlace.skill === "farming"
+                                      ? // Every farming place opens the player's one farm, ready to work.
+                                        {
+                                              pathname: "/farm",
+                                              params: {
+                                                  place: placeTitle(openPlace.name, openPlace.skill),
+                                                  latitude: String(openPlace.latitude),
+                                                  longitude: String(openPlace.longitude),
+                                              },
+                                          }
+                                      : {
+                                          pathname: "/run/place",
+                                          params: { name: openPlace.name, skill: openPlace.skill ?? "" },
+                                      },
+                            );
+                        }}
+                        onClose={() => setOpenPlace(null)}
+                        // Admins, hand-made places only.
+                        onEdit={
+                            canEditOpenPlace
+                                ? () => {
+                                      const place = handMadePlaces.find((candidate) => candidate.id === openPlace.id);
+                                      if (!place) return;
+                                      startEditPlace(place, "map");
+                                      setOpenPlace(null);
+                                      openSettings("placeEditor");
+                                  }
+                                : undefined
+                        }
+                        onRemove={
+                            canEditOpenPlace
+                                ? () => confirmRemovePlace(openPlace, () => setOpenPlace(null))
+                                : undefined
+                        }
+                    />
+                )}
 
-            {dungeonMenu && (
-                <DungeonsModal
-                    entrance={
-                        dungeonMenu.place &&
-                        (isFreeCamera || distanceMetres(position, dungeonMenu.place) <= PLACE_REACH_METRES)
-                            ? {
-                                  position: { latitude: position.latitude, longitude: position.longitude },
-                                  place: { latitude: dungeonMenu.place.latitude, longitude: dungeonMenu.place.longitude },
-                              }
-                            : null
-                    }
-                    onEntered={() => {
-                        setDungeonMenu(null);
-                        // Bare: the combat screen resumes the Run the start opened.
-                        router.push("/run/combat");
-                    }}
-                    onClose={() => setDungeonMenu(null)}
-                />
-            )}
+                {dungeonMenu && (
+                    <DungeonsModal
+                        entrance={
+                            dungeonMenu.place &&
+                            (isFreeCamera || distanceMetres(position, dungeonMenu.place) <= PLACE_REACH_METRES)
+                                ? {
+                                      position: { latitude: position.latitude, longitude: position.longitude },
+                                      place: { latitude: dungeonMenu.place.latitude, longitude: dungeonMenu.place.longitude },
+                                  }
+                                : null
+                        }
+                        onEntered={(where) => {
+                            setDungeonMenu(null);
+                            // Bare: each screen resumes what the start opened.
+                            router.push(where === "map" ? "/run/dungeon" : "/run/combat");
+                        }}
+                        onClose={() => setDungeonMenu(null)}
+                    />
+                )}
 
-            {/* Rendered conditionally so unmounting resets the tab and search
-                — see the note in Modal. */}
-            {isInventoryOpen && (
-                <InventoryModal onClose={() => setIsInventoryOpen(false)} />
-            )}
+                {/* Rendered conditionally so unmounting resets the tab and search
+                    — see the note in Modal. */}
+                {isInventoryOpen && (
+                    <InventoryModal onClose={() => setIsInventoryOpen(false)} />
+                )}
 
-            {isVendorsOpen && <VendorsModal onClose={() => setIsVendorsOpen(false)} />}
+                {isVendorsOpen && <VendorsModal onClose={() => setIsVendorsOpen(false)} />}
 
-            {isMarketOpen && <MarketModal onClose={() => setIsMarketOpen(false)} />}
+                {isMarketOpen && <MarketModal onClose={() => setIsMarketOpen(false)} />}
 
-            {communityCenterTab && (
-                <CommunityCenterModal
-                    onClose={() => setCommunityCenterTab(null)}
-                    initialTab={communityCenterTab}
-                />
-            )}
+                {communityCenterTab && (
+                    <CommunityCenterModal
+                        onClose={() => setCommunityCenterTab(null)}
+                        initialTab={communityCenterTab}
+                    />
+                )}
 
-            {isFriendsOpen && <FriendsModal onClose={() => setIsFriendsOpen(false)} />}
+                {isFriendsOpen && <FriendsModal onClose={() => setIsFriendsOpen(false)} />}
 
-            {isInboxOpen && <InboxModal onClose={() => setIsInboxOpen(false)} />}
+                {isInboxOpen && <InboxModal onClose={() => setIsInboxOpen(false)} />}
 
-            {whatsNew.changelog && isFocused && !isAnythingOpen && !isMapTakenOver && (
-                <WhatsNewModal changelog={whatsNew.changelog} onClose={whatsNew.dismiss} />
-            )}
+                {whatsNew.changelog && isFocused && !isAnythingOpen && !isMapTakenOver && (
+                    <WhatsNewModal changelog={whatsNew.changelog} onClose={whatsNew.dismiss} />
+                )}
 
-            {isDeckOpen && <DeckModal onClose={() => setIsDeckOpen(false)} />}
+                {isDeckOpen && <DeckModal onClose={() => setIsDeckOpen(false)} />}
 
-            {isSkillsOpen && <SkillsModal onClose={() => setIsSkillsOpen(false)} />}
+                {isSkillsOpen && <SkillsModal onClose={() => setIsSkillsOpen(false)} />}
 
-            {isCookingOpen && <CookingModal onClose={() => setIsCookingOpen(false)} />}
+                {isCookingOpen && <CookingModal onClose={() => setIsCookingOpen(false)} />}
 
-            {isQuestLogOpen && <QuestLogModal onClose={() => setIsQuestLogOpen(false)} />}
+                {isQuestLogOpen && <QuestLogModal onClose={() => setIsQuestLogOpen(false)} />}
 
-            {isCampOpen && (
-                <CampModal
-                    onClose={() => setIsCampOpen(false)}
-                    onOpenPack={(kind) => {
-                        // One native modal at a time: Camp closes, the pack opens.
-                        setIsCampOpen(false);
-                        setOpenPack(kind);
-                    }}
-                />
-            )}
+                {isCampOpen && (
+                    <CampModal
+                        onClose={() => setIsCampOpen(false)}
+                        onOpenPack={(kind) => {
+                            // One native modal at a time: Camp closes, the pack opens.
+                            setIsCampOpen(false);
+                            setOpenPack(kind);
+                        }}
+                    />
+                )}
 
-            {openPack && <LunchboxModal kind={openPack} onClose={() => setOpenPack(null)} />}
+                {openPack && <LunchboxModal kind={openPack} onClose={() => setOpenPack(null)} />}
 
-            {isCraftingOpen && (
-                <CraftingModal
-                    onClose={() => setIsCraftingOpen(false)}
-                    renderDetail={(shown, showUsage) => <ItemDetail item={shown} onUsage={showUsage} />}
-                />
-            )}
+                {isCraftingOpen && (
+                    <CraftingModal
+                        onClose={() => setIsCraftingOpen(false)}
+                        renderDetail={(shown, showUsage) => <ItemDetail item={shown} onUsage={showUsage} />}
+                    />
+                )}
 
-            {isSettingsOpen && (
-                <SettingsModal
-                    onClose={() => setIsSettingsOpen(false)}
-                    isFreeCamera={isFreeCamera}
-                    onToggleFreeCamera={() => setIsFreeCamera(!isFreeCamera)}
-                    position={position}
-                    onDropPlacePin={() => startPinDrop("place")}
-                    onDropSuggestionPin={() => startPinDrop("suggestion")}
-                    initialPage={settingsPage}
-                    onShowSuggestionOnMap={showSuggestionOnMap}
-                    onMoveSuggestionPin={startReviewPinDrop}
-                />
-            )}
-        </View>
+                {isSettingsOpen && (
+                    <SettingsModal
+                        onClose={() => setIsSettingsOpen(false)}
+                        isFreeCamera={isFreeCamera}
+                        onToggleFreeCamera={() => setIsFreeCamera(!isFreeCamera)}
+                        position={position}
+                        onDropPlacePin={() => startPinDrop("place")}
+                        onDropSuggestionPin={() => startPinDrop("suggestion")}
+                        initialPage={settingsPage}
+                        onShowSuggestionOnMap={showSuggestionOnMap}
+                        onMoveSuggestionPin={startReviewPinDrop}
+                    />
+                )}
+            </View>
+        </MoodProvider>
     );
 }
 
 function Message({ title, body }: { title: string; body: string }) {
+    const styles = useStyles();
     return (
         <View style={styles.messageContainer}>
             <Text style={styles.messageTitle}>{title}</Text>
@@ -576,10 +585,10 @@ function Message({ title, body }: { title: string; body: string }) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     container: {
         flex: 1,
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     coins: {
         position: "absolute",
@@ -591,12 +600,12 @@ const styles = StyleSheet.create({
         right: 20,
         padding: 12,
         borderRadius: 8,
-        backgroundColor: "rgba(140, 36, 32, 0.9)",
+        backgroundColor: p.danger,
         borderWidth: 1,
-        borderColor: colors.blood,
+        borderColor: p.game.blood,
     },
     mapErrorText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
         textAlign: "center",
     },
@@ -605,18 +614,18 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 40,
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     messageTitle: {
-        color: colors.ember,
+        color: p.ember,
         fontSize: 26,
         letterSpacing: 2,
         marginBottom: 12,
     },
     messageBody: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 14,
         lineHeight: 22,
         textAlign: "center",
     },
-});
+}));

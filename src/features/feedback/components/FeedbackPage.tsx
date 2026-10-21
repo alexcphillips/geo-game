@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import { formatListedAgo } from "@/features/market/market";
 import { toErrorMessage } from "@/lib/api";
 import {
@@ -10,7 +14,8 @@ import {
     type GeoFeedbackKind,
     type GeoMyFeedback,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { FEEDBACK_KINDS, feedbackApi, feedbackKindInfo, feedbackStatusInfo } from "../feedback";
 
 /**
@@ -20,6 +25,8 @@ import { FEEDBACK_KINDS, feedbackApi, feedbackKindInfo, feedbackStatusInfo } fro
  * in their inbox.
  */
 export default function FeedbackPage() {
+    const styles = useStyles();
+    const palette = useTheme();
     const [kind, setKind] = useState<GeoFeedbackKind>("bug");
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
@@ -60,43 +67,36 @@ export default function FeedbackPage() {
             // iOS: keeps the description above the keyboard.
             automaticallyAdjustKeyboardInsets
         >
-            <Text style={styles.sectionTitle}>What is it?</Text>
+            <SectionTitle>What is it?</SectionTitle>
             <View style={styles.kinds}>
                 {FEEDBACK_KINDS.map((info) => {
                     const isSelected = info.id === kind;
                     return (
-                        <Pressable
+                        <Panel compact
                             key={info.id}
                             onPress={() => setKind(info.id)}
-                            style={({ pressed }) => [
-                                styles.kind,
-                                isSelected && { borderColor: info.color },
-                                pressed && styles.pressed,
-                            ]}
+                            style={[styles.kind, isSelected && { borderColor: info.color }]}
                             accessibilityRole="radio"
-                            accessibilityState={{ selected: isSelected }}
                             accessibilityLabel={info.label}
                         >
-                            <Icon name={info.icon} size={22} color={isSelected ? info.color : colors.textSecondary} />
+                            <Icon name={info.icon} size={22} color={isSelected ? info.color : palette.textMuted} />
                             <Text style={[styles.kindLabel, isSelected && styles.kindLabelSelected]}>{info.label}</Text>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </View>
 
-            <Text style={styles.sectionTitle}>Title</Text>
-            <TextInput
+            <SectionTitle>Title</SectionTitle>
+            <TextField
                 value={title}
                 onChangeText={setTitle}
                 placeholder={kind === "bug" ? "e.g. Map goes black after a fight" : "In a few words"}
-                placeholderTextColor={colors.textSecondary}
-                style={styles.input}
                 maxLength={GEO_FEEDBACK_TITLE_MAX}
                 returnKeyType="next"
             />
 
-            <Text style={styles.sectionTitle}>Description</Text>
-            <TextInput
+            <SectionTitle>Description</SectionTitle>
+            <TextField
                 value={body}
                 onChangeText={setBody}
                 placeholder={
@@ -104,37 +104,21 @@ export default function FeedbackPage() {
                         ? "What happened, what you expected, and how to make it happen again"
                         : "Tell us more"
                 }
-                placeholderTextColor={colors.textSecondary}
-                style={[styles.input, styles.body]}
                 multiline
                 maxLength={GEO_FEEDBACK_BODY_MAX}
-                textAlignVertical="top"
             />
 
-            <Pressable
-                onPress={() => void send()}
-                disabled={!canSend}
-                style={({ pressed }) => [styles.sendButton, !canSend && styles.disabled, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityState={{ busy: isSending, disabled: !canSend }}
-            >
-                {isSending ? (
-                    <ActivityIndicator color={colors.textOnEmber} />
-                ) : (
-                    <Icon name="share" size={18} color={colors.textOnEmber} />
-                )}
-                <Text style={styles.sendButtonText}>Send feedback</Text>
-            </Pressable>
-            <Text style={styles.hint}>Your app version and phone type are sent with it. Replies arrive in your inbox.</Text>
+            <Button label="Send feedback" variant="primary" size="large" icon="share" onPress={() => void send()} disabled={!canSend} busy={isSending} stretch />
+            <Hint>Your app version and phone type are sent with it. Replies arrive in your inbox.</Hint>
 
             {sent && sent.length > 0 && (
                 <>
-                    <Text style={styles.sectionTitle}>{"What you've sent"}</Text>
+                    <SectionTitle>{"What you've sent"}</SectionTitle>
                     {sent.map((item) => {
                         const kindInfo = feedbackKindInfo(item.kind);
                         const statusInfo = feedbackStatusInfo(item.status);
                         return (
-                            <View key={item.id} style={styles.row}>
+                            <Panel compact key={item.id} style={styles.row}>
                                 <Icon name={kindInfo.icon} size={18} color={kindInfo.color} />
                                 <View style={styles.rowText}>
                                     <Text style={styles.rowTitle} numberOfLines={1}>
@@ -148,7 +132,7 @@ export default function FeedbackPage() {
                                 <Text style={[styles.status, { color: statusInfo.color, borderColor: statusInfo.color }]}>
                                     {statusInfo.label}
                                 </Text>
-                            </View>
+                            </Panel>
                         );
                     })}
                 </>
@@ -157,18 +141,10 @@ export default function FeedbackPage() {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 10,
         paddingBottom: 8,
-    },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
     },
     kinds: {
         flexDirection: "row",
@@ -179,89 +155,41 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 6,
         paddingVertical: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1.5,
-        borderColor: colors.border,
     },
     kindLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     kindLabelSelected: {
-        color: colors.textPrimary,
-    },
-    input: {
-        color: colors.textPrimary,
-        fontSize: 14,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
-    },
-    body: {
-        minHeight: 120,
-    },
-    sendButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        marginTop: 6,
-        paddingVertical: 14,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    sendButtonText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "700",
-    },
-    disabled: {
-        opacity: 0.4,
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        lineHeight: 17,
-        textAlign: "center",
+        color: p.text,
     },
     row: {
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     rowText: {
         flex: 1,
         gap: 2,
     },
     rowTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     rowDetail: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     status: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 999,
         borderWidth: 1,
         overflow: "hidden",
     },
-});
+}));

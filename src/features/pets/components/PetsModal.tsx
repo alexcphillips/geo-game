@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Meter from "@/components/Meter/Meter";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { rarityInfo } from "@/features/inventory/rarity";
@@ -10,7 +14,8 @@ import { playerActions, usePlayerStore } from "@/features/player/playerStore";
 import { useActivePetId, useInventory, usePetUpgrade } from "@/features/player/usePlayer";
 import { skillLabel } from "@/features/skills/skills";
 import type { GeoPetState } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { petArt } from "../petArt";
 
 type PetsModalProps = {
@@ -69,31 +74,34 @@ export default function PetsModal({ onClose, initialPetId }: PetsModalProps) {
 }
 
 function PetArt({ item, size }: { item: InventoryItem; size: number }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const art = petArt(item.petInfo?.image);
     return (
         <View style={[styles.art, { width: size, height: size, borderColor: rarityInfo(item.rarity).color }]}>
             {art ? (
                 <Image source={art} style={{ width: size - 12, height: size - 12 }} resizeMode="contain" />
             ) : (
-                <Icon name={item.icon} size={size * 0.55} color={colors.emberBright} />
+                <Icon name={item.icon} size={size * 0.55} color={palette.ember} />
             )}
         </View>
     );
 }
 
 function XpBar({ pet }: { pet: GeoPetState }) {
+    const styles = useStyles();
     const isMax = pet.xpForLevel === 0;
     return (
         <View style={styles.xp}>
-            <View style={styles.xpTrack}>
-                <View style={[styles.xpFill, { width: `${isMax ? 100 : (pet.xpIntoLevel / pet.xpForLevel) * 100}%` }]} />
-            </View>
+            <Meter value={isMax ? 1 : pet.xpIntoLevel / pet.xpForLevel} />
             <Text style={styles.xpText}>{isMax ? "Max level" : `${formatCoins(pet.xpIntoLevel)} / ${formatCoins(pet.xpForLevel)} XP`}</Text>
         </View>
     );
 }
 
 function ListPage({ pets, activeId, onOpen }: { pets: OwnedPet[]; activeId: string | null; onOpen: (id: string) => void }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const upgrade = usePetUpgrade();
     const items = usePlayerStore((state) => state.items);
     // When the page opened: enough to say whether Kat is done.
@@ -103,7 +111,7 @@ function ListPage({ pets, activeId, onOpen }: { pets: OwnedPet[]; activeId: stri
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
             {upgrade && (
                 <View style={styles.notice}>
-                    <Icon name="cat" size={18} color={colors.emberBright} />
+                    <Icon name="cat" size={18} color={palette.ember} />
                     <Text style={styles.noticeText}>
                         Kat has your {items[upgrade.itemId]?.name ?? "pet"}, becoming{" "}
                         {rarityInfo(items[upgrade.toItemId]?.rarity ?? "common").label}.{" "}
@@ -116,19 +124,19 @@ function ListPage({ pets, activeId, onOpen }: { pets: OwnedPet[]; activeId: stri
 
             {pets.length === 0 ? (
                 <View style={styles.empty}>
-                    <Icon name="paw-print" size={40} color={colors.textSecondary} />
-                    <Text style={styles.emptyText}>
+                    <Icon name="paw-print" size={40} color={palette.textMuted} />
+                    <Hint>
                         No pets yet. They come from rare monster drops, crafting, and the Market.
-                    </Text>
+                    </Hint>
                 </View>
             ) : (
                 pets.map((pet) => {
                     const isActive = pet.id === activeId;
                     return (
-                        <Pressable
+                        <Panel compact
                             key={pet.id}
                             onPress={() => onOpen(pet.id)}
-                            style={({ pressed }) => [styles.card, isActive && styles.cardActive, pressed && styles.pressed]}
+                            style={[styles.card, isActive && styles.cardActive]}
                             accessibilityRole="button"
                             accessibilityLabel={`${pet.name}, ${rarityInfo(pet.rarity).label}, level ${pet.pet.level}${isActive ? ", active" : ""}`}
                         >
@@ -147,7 +155,7 @@ function ListPage({ pets, activeId, onOpen }: { pets: OwnedPet[]; activeId: stri
                                 </Text>
                                 <XpBar pet={pet.pet} />
                             </View>
-                        </Pressable>
+                        </Panel>
                     );
                 })
             )}
@@ -156,6 +164,7 @@ function ListPage({ pets, activeId, onOpen }: { pets: OwnedPet[]; activeId: stri
 }
 
 function PetPage({ pet, isActive, onGive }: { pet: OwnedPet; isActive: boolean; onGive: () => void }) {
+    const styles = useStyles();
     const items = usePlayerStore((state) => state.items);
     const removalCost = usePlayerStore((state) => state.me?.heldItemRemovalCost);
     const state = pet.pet;
@@ -176,18 +185,17 @@ function PetPage({ pet, isActive, onGive }: { pet: OwnedPet; isActive: boolean; 
                 <XpBar pet={state} />
             </View>
 
-            <Pressable
+            <Button
+                label={isActive ? "Put away" : "Summon"}
+                variant={isActive ? "secondary" : "primary"}
                 onPress={() => playerActions.setActivePet(isActive ? null : pet.id)}
-                style={({ pressed }) => [styles.button, isActive && styles.buttonQuiet, pressed && styles.pressed]}
-                accessibilityRole="button"
-            >
-                <Text style={[styles.buttonText, isActive && styles.buttonTextQuiet]}>{isActive ? "Put away" : "Summon"}</Text>
-            </Pressable>
+                stretch
+            />
 
             <Text style={styles.description}>{pet.description}</Text>
 
-            <Text style={styles.sectionTitle}>Stats</Text>
-            <View style={styles.table}>
+            <SectionTitle>Stats</SectionTitle>
+            <Panel compact style={styles.table}>
                 {state.stats.length === 0 && <Text style={styles.muted}>Nothing yet.</Text>}
                 {state.stats.map((stat, index) => (
                     <View key={stat.label} style={[styles.row, index === state.stats.length - 1 && styles.rowLast]}>
@@ -195,12 +203,12 @@ function PetPage({ pet, isActive, onGive }: { pet: OwnedPet; isActive: boolean; 
                         <Text style={styles.rowValue}>{stat.value}</Text>
                     </View>
                 ))}
-            </View>
+            </Panel>
 
-            <Text style={styles.sectionTitle}>Abilities</Text>
+            <SectionTitle>Abilities</SectionTitle>
             <View style={styles.abilities}>
                 {state.abilities.map((ability) => (
-                    <View key={ability.name} style={[styles.ability, !ability.unlocked && styles.abilityLocked]}>
+                    <Panel compact key={ability.name} style={[styles.ability, !ability.unlocked && styles.abilityLocked]}>
                         <View style={styles.abilityHead}>
                             <Text style={[styles.abilityName, !ability.unlocked && styles.lockedText]}>{ability.name}</Text>
                             {!ability.unlocked && (
@@ -213,11 +221,11 @@ function PetPage({ pet, isActive, onGive }: { pet: OwnedPet; isActive: boolean; 
                                 {stat.label} {stat.value}
                             </Text>
                         ))}
-                    </View>
+                    </Panel>
                 ))}
             </View>
 
-            <Text style={styles.sectionTitle}>Held item</Text>
+            <SectionTitle>Held item</SectionTitle>
             <View style={styles.heldRow}>
                 <Text style={[styles.heldName, !held && styles.muted]} numberOfLines={1}>
                     {held ? held.name : "Nothing"}
@@ -238,12 +246,12 @@ function PetPage({ pet, isActive, onGive }: { pet: OwnedPet; isActive: boolean; 
             </View>
 
             {state.upgrade && (
-                <Text style={styles.hint}>
+                <Hint>
                     Kat can raise it to {rarityInfo(items[state.upgrade.toItemId]?.rarity ?? pet.rarity).label} for{" "}
                     {formatCoins(state.upgrade.coins)} coins
                     {state.upgrade.items.map((cost) => `, ${cost.quantity} ${items[cost.itemId]?.name ?? cost.itemId}`).join("")}
                     , taking {state.upgrade.hours} h. It keeps its XP, but a rarer pet needs more per level.
-                </Text>
+                </Hint>
             )}
         </ScrollView>
     );
@@ -251,6 +259,7 @@ function PetPage({ pet, isActive, onGive }: { pet: OwnedPet; isActive: boolean; 
 
 /** Pick a pet item from the inventory for the pet to hold. */
 function GivePage({ pet, onDone }: { pet: OwnedPet; onDone: () => void }) {
+    const styles = useStyles();
     const inventory = useInventory();
     const items = usePlayerStore((state) => state.items);
     const heldItems = inventory.filter((item) => items[item.itemId]?.kind === "petItem");
@@ -258,7 +267,7 @@ function GivePage({ pet, onDone }: { pet: OwnedPet; onDone: () => void }) {
     return (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
             {heldItems.length === 0 ? (
-                <Text style={styles.emptyText}>You have no pet items. Kat sells some.</Text>
+                <Hint>You have no pet items. Kat sells some.</Hint>
             ) : (
                 <View style={styles.grid}>
                     {heldItems.map((item) => (
@@ -280,7 +289,7 @@ function GivePage({ pet, onDone }: { pet: OwnedPet; onDone: () => void }) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 12,
         paddingBottom: 24,
@@ -293,18 +302,12 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 12,
         borderWidth: 1.5,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     empty: {
         alignItems: "center",
         gap: 12,
         paddingVertical: 48,
-    },
-    emptyText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        lineHeight: 19,
-        textAlign: "center",
     },
     notice: {
         flexDirection: "row",
@@ -313,12 +316,12 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: colors.ember,
-        backgroundColor: colors.surfaceRaised,
+        borderColor: p.ember,
+        backgroundColor: p.surfaceAlt,
     },
     noticeText: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
     },
@@ -327,13 +330,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 12,
         padding: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     cardActive: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     cardBody: {
         flex: 1,
@@ -346,37 +345,27 @@ const styles = StyleSheet.create({
     },
     cardName: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     activeBadge: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     cardMeta: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     xp: {
         alignSelf: "stretch",
         gap: 3,
     },
-    xpTrack: {
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: colors.barTrack,
-        overflow: "hidden",
-    },
-    xpFill: {
-        height: "100%",
-        backgroundColor: colors.ember,
-    },
     xpText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
@@ -386,63 +375,30 @@ const styles = StyleSheet.create({
         paddingTop: 8,
     },
     category: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     level: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     levelMax: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 14,
-        fontWeight: "600",
-    },
-    button: {
-        alignSelf: "stretch",
-        alignItems: "center",
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    // Put away is the quieter action: outlined, not filled.
-    buttonQuiet: {
-        backgroundColor: "transparent",
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    buttonTextQuiet: {
-        color: colors.emberBright,
+        fontFamily: FONTS.bodyBold,
     },
     description: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
         lineHeight: 21,
         textAlign: "center",
     },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
     table: {
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
+        gap: 0,
         paddingHorizontal: 14,
     },
     row: {
@@ -452,23 +408,23 @@ const styles = StyleSheet.create({
         gap: 12,
         paddingVertical: 11,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: p.outline,
     },
     rowLast: {
         borderBottomWidth: 0,
     },
     rowLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
     },
     rowValue: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
     },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         paddingVertical: 11,
     },
@@ -478,10 +434,6 @@ const styles = StyleSheet.create({
     ability: {
         gap: 4,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     abilityLocked: {
         opacity: 0.6,
@@ -493,22 +445,22 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     abilityName: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     abilityText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
     },
     abilityStat: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     lockedText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     heldRow: {
@@ -518,26 +470,21 @@ const styles = StyleSheet.create({
     },
     heldName: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     smallButton: {
         paddingVertical: 7,
         paddingHorizontal: 14,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     smallButtonText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        lineHeight: 18,
+        fontFamily: FONTS.bodyHeavy,
     },
     grid: {
         flexDirection: "row",
@@ -549,8 +496,8 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     gridLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         textAlign: "center",
     },
-});
+}));

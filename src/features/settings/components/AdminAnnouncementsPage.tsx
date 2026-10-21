@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
+import { SectionTitle } from "@/components/Text/Text";
 import { ANNOUNCEMENT_KINDS } from "@/features/inbox/mail";
 import { APP_VERSION } from "@/features/inbox/useWhatsNew";
 import { formatDateTime } from "@/features/market/market";
@@ -16,7 +19,8 @@ import {
     type GeoAdminAnnouncementsResponse,
     type GeoPostableAnnouncementKind,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { Action } from "./AdminSuggestionsPage";
 
 const EXPIRIES: { label: string; hours: number | undefined }[] = [
@@ -35,6 +39,8 @@ const EXPIRIES: { label: string; hours: number | undefined }[] = [
  * the server on its own.
  */
 export default function AdminAnnouncementsPage() {
+    const styles = useStyles();
+    const palette = useTheme();
     const [kind, setKind] = useState<GeoPostableAnnouncementKind>("news");
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
@@ -116,51 +122,39 @@ export default function AdminAnnouncementsPage() {
                     const info = ANNOUNCEMENT_KINDS[id];
                     const isSelected = id === kind;
                     return (
-                        <Pressable
+                        <Panel compact
                             key={id}
                             onPress={() => setKind(id)}
-                            style={({ pressed }) => [
-                                styles.kind,
-                                isSelected && { borderColor: info.color },
-                                pressed && styles.pressed,
-                            ]}
+                            style={[styles.kind, isSelected && { borderColor: info.color }]}
                             accessibilityRole="radio"
-                            accessibilityState={{ selected: isSelected }}
                             accessibilityLabel={info.label}
                         >
-                            <Icon name={info.icon} size={20} color={isSelected ? info.color : colors.textSecondary} />
+                            <Icon name={info.icon} size={20} color={isSelected ? info.color : palette.textMuted} />
                             <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{info.label}</Text>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </View>
 
-            <TextInput
+            <TextField
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Title"
-                placeholderTextColor={colors.textSecondary}
-                style={styles.input}
                 maxLength={GEO_MAIL_TITLE_MAX}
             />
-            <TextInput
+            <TextField
                 value={body}
                 onChangeText={setBody}
                 placeholder={kind === "changelog" ? "• What changed, one per line" : "Message"}
-                placeholderTextColor={colors.textSecondary}
-                style={[styles.input, styles.body]}
                 multiline
                 maxLength={GEO_MAIL_BODY_MAX}
-                textAlignVertical="top"
             />
             {kind === "changelog" && (
                 <>
-                    <TextInput
+                    <TextField
                         value={version}
                         onChangeText={setVersion}
                         placeholder="App version, e.g. 1.2.0"
-                        placeholderTextColor={colors.textSecondary}
-                        style={styles.input}
                         keyboardType="numbers-and-punctuation"
                         autoCapitalize="none"
                     />
@@ -170,7 +164,7 @@ export default function AdminAnnouncementsPage() {
                 </>
             )}
 
-            <Text style={styles.sectionTitle}>Leaves the inbox after</Text>
+            <SectionTitle>Leaves the inbox after</SectionTitle>
             <View style={styles.chips}>
                 {EXPIRIES.map((option) => {
                     const isSelected = option.hours === expiresInHours;
@@ -189,18 +183,18 @@ export default function AdminAnnouncementsPage() {
             </View>
 
             <View style={[styles.postRow, !canPost && styles.disabled]} pointerEvents={canPost ? "auto" : "none"}>
-                {isPosting ? <ActivityIndicator color={colors.emberBright} /> : <Action label="Send to everyone" onPress={confirmPost} />}
+                {isPosting ? <ActivityIndicator color={palette.ember} /> : <Action label="Send to everyone" onPress={confirmPost} />}
             </View>
 
-            <Text style={styles.sectionTitle}>Sent</Text>
+            <SectionTitle>Sent</SectionTitle>
             {!sent ? (
-                <ActivityIndicator color={colors.textSecondary} />
+                <ActivityIndicator color={palette.textMuted} />
             ) : (
                 sent.map((announcement) => {
                     const info = ANNOUNCEMENT_KINDS[announcement.kind];
                     const isExpired = announcement.expiresAt !== null && new Date(announcement.expiresAt).getTime() < loadedAt;
                     return (
-                        <View key={announcement.id} style={[styles.card, isExpired && styles.expired]}>
+                        <Panel compact key={announcement.id} style={[styles.card, isExpired && styles.expired]}>
                             <View style={styles.cardHeader}>
                                 <Icon name={info.icon} size={18} color={info.color} />
                                 <Text style={styles.title} numberOfLines={1}>
@@ -216,7 +210,7 @@ export default function AdminAnnouncementsPage() {
                                     : ""}
                             </Text>
                             <Action label="Delete" danger onPress={() => confirmDelete(announcement)} />
-                        </View>
+                        </Panel>
                     );
                 })
             )}
@@ -225,18 +219,10 @@ export default function AdminAnnouncementsPage() {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 10,
         paddingBottom: 8,
-    },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
     },
     chips: {
         flexDirection: "row",
@@ -248,41 +234,24 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 4,
         paddingVertical: 10,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     chip: {
         paddingHorizontal: 12,
         paddingVertical: 7,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     chipSelected: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     chipText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     chipTextSelected: {
-        color: colors.textPrimary,
-    },
-    input: {
-        color: colors.textPrimary,
-        fontSize: 14,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
-    },
-    body: {
-        minHeight: 110,
+        color: p.text,
     },
     postRow: {
         flexDirection: "row",
@@ -295,10 +264,6 @@ const styles = StyleSheet.create({
     card: {
         gap: 6,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     expired: {
         opacity: 0.55,
@@ -310,16 +275,16 @@ const styles = StyleSheet.create({
     },
     title: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

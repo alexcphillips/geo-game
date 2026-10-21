@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { traitLabel } from "@/features/fishing/fishingText";
 import type { GeoFishingFightView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 const fmt = (n: number) => String(Math.round(n * 10) / 10);
 
@@ -12,14 +13,16 @@ const fmt = (n: number) => String(Math.round(n * 10) / 10);
  * surprise until the fish lands.
  */
 export default function FightMeters({ fight }: { fight: GeoFishingFightView }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const tensionColor =
         fight.tension > fight.cap * 0.9
-            ? colors.tensionDanger
+            ? palette.game.tensionDanger
             : fight.tension > fight.zoneHigh
-              ? colors.tensionHigh
+              ? palette.game.tensionHigh
               : fight.tension < fight.zoneLow
-                ? colors.tensionSlack
-                : colors.tensionZone;
+                ? palette.game.tensionSlack
+                : palette.game.tensionZone;
     const pastPar = fight.turn >= fight.par;
 
     return (
@@ -36,13 +39,13 @@ export default function FightMeters({ fight }: { fight: GeoFishingFightView }) {
                     label="Distance"
                     value={`${fmt(fight.distance)}m · runs at ${fight.maxDistance}`}
                     share={fight.distance / fight.maxDistance}
-                    color={colors.emberBright}
+                    color={palette.ember}
                 />
                 <Meter
                     label="Fish stamina"
                     value={fight.exhausted ? "Exhausted" : `${fmt(fight.stamina)}/${fight.maxStamina}`}
                     share={fight.stamina / fight.maxStamina}
-                    color={colors.fishStamina}
+                    color={palette.game.fishStamina}
                 />
                 <View style={styles.meter}>
                     <View style={styles.meterTop}>
@@ -72,6 +75,7 @@ function Meter({
     color: string;
     zone?: { from: number; to: number };
 }) {
+    const styles = useStyles();
     const clamped = Math.min(1, Math.max(0, share));
     return (
         <View style={styles.meter} accessible accessibilityLabel={`${label} ${value}`}>
@@ -94,6 +98,7 @@ function Meter({
 
 /** ✦ per point of Finesse, ▼ per point below zero. */
 function FinesseMarks({ finesse }: { finesse: number }) {
+    const styles = useStyles();
     const marks = Math.round(finesse);
     return (
         <Text
@@ -113,16 +118,18 @@ function FinesseMarks({ finesse }: { finesse: number }) {
 }
 
 function StatusChips({ fight }: { fight: GeoFishingFightView }) {
+    const palette = useTheme();
+    const styles = useStyles();
     const { hooked, momentum, focus, tired, reading } = fight.statuses;
     const chips: { text: string; color?: string }[] = [];
-    if (fight.exhausted) chips.push({ text: "Exhausted", color: colors.fishStamina });
-    if (fight.frenzy) chips.push({ text: "Frenzy", color: colors.tensionDanger });
+    if (fight.exhausted) chips.push({ text: "Exhausted", color: palette.game.fishStamina });
+    if (fight.frenzy) chips.push({ text: "Frenzy", color: palette.game.tensionDanger });
     if (hooked) chips.push({ text: `Hook set ${hooked}` });
     if (momentum) chips.push({ text: `Momentum ${momentum}` });
     if (focus) chips.push({ text: `Focus ${focus}` });
     if (tired) chips.push({ text: "Tired" });
     if (reading) chips.push({ text: `Reading ${reading}` });
-    for (const trait of fight.traits) chips.push({ text: traitLabel(trait), color: colors.rarityEpic });
+    for (const trait of fight.traits) chips.push({ text: traitLabel(trait), color: palette.game.rarityEpic });
     if (chips.length === 0) return null;
     return (
         <View style={styles.chips}>
@@ -135,15 +142,15 @@ function StatusChips({ fight }: { fight: GeoFishingFightView }) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     panel: {
         gap: 8,
         marginHorizontal: 10,
         padding: 10,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: "rgba(20, 16, 15, 0.88)",
+        borderColor: p.outline,
+        backgroundColor: p.surface,
     },
     grid: {
         flexDirection: "row",
@@ -163,25 +170,25 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     value: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
     warn: {
-        color: colors.tensionHigh,
+        color: p.game.tensionHigh,
     },
     track: {
         height: 8,
         borderRadius: 4,
-        backgroundColor: colors.barTrack,
+        backgroundColor: p.track,
         overflow: "hidden",
     },
     zone: {
@@ -191,7 +198,7 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(79, 179, 191, 0.25)",
         borderLeftWidth: 1,
         borderRightWidth: 1,
-        borderColor: colors.tensionZone,
+        borderColor: p.game.tensionZone,
     },
     fill: {
         height: "100%",
@@ -204,7 +211,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: 2,
         marginLeft: -1,
-        backgroundColor: colors.textPrimary,
+        backgroundColor: p.text,
     },
     marks: {
         fontSize: 12,
@@ -212,13 +219,13 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     up: {
-        color: colors.tierGold,
+        color: p.game.tierGold,
     },
     down: {
-        color: colors.tensionDanger,
+        color: p.game.tensionDanger,
     },
     none: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontStyle: "italic",
         letterSpacing: 0,
@@ -233,10 +240,10 @@ const styles = StyleSheet.create({
         paddingVertical: 1,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.textPrimary,
+        borderColor: p.outline,
+        color: p.text,
         fontSize: 10,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         overflow: "hidden",
     },
-});
+}));

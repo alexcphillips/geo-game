@@ -1,11 +1,18 @@
 import { useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { HAND_SIZE } from "@/features/cards/cardSkills";
 import ItemDetailModal from "@/features/inventory/components/ItemDetailModal";
 import { isFaded, type InventoryItem } from "@/features/inventory/inventoryItems";
 import { rarityInfo } from "@/features/inventory/rarity";
-import { colors } from "@/theme/colors";
+import { FONTS, PALETTES } from "@/theme/palette";
+import { createStyles, inked, useTheme } from "@/theme/theme";
+
+/**
+ * Card faces are parchment in every mood, so what's drawn on them uses the
+ * day palette's ink and ember; only the outline follows the mood.
+ */
+const FACE = PALETTES.day;
 
 type RunHandProps = {
     /** The Run's hand, in order, with charges as the server last said. */
@@ -22,6 +29,8 @@ type RunHandProps = {
     cornerMark?: (card: InventoryItem) => ReactNode;
     /** False greys out one card the server says can't be played now, e.g. a self-buff already up. */
     isPlayable?: (card: InventoryItem) => boolean;
+    /** A small tag pinned to a card's top edge, e.g. combat's live damage preview. */
+    tag?: (card: InventoryItem) => ReactNode;
 };
 
 /**
@@ -31,7 +40,9 @@ type RunHandProps = {
  * right, so the cards get the full width and every action a turn can take
  * still sits under the thumb.
  */
-export default function RunHand({ cards, onPlay, disabled = false, accessory, onInspect, cornerMark, isPlayable }: RunHandProps) {
+export default function RunHand({ cards, onPlay, disabled = false, accessory, onInspect, cornerMark, isPlayable, tag }: RunHandProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.container}>
             {accessory && <View style={styles.accessory}>{accessory}</View>}
@@ -45,11 +56,12 @@ export default function RunHand({ cards, onPlay, disabled = false, accessory, on
                             onPlay={onPlay && !isFaded(card) ? () => onPlay(card) : undefined}
                             onInspect={onInspect ? () => onInspect(card) : undefined}
                             corner={cornerMark?.(card)}
+                            tag={tag?.(card)}
                             disabled={disabled || isPlayable?.(card) === false}
                         />
                     ) : (
                         <View key={`empty-${index}`} style={[styles.card, styles.placeholder]}>
-                            <Icon name="card-pick" size={22} color={colors.border} />
+                            <Icon name="card-pick" size={22} color={palette.textMuted} />
                         </View>
                     );
                 })}
@@ -63,14 +75,17 @@ function HandCard({
     onPlay,
     onInspect,
     corner,
+    tag,
     disabled,
 }: {
     card: InventoryItem;
     onPlay?: () => void;
     onInspect?: () => void;
     corner?: ReactNode;
+    tag?: ReactNode;
     disabled: boolean;
 }) {
+    const styles = useStyles();
     const [isInspecting, setIsInspecting] = useState(false);
     const charges = card.charges;
     const faded = isFaded(card);
@@ -83,7 +98,6 @@ function HandCard({
                 onLongPress={onInspect ?? (() => setIsInspecting(true))}
                 style={({ pressed }) => [
                     styles.card,
-                    { borderColor: rarityInfo(card.rarity).color },
                     (disabled || faded) && styles.cardDisabled,
                     pressed && styles.cardPressed,
                 ]}
@@ -91,8 +105,15 @@ function HandCard({
                 accessibilityState={{ disabled: !onPlay || disabled }}
                 accessibilityLabel={`Play ${card.name}${charges ? `, ${charges.remaining} of ${charges.max} charges` : ""}`}
             >
+                {/* Rarity as a strip across the top, the way the mockups draw it. */}
+                <View style={[styles.rarity, { backgroundColor: rarityInfo(card.rarity).color }]} />
                 {corner && <View style={styles.corner}>{corner}</View>}
-                <Icon name={card.icon} size={32} color={colors.emberBright} />
+                {tag && (
+                    <View style={styles.tagSlot} pointerEvents="none">
+                        {tag}
+                    </View>
+                )}
+                <Icon name={card.icon} size={32} color={FACE.ember} />
                 <Text style={styles.cardName} numberOfLines={2}>
                     {card.name}
                 </Text>
@@ -107,7 +128,7 @@ function HandCard({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     container: {
         gap: 8,
     },
@@ -124,9 +145,17 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         gap: 4,
         paddingHorizontal: 4,
-        borderRadius: 8,
-        borderWidth: 1.5,
-        backgroundColor: colors.surfaceRaised,
+        borderRadius: 12,
+        backgroundColor: p.cardFace,
+        ...inked({ ...p, outline: p.cardOutline }),
+    },
+    rarity: {
+        position: "absolute",
+        top: 3,
+        left: "22%",
+        right: "22%",
+        height: 4,
+        borderRadius: 2,
     },
     accessory: {
         alignSelf: "flex-end",
@@ -135,19 +164,29 @@ const styles = StyleSheet.create({
         opacity: 0.45,
     },
     cardPressed: {
-        transform: [{ scale: 0.94 }, { translateY: -4 }],
+        transform: [{ scale: 0.96 }, { translateY: -6 }],
     },
     placeholder: {
-        borderColor: colors.border,
+        borderWidth: 2,
+        borderColor: p.textMuted,
         borderStyle: "dashed",
         backgroundColor: "transparent",
+        boxShadow: "none",
     },
     cardName: {
-        color: colors.textPrimary,
+        color: p.cardText,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 11,
         lineHeight: 13,
-        fontWeight: "600",
         textAlign: "center",
+    },
+    // Straddles the top edge, centred, so it reads as part of the card.
+    tagSlot: {
+        position: "absolute",
+        top: -9,
+        left: 0,
+        right: 0,
+        alignItems: "center",
     },
     corner: {
         position: "absolute",
@@ -155,8 +194,9 @@ const styles = StyleSheet.create({
         right: 4,
     },
     charges: {
-        color: colors.textSecondary,
+        color: FACE.textMuted,
+        fontFamily: FONTS.bodyBold,
         fontSize: 10,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

@@ -1,7 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import Button from "@/components/Button/Button";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { suggestionKindInfo, type SuggestionKind } from "../suggestionKinds";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 import { HOME_INDICATOR_CLEARANCE } from "@/theme/layout";
 
 type PinDropOverlayProps = {
@@ -20,6 +22,7 @@ type PinDropOverlayProps = {
  * the map everywhere except the two bars.
  */
 export default function PinDropOverlay({ kind, hint = "Somewhere public, close to you.", onCancel, onDone }: PinDropOverlayProps) {
+    const styles = useStyles();
     const insets = useSafeAreaInsets();
     const info = suggestionKindInfo(kind);
 
@@ -39,30 +42,17 @@ export default function PinDropOverlay({ kind, hint = "Somewhere public, close t
                 ]}
                 pointerEvents="box-none"
             >
-                <Pressable
-                    onPress={onCancel}
-                    style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                >
-                    <Text style={styles.buttonText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                    onPress={onDone}
-                    style={({ pressed }) => [
-                        styles.button,
-                        styles.doneButton,
-                        pressed && styles.pressed,
-                    ]}
-                    accessibilityRole="button"
-                >
-                    <Text style={[styles.buttonText, styles.doneButtonText]}>Done</Text>
-                </Pressable>
+                <Button label="Cancel" onPress={onCancel} style={styles.grow} />
+                <Button label="Done" variant="primary" onPress={onDone} style={styles.grow} />
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    grow: {
+        flex: 1,
+    },
     banner: {
         position: "absolute",
         left: 16,
@@ -72,17 +62,17 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderRadius: 14,
-        backgroundColor: "rgba(20, 16, 15, 0.92)",
+        backgroundColor: p.surface,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     bannerTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     bannerHint: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     actions: {
@@ -95,28 +85,4 @@ const styles = StyleSheet.create({
         gap: 12,
         paddingHorizontal: 20,
     },
-    button: {
-        flex: 1,
-        maxWidth: 160,
-        alignItems: "center",
-        paddingVertical: 13,
-        borderRadius: 999,
-        backgroundColor: "rgba(20, 16, 15, 0.92)",
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    doneButton: {
-        backgroundColor: colors.ember,
-    },
-    buttonText: {
-        color: colors.emberBright,
-        fontSize: 14,
-        fontWeight: "600",
-    },
-    doneButtonText: {
-        color: colors.textOnEmber,
-    },
-    pressed: {
-        transform: [{ scale: 0.96 }],
-    },
-});
+}));

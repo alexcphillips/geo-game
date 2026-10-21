@@ -1,9 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
+import { Hint } from "@/components/Text/Text";
 import type { GeoFarmAction, GeoFarmView, GeoItemView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type PesthunterModalProps = {
     farm: GeoFarmView;
@@ -21,6 +24,8 @@ const iconOf = (name: string) => (name in GAME_ICONS ? (name as keyof typeof GAM
  * anywhere, like the Research Lab.
  */
 export default function PesthunterModal({ farm, items, busy, act, onClose }: PesthunterModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const pestTypes = Object.fromEntries(farm.pestTypes.map((pest) => [pest.id, pest]));
     const caged = farm.tiles.flatMap((tile) => {
         const pest = tile.structure?.caged ? pestTypes[tile.structure.caged] : undefined;
@@ -32,30 +37,30 @@ export default function PesthunterModal({ farm, items, busy, act, onClose }: Pes
         <Modal title="Pesthunter" size="fill" showBack onClose={onClose}>
             <ScrollView contentContainerStyle={styles.list}>
                 <Text style={styles.points}>{points} Pesthunter points</Text>
-                <Text style={styles.hint}>Bring me pests alive, in a cage. Each pays points; I keep the pest, so no drops.</Text>
+                <Hint>Bring me pests alive, in a cage. Each pays points; I keep the pest, so no drops.</Hint>
 
                 <Text style={styles.heading}>Caged</Text>
                 {caged.map(({ tile, pest }) => (
                     <View key={tile} style={styles.row}>
-                        <Icon name={iconOf(pest.icon)} size={24} color={colors.textPrimary} />
+                        <Icon name={iconOf(pest.icon)} size={24} color={palette.text} />
                         <View style={styles.text}>
                             <Text style={styles.name}>{pest.name}</Text>
-                            <Text style={styles.hint}>Worth {pest.bounty} points</Text>
+                            <Hint>Worth {pest.bounty} points</Hint>
                         </View>
                         <RowButton label="Turn in" disabled={busy} onPress={() => void act({ type: "turn-in", tile })} />
                     </View>
                 ))}
-                {caged.length === 0 && <Text style={styles.hint}>No pests caged. Build a Pest Cage and catch one with Cage.</Text>}
+                {caged.length === 0 && <Hint>No pests caged. Build a Pest Cage and catch one with Cage.</Hint>}
 
                 <Text style={styles.heading}>Shop</Text>
                 {shop.map((offer, index) => {
                     const item = items[offer.itemId];
                     return (
                         <View key={offer.itemId} style={styles.row}>
-                            <Icon name={iconOf(item?.icon ?? "")} size={24} color={colors.textPrimary} />
+                            <Icon name={iconOf(item?.icon ?? "")} size={24} color={palette.text} />
                             <View style={styles.text}>
                                 <Text style={styles.name}>{item?.name ?? offer.itemId}</Text>
-                                <Text style={styles.hint}>{offer.price} points</Text>
+                                <Hint>{offer.price} points</Hint>
                             </View>
                             <RowButton
                                 label="Buy"
@@ -71,20 +76,10 @@ export default function PesthunterModal({ farm, items, busy, act, onClose }: Pes
 }
 
 function RowButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            disabled={disabled}
-            style={({ pressed }) => [styles.button, disabled && styles.buttonDisabled, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={label}
-        >
-            <Text style={styles.buttonText}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} size="small" variant="primary" onPress={onPress} disabled={disabled} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 12,
         paddingBottom: 16,
@@ -98,40 +93,19 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     points: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     heading: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         marginTop: 4,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-    },
-    button: {
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 6,
-        backgroundColor: colors.cropMutant,
-    },
-    buttonDisabled: {
-        opacity: 0.5,
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontWeight: "700",
-        fontSize: 12,
-    },
-    pressed: {
-        opacity: 0.75,
-    },
-});
+}));

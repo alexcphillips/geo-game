@@ -24,6 +24,8 @@ export type GeoLogEntry =
           blocked: number;
           /** Soaked by barrier. */
           absorbed: number;
+          /** Stopped by the target's defense, before guard and barrier. Absent when none was. */
+          defended?: number;
           element: string;
           crit: boolean;
           isAttack: boolean;
@@ -57,7 +59,24 @@ export type GeoCombatantView = {
     /** Soaks damage after guard; the app draws it over the health bar. */
     barrier: number;
     statuses: { statusId: string; stacks: number; turnsLeft: number | null }[];
+    /** Defense now, statuses included: taken off each hit they receive. */
+    defense: number;
+    /** Enemies: what they'll do on their next turn. Absent once the fight is over. */
+    intent?: GeoEnemyIntent;
 };
+
+/**
+ * One part of an enemy's next move. An attack's `damage` is per hit, after
+ * the player's defense as it stands now, before crits, guard and barrier.
+ * `self`: it lands on the enemy, not the player.
+ */
+export type GeoIntentPart =
+    | { kind: "attack"; damage: number; hits: number }
+    | { kind: "guard" | "barrier" | "heal"; amount: number; self: boolean }
+    | { kind: "status"; statusId: string; self: boolean };
+
+/** An enemy's next move, chosen in advance: it always does this, unless its turn is skipped. */
+export type GeoEnemyIntent = { moveId: string; name: string; parts: GeoIntentPart[] };
 
 export type GeoHandCard = {
     /** The inventory entry, sent back to play it. */
@@ -72,6 +91,12 @@ export type GeoHandCard = {
      * (fishing, farming): playable while it has charges.
      */
     playable?: boolean;
+    /**
+     * Combat: what playing it now would do to its target, worked out like an
+     * enemy's intent (an attack's damage is per hit, after the target's
+     * defense). Absent outside combat or once the fight is over.
+     */
+    preview?: GeoIntentPart[];
 };
 
 /** One lunchbox slot: a stack of one food. */
@@ -122,10 +147,12 @@ export type GeoRunView = {
     lunchbox: GeoLunchboxSlot[];
     /** Set once the Run is won. */
     rewards: GeoRewards | null;
-    /** Set once the Run is lost: defeat costs every coin you carry. */
+    /** Set once the Run is lost: defeat costs every coin you carry (never in a dungeon: 0 there). */
     coinsLost: number | null;
     /** True once an enemy that leaves after winning has won: no fighting it again. */
     enemyLeft: boolean;
+    /** The dungeon run this is a room fight of: back to its map once it's over. Null outside dungeons. */
+    dungeonRunId: string | null;
 };
 
 /**

@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useStats } from "@/features/player/usePlayer";
 import type { GeoStatGroup, GeoStatLine } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, inked } from "@/theme/theme";
 
 const GROUPS: { id: GeoStatGroup; label: string }[] = [
     { id: "combat", label: "Combat" },
@@ -25,6 +26,7 @@ type Anchor = { x: number; y: number; width: number; height: number };
  * and where the total comes from — Base, Equipment, Talismans, Pet and so on.
  */
 export default function CharacterStats() {
+    const styles = useStyles();
     const stats = useStats();
     const [open, setOpen] = useState<{ line: GeoStatLine; anchor: Anchor } | null>(null);
 
@@ -64,6 +66,7 @@ function StatCell({
     isOpen: boolean;
     onPress: (anchor: Anchor) => void;
 }) {
+    const styles = useStyles();
     const ref = useRef<View>(null);
     return (
         <View style={styles.cellWrap}>
@@ -86,6 +89,7 @@ function StatCell({
 
 /** The breakdown, under the tapped cell (or over it, near the bottom). Tap anywhere to close. */
 function StatTooltip({ line, anchor, onClose }: { line: GeoStatLine; anchor: Anchor; onClose: () => void }) {
+    const styles = useStyles();
     const window = useWindowDimensions();
     const [height, setHeight] = useState(0);
     const left = Math.min(
@@ -119,7 +123,7 @@ function StatTooltip({ line, anchor, onClose }: { line: GeoStatLine; anchor: Anc
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     container: {
         gap: 20,
     },
@@ -127,9 +131,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     groupLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1.5,
         textTransform: "uppercase",
     },
@@ -152,24 +156,23 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderRadius: 14,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
     },
     cellActive: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     cellLabel: {
         flex: 1,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     cellValue: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     tooltip: {
@@ -178,9 +181,9 @@ const styles = StyleSheet.create({
         padding: 12,
         gap: 6,
         borderRadius: 10,
-        backgroundColor: colors.surface,
+        backgroundColor: p.surface,
         borderWidth: 1,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     tooltipHeader: {
         flexDirection: "row",
@@ -189,22 +192,22 @@ const styles = StyleSheet.create({
         paddingBottom: 6,
         marginBottom: 2,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: p.outline,
     },
     tooltipTitle: {
         flex: 1,
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     tooltipTotal: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     tooltipDescription: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
         lineHeight: 16,
         marginBottom: 4,
@@ -215,13 +218,13 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     tooltipLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     tooltipValue: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

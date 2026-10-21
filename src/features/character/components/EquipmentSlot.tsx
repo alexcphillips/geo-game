@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { rarityInfo } from "@/features/inventory/rarity";
-import { colors } from "@/theme/colors";
+import { createStyles, useTheme, inked } from "@/theme/theme";
 import type { EquipmentSlot as EquipmentSlotModel } from "../characterSlots";
 
 type EquipmentSlotProps = {
@@ -30,6 +30,8 @@ export default function EquipmentSlot({
     onPress,
     onLongPress,
 }: EquipmentSlotProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const content = (
         <View
             style={[
@@ -38,7 +40,7 @@ export default function EquipmentSlot({
             ]}
         >
             {item ? (
-                <Icon name={item.icon} size={40} color={colors.emberBright} />
+                <Icon name={item.icon} size={40} color={palette.ember} />
             ) : (
                 <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>
                     {slot.label}
@@ -65,25 +67,24 @@ export default function EquipmentSlot({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     square: {
         width: SLOT_SIZE,
         height: SLOT_SIZE,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 6,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
+        borderRadius: 14,
     },
     pressed: {
         opacity: 0.7,
         transform: [{ scale: 0.96 }],
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 10,
         letterSpacing: 0.5,
         textTransform: "uppercase",
     },
-});
+}));

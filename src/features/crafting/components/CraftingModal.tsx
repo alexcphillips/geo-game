@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { StyleSheet, Text } from "react-native";
 import Modal from "@/components/Modal/Modal";
+import { Hint } from "@/components/Text/Text";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { catalogueItem } from "@/features/player/toInventoryItem";
 import type { GeoItemView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
 import { DEFAULT_RECIPE_SORT, type RecipeCategory, type RecipeSort } from "../recipes";
 import CraftPage from "./CraftPage";
 import RecipesPage, { type Availability } from "./RecipesPage";
@@ -137,16 +136,7 @@ function Detail({
     renderDetail: CraftingModalProps["renderDetail"];
     onUsage: () => void;
 }) {
-    if (!def) return <Text style={styles.emptyText}>That item no longer exists.</Text>;
+    if (!def) return <Hint>That item no longer exists.</Hint>;
     return <>{renderDetail(catalogueItem(def, `usage-${def.id}`), onUsage)}</>;
 }
 
-const styles = StyleSheet.create({
-    emptyText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        textAlign: "center",
-        paddingTop: 16,
-    },
-});

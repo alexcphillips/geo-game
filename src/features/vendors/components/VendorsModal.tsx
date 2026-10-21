@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon, { type GameIconName } from "@/components/Icon/Icon";
+import Tabs from "@/components/Tabs/Tabs";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
 import MenuTile from "@/components/MenuTile/MenuTile";
 import Modal from "@/components/Modal/Modal";
+import { Hint } from "@/components/Text/Text";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
@@ -22,7 +26,8 @@ import {
     type GeoVendor,
     type GeoVendorsResponse,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { vendorActions } from "../vendorActions";
 import { useReportActivity } from "@/features/friends/presenceStore";
 
@@ -84,6 +89,8 @@ function iconOf(name: string): GameIconName {
  * which takes the coins and hands over the item together, or neither.
  */
 export default function VendorsModal({ onClose }: VendorsModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     useReportActivity("trading");
     const [vendors, setVendors] = useState<GeoVendor[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -117,16 +124,16 @@ export default function VendorsModal({ onClose }: VendorsModalProps) {
             {!vendors ? (
                 <View style={styles.center}>
                     {error ? (
-                        <Text style={styles.emptyText}>{error}</Text>
+                        <Hint>{error}</Hint>
                     ) : (
-                        <ActivityIndicator color={colors.textSecondary} />
+                        <ActivityIndicator color={palette.textMuted} />
                     )}
                 </View>
             ) : page.page === "list" || !vendor ? (
                 vendors.length === 0 ? (
                     <View style={styles.center}>
-                        <Icon name="shop" size={44} color={colors.border} />
-                        <Text style={styles.emptyText}>No merchants have set up shop yet.</Text>
+                        <Icon name="shop" size={44} color={palette.outline} />
+                        <Hint>No merchants have set up shop yet.</Hint>
                     </View>
                 ) : (
                     <View style={styles.grid}>
@@ -235,6 +242,7 @@ function Shop({
     onUpgradePet: (inventoryId: string) => void;
     onInspect: (item: InventoryItem) => void;
 }) {
+    const styles = useStyles();
     const items = usePlayerStore((state) => state.items);
     const reforges = usePlayerStore((state) => state.reforges);
     const sellable = useSellable();
@@ -245,24 +253,7 @@ function Shop({
         <View style={styles.shop}>
             <Text style={styles.description}>{vendor.description}</Text>
 
-            <View style={styles.tabs} accessibilityRole="tablist">
-                {tabsOf(vendor).map(({ id, label }) => {
-                    const isActive = id === tab;
-                    return (
-                        <Pressable
-                            key={id}
-                            onPress={() => onTab(id)}
-                            style={({ pressed }) => [styles.tab, isActive && styles.tabActive, pressed && styles.pressed]}
-                            accessibilityRole="tab"
-                            accessibilityState={{ selected: isActive }}
-                        >
-                            <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>
-                                {label}
-                            </Text>
-                        </Pressable>
-                    );
-                })}
-            </View>
+            <Tabs tabs={tabsOf(vendor)} value={tab} onChange={onTab} style={styles.tabs} />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.rows} alwaysBounceHorizontal={false}>
                 {isBuyTab(tab) &&
@@ -281,7 +272,7 @@ function Shop({
                         ];
                     })}
                 {isBuyTab(tab) && offers.length === 0 && (
-                    <Text style={styles.emptyText}>Nothing for sale here.</Text>
+                    <Hint>Nothing for sale here.</Hint>
                 )}
 
                 {tab === "sell" &&
@@ -296,9 +287,9 @@ function Shop({
                         />
                     ))}
                 {tab === "sell" && sellable.length === 0 && (
-                    <Text style={styles.emptyText}>
+                    <Hint>
                         You have nothing to sell. Vendors buy anything with a sell value that isn&apos;t Soulbound.
-                    </Text>
+                    </Hint>
                 )}
 
                 {tab === "reforge" &&
@@ -319,7 +310,7 @@ function Shop({
                         );
                     })}
                 {tab === "reforge" && reforgeable.length === 0 && (
-                    <Text style={styles.emptyText}>You have no weapons or armor to reforge.</Text>
+                    <Hint>You have no weapons or armor to reforge.</Hint>
                 )}
 
                 {tab === "pets" && <PetsTab vendor={vendor} onUpgrade={onUpgradePet} onInspect={onInspect} />}
@@ -344,10 +335,12 @@ function TradeRow({
     onPress: () => void;
     onInspect: (item: InventoryItem) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
-        <Pressable
+        <Panel compact
             onPress={onPress}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            style={styles.row}
             accessibilityRole="button"
             accessibilityLabel={`${item.name}, ${price} coins ${priceNote}, ${detail}`}
         >
@@ -365,11 +358,11 @@ function TradeRow({
                 <Text style={styles.rowDetail}>{detail}</Text>
             </View>
             <View style={styles.price}>
-                <Icon name="two-coins" size={14} color={colors.coins} />
+                <Icon name="two-coins" size={14} color={palette.reward} />
                 <Text style={styles.priceText}>{formatCoins(price)}</Text>
                 <Text style={styles.rowDetail}>{priceNote}</Text>
             </View>
-        </Pressable>
+        </Panel>
     );
 }
 
@@ -394,16 +387,7 @@ function BuyAction({
     const tab = from.tab;
 
     return (
-        <Pressable
-            onPress={() => onBuy(tab)}
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Buy, ${offer.price} coins each`}
-        >
-            <Text style={styles.primaryText}>Buy for</Text>
-            <Icon name="two-coins" size={15} color={colors.textOnEmber} />
-            <Text style={styles.primaryText}>{formatCoins(offer.price)}</Text>
-        </Pressable>
+        <Button label={`Buy for ${formatCoins(offer.price)}`} variant="primary" size="small" icon="two-coins" onPress={() => onBuy(tab)} accessibilityLabel={`Buy, ${offer.price} coins each`} />
     );
 }
 
@@ -423,6 +407,7 @@ function Trade({
     onInspect: (item: InventoryItem) => void;
     onDone: () => void;
 }) {
+    const styles = useStyles();
     const items = usePlayerStore((state) => state.items);
     const coins = useCoins();
     const owned = useInventory().find((item) => item.id === inventoryId);
@@ -436,7 +421,7 @@ function Trade({
         : npcPrice(def);
     // Sold out from under the page (e.g. sold the whole stack): back to the shop.
     if (!def || price === undefined || (!isBuy && !owned)) {
-        return <Text style={styles.emptyText}>That&apos;s no longer here.</Text>;
+        return <Hint>That&apos;s no longer here.</Hint>;
     }
 
     const item = owned ?? catalogueItem(def, `trade-${itemId}`);
@@ -470,7 +455,7 @@ function Trade({
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.trade} keyboardShouldPersistTaps="handled">
-            <View style={styles.row}>
+            <Panel compact style={styles.row}>
                 <View style={styles.rowTile}>
                     <ItemTile
                         item={{ ...item, quantity: undefined }}
@@ -485,33 +470,16 @@ function Trade({
                         {isBuy ? `${formatCoins(price)} each` : `The ${vendor.name} pays ${formatCoins(price)} each`}
                     </Text>
                 </View>
-            </View>
+            </Panel>
 
             <Field label="How many" hint={isBuy ? `You have ${formatCoins(coins)} coins` : `You have ${formatCoins(have)}`}>
                 <QuantityInput value={text} onChange={setText} max={stepMax} accessibilityLabel="How many" />
             </Field>
             {!isBuy && have > 1 && (
-                <Pressable onPress={() => setText(String(max))} style={styles.all} accessibilityRole="button" hitSlop={8}>
-                    <Text style={styles.allText}>Sell all {formatCoins(max)}</Text>
-                </Pressable>
+                <Button label={`Sell all ${formatCoins(max)}`} variant="quiet" size="small" onPress={() => setText(String(max))} style={styles.all} />
             )}
 
-            <Pressable
-                onPress={() => void submit()}
-                disabled={problem !== null || isBusy}
-                style={({ pressed }) => [
-                    styles.primary,
-                    (problem !== null || isBusy) && styles.disabled,
-                    pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-            >
-                <Text style={styles.primaryText}>
-                    {isBuy ? "Buy" : "Sell"} {formatCoins(quantity)} for
-                </Text>
-                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
-                <Text style={styles.primaryText}>{formatCoins(total)}</Text>
-            </Pressable>
+            <Button label={`${isBuy ? "Buy" : "Sell"} ${formatCoins(quantity)} for ${formatCoins(total)}`} variant="primary" size="large" icon="two-coins" onPress={() => void submit()} disabled={problem !== null} busy={isBusy} stretch />
             {problem && <Text style={styles.problem}>{problem}</Text>}
         </ScrollView>
     );
@@ -531,6 +499,7 @@ function Reforge({
     inventoryId: string;
     onInspect: (item: InventoryItem) => void;
 }) {
+    const styles = useStyles();
     const items = usePlayerStore((state) => state.items);
     const reforges = usePlayerStore((state) => state.reforges);
     const coins = useCoins();
@@ -541,7 +510,7 @@ function Reforge({
     const target = def?.reforgeTarget;
     const cost = vendor.reforgeCost?.[def?.rarity ?? "common"];
     if (!item || !def || !target || cost === undefined) {
-        return <Text style={styles.emptyText}>That&apos;s no longer here.</Text>;
+        return <Hint>That&apos;s no longer here.</Hint>;
     }
 
     const current = item.reforge ? reforges[item.reforge] : undefined;
@@ -559,7 +528,7 @@ function Reforge({
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.trade}>
-            <View style={styles.row}>
+            <Panel compact style={styles.row}>
                 <View style={styles.rowTile}>
                     <ItemTile
                         item={{ ...item, quantity: undefined }}
@@ -574,7 +543,7 @@ function Reforge({
                         {current ? statLine(current.stats[def.rarity]) : "Not reforged yet"}
                     </Text>
                 </View>
-            </View>
+            </Panel>
 
             <View style={styles.outcomes}>
                 <Text style={styles.sectionLabel}>Could become</Text>
@@ -586,20 +555,7 @@ function Reforge({
                 ))}
             </View>
 
-            <Pressable
-                onPress={() => void submit()}
-                disabled={problem !== null || isBusy}
-                style={({ pressed }) => [
-                    styles.primary,
-                    (problem !== null || isBusy) && styles.disabled,
-                    pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-            >
-                <Text style={styles.primaryText}>{current ? "Reroll" : "Reforge"} for</Text>
-                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
-                <Text style={styles.primaryText}>{formatCoins(cost)}</Text>
-            </Pressable>
+            <Button label={`${current ? "Reroll" : "Reforge"} for ${formatCoins(cost)}`} variant="primary" size="large" icon="two-coins" onPress={() => void submit()} disabled={problem !== null} busy={isBusy} stretch />
             {problem && <Text style={styles.problem}>{problem}</Text>}
         </ScrollView>
     );
@@ -618,6 +574,7 @@ function PetsTab({
     onUpgrade: (inventoryId: string) => void;
     onInspect: (item: InventoryItem) => void;
 }) {
+    const styles = useStyles();
     const items = usePlayerStore((state) => state.items);
     const waiting = usePetUpgrade();
     const activePet = useActivePetId();
@@ -642,18 +599,18 @@ function PetsTab({
                             ? "Ready to collect."
                             : `Ready ${new Date(waiting.readyAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}.`}
                     </Text>
-                    <Pressable
+                    <Button
+                        label="Collect"
+                        variant="primary"
+                        size="small"
                         onPress={async () => {
                             setIsBusy(true);
                             await vendorActions.collectPetUpgrade(vendor.id, waitingDef?.name ?? "pet");
                             setIsBusy(false);
                         }}
-                        disabled={!isReady || isBusy}
-                        style={({ pressed }) => [styles.primary, (!isReady || isBusy) && styles.disabled, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.primaryText}>Collect</Text>
-                    </Pressable>
+                        disabled={!isReady}
+                        busy={isBusy}
+                    />
                 </View>
             )}
             {pets.map((item) => {
@@ -676,7 +633,7 @@ function PetsTab({
                     />
                 );
             })}
-            {pets.length === 0 && !waiting && <Text style={styles.emptyText}>You have no pets {vendor.name} can raise.</Text>}
+            {pets.length === 0 && !waiting && <Hint>You have no pets {vendor.name} can raise.</Hint>}
         </>
     );
 }
@@ -693,6 +650,7 @@ function PetUpgrade({
     onInspect: (item: InventoryItem) => void;
     onDone: () => void;
 }) {
+    const styles = useStyles();
     const items = usePlayerStore((state) => state.items);
     const inventory = useInventory();
     const coins = useCoins();
@@ -701,7 +659,7 @@ function PetUpgrade({
     const [isBusy, setIsBusy] = useState(false);
     const item = inventory.find((candidate) => candidate.id === inventoryId);
     const quote = item?.pet?.upgrade;
-    if (!item || !quote) return <Text style={styles.emptyText}>That&apos;s no longer here.</Text>;
+    if (!item || !quote) return <Hint>That&apos;s no longer here.</Hint>;
 
     const have = (itemId: string) =>
         inventory.filter((candidate) => candidate.itemId === itemId).reduce((sum, candidate) => sum + (candidate.quantity ?? 1), 0);
@@ -726,7 +684,7 @@ function PetUpgrade({
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.trade}>
-            <View style={styles.row}>
+            <Panel compact style={styles.row}>
                 <View style={styles.rowTile}>
                     <ItemTile item={item} compact onPress={() => onInspect(item)} onLongPress={() => onInspect(item)} />
                 </View>
@@ -736,7 +694,7 @@ function PetUpgrade({
                         Lv {item.pet!.level} {rarityLabel(item.rarity)} → {rarityLabel(next?.rarity)}
                     </Text>
                 </View>
-            </View>
+            </Panel>
 
             <View style={styles.outcomes}>
                 <Text style={styles.sectionLabel}>Price</Text>
@@ -751,32 +709,18 @@ function PetUpgrade({
                 </Text>
             </View>
 
-            <Pressable
-                onPress={() => void submit()}
-                disabled={problem !== null || isBusy}
-                style={({ pressed }) => [styles.primary, (problem !== null || isBusy) && styles.disabled, pressed && styles.pressed]}
-                accessibilityRole="button"
-            >
-                <Text style={styles.primaryText}>Leave it with {vendor.name}</Text>
-            </Pressable>
+            <Button label={`Leave it with ${vendor.name}`} variant="primary" size="large" onPress={() => void submit()} disabled={problem !== null} busy={isBusy} stretch />
             {problem && <Text style={styles.problem}>{problem}</Text>}
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     center: {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
         gap: 12,
-    },
-    emptyText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        textAlign: "center",
-        paddingTop: 16,
     },
     grid: {
         flexDirection: "row",
@@ -792,33 +736,12 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     description: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         lineHeight: 18,
     },
     tabs: {
-        flexDirection: "row",
-        gap: 6,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 9,
-        borderRadius: 8,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        backgroundColor: colors.surfaceRaised,
-        borderBottomColor: colors.ember,
-    },
-    tabText: {
-        color: colors.textSecondary,
-        fontSize: 14,
-        fontWeight: "700",
-    },
-    tabTextActive: {
-        color: colors.emberBright,
+        marginBottom: 12,
     },
     rows: {
         gap: 8,
@@ -829,10 +752,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 12,
         padding: 10,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     rowTile: {
         width: 48,
@@ -842,12 +761,12 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     rowName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     rowDetail: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     price: {
@@ -856,9 +775,9 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     priceText: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     trade: {
@@ -868,9 +787,9 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sectionLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         textTransform: "uppercase",
         letterSpacing: 0.6,
     },
@@ -879,45 +798,19 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 10,
         borderRadius: 8,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     outcomeName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     all: {
         alignSelf: "flex-start",
     },
-    allText: {
-        color: colors.emberBright,
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    primary: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "800",
-        fontVariant: ["tabular-nums"],
-    },
-    disabled: {
-        opacity: 0.4,
-    },
     problem: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         textAlign: "center",
     },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-});
+}));

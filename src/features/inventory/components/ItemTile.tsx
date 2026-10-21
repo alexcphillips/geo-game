@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { QUALITY_TIER_COLORS, QUALITY_TIER_LABELS } from "@/features/fishing/fishingText";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme, inked } from "@/theme/theme";
 import { isFaded, type InventoryItem } from "../inventoryItems";
 import { rarityInfo } from "../rarity";
 import ItemDetailModal from "./ItemDetailModal";
@@ -42,6 +43,8 @@ export default function ItemTile({
     selectedLabel = "in hand",
     compact = false,
 }: ItemTileProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [isInspecting, setIsInspecting] = useState(false);
     if (!item) return <View style={[styles.tile, styles.empty]} />;
 
@@ -81,7 +84,7 @@ export default function ItemTile({
                 <Icon
                     name={item.icon}
                     size={compact ? 28 : 40}
-                    color={faded ? colors.textSecondary : colors.emberBright}
+                    color={faded ? palette.textMuted : palette.ember}
                 />
                 {/* Wraps rather than truncating; two lines fit any tile size the
                     grids use, and the tile clips anything past that. */}
@@ -91,7 +94,7 @@ export default function ItemTile({
 
                 {selected && (
                     <View style={styles.selectedBadge}>
-                        <Icon name="check-mark" size={10} color={colors.textOnEmber} />
+                        <Icon name="check-mark" size={10} color={palette.onPrimary} />
                     </View>
                 )}
 
@@ -117,22 +120,21 @@ export default function ItemTile({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // Fills its cell's width and is square from that, so every tile in a row
     // is the same size whatever its name — never sized by its content.
     tile: {
         width: "100%",
         aspectRatio: 1,
-        borderWidth: 1.5,
         alignItems: "center",
         justifyContent: "center",
         gap: 4,
         padding: 4,
         // Extra room under a name that wraps to two lines.
         paddingBottom: 8,
-        borderRadius: 8,
-        backgroundColor: colors.surfaceRaised,
-        borderColor: colors.border,
+        borderRadius: 14,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
         overflow: "hidden",
     },
     qualityRim: {
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         transform: [{ rotate: "45deg" }],
-        backgroundColor: colors.tierRuby,
+        backgroundColor: p.game.tierRuby,
         borderWidth: 1,
         borderColor: "#FFD1DF",
     },
@@ -163,7 +165,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     empty: {
         backgroundColor: "transparent",
@@ -174,27 +176,27 @@ const styles = StyleSheet.create({
     },
     pressed: {
         transform: [{ scale: 0.95 }],
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 11,
         lineHeight: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         letterSpacing: 0.3,
         textAlign: "center",
     },
     fadedText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         textTransform: "uppercase",
     },
     quantity: {
         position: "absolute",
         top: 3,
         right: 5,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     chargeTrack: {
@@ -203,10 +205,10 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         height: 3,
-        backgroundColor: colors.barTrack,
+        backgroundColor: p.track,
     },
     chargeFill: {
         height: "100%",
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
-});
+}));

@@ -2,8 +2,15 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
 import { HOME_INDICATOR_CLEARANCE } from "@/theme/layout";
+import { FONTS } from "@/theme/palette";
+import { createStyles, inked, useMood } from "@/theme/theme";
+
+/** A faint glow toward the top, per mood, so the arena reads as a place. */
+const HORIZON = {
+    day: ["#F6EFDF", "#EFE6D2", "#E9DFC8"],
+    dusk: ["#221F31", "#17151F", "#131119"],
+} as const;
 
 type RunScreenProps = {
     /** e.g. "Combat". Shown as "Combat Run" in the header. */
@@ -38,6 +45,8 @@ export default function RunScreen({
     hand,
     turnOrder,
 }: RunScreenProps) {
+    const styles = useStyles();
+    const mood = useMood();
     const insets = useSafeAreaInsets();
 
     return (
@@ -45,7 +54,7 @@ export default function RunScreen({
             {/* A faint horizon glow, so the arena reads as a place and not a
                 blank page. */}
             <LinearGradient
-                colors={["#1A1513", colors.void, "#15110F"]}
+                colors={HORIZON[mood]}
                 locations={[0, 0.55, 1]}
                 style={StyleSheet.absoluteFill}
             />
@@ -84,10 +93,10 @@ export default function RunScreen({
 
 const HEADER_SIDE_WIDTH = 72;
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     screen: {
         flex: 1,
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     header: {
         flexDirection: "row",
@@ -95,35 +104,41 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingBottom: 8,
     },
+    // An inked pill, so leaving is always easy to find.
     leave: {
-        width: HEADER_SIDE_WIDTH,
+        minWidth: HEADER_SIDE_WIDTH,
         flexDirection: "row",
         alignItems: "center",
+        alignSelf: "flex-start",
         gap: 4,
-        paddingVertical: 6,
+        height: 38,
+        paddingLeft: 8,
+        paddingRight: 14,
+        borderRadius: 19,
+        backgroundColor: p.surface,
+        ...inked(p),
     },
     leaveIcon: {
-        color: colors.emberBright,
-        fontSize: 28,
-        lineHeight: 30,
+        color: p.text,
+        fontSize: 26,
+        lineHeight: 28,
         marginTop: -3,
     },
     leaveText: {
-        color: colors.emberBright,
+        color: p.text,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 14,
-        fontWeight: "600",
     },
     pressed: {
-        opacity: 0.6,
+        transform: [{ translateY: 2 }],
+        boxShadow: `0px 1px 0px ${p.outline}`,
     },
     title: {
         flex: 1,
         textAlign: "center",
-        color: colors.ember,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 2,
-        textTransform: "uppercase",
+        color: p.text,
+        fontFamily: FONTS.display,
+        fontSize: 20,
     },
     headerSpacer: {
         width: HEADER_SIDE_WIDTH,
@@ -135,11 +150,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingBottom: 10,
     },
+    // A tray the cards sit in: rounded and inked along its top.
     hand: {
-        paddingTop: 12,
-        paddingHorizontal: 10,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        backgroundColor: "rgba(20, 16, 15, 0.92)",
+        paddingTop: 16,
+        paddingHorizontal: 12,
+        borderTopWidth: 3,
+        borderTopColor: p.outline,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        backgroundColor: p.surface,
     },
-});
+}));

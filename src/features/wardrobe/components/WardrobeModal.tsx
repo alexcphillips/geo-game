@@ -1,14 +1,19 @@
 import { useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Pill from "@/components/Pill/Pill";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import Modal from "@/components/Modal/Modal";
+import { SectionTitle } from "@/components/Text/Text";
 import { rarityInfo } from "@/features/inventory/rarity";
 import { formatCoins } from "@/features/market/market";
 import { playerActions } from "@/features/player/playerStore";
 import { useCoins, useInventory, useWardrobe } from "@/features/player/usePlayer";
 import { GEO_LOADOUT_NAME_MAX, type GeoLoadout, type GeoLoadoutActivity, type GeoWardrobe } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
-import { AUTO_ACTIVITIES, defaultLoadoutName } from "../wardrobe";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
+import { AUTO_ACTIVITIES, autoSwapWorks, defaultLoadoutName } from "../wardrobe";
 
 type WardrobeModalProps = {
     onClose: () => void;
@@ -22,6 +27,7 @@ type WardrobeModalProps = {
  * the upgrades, bought here (more slots, auto-swap).
  */
 export default function WardrobeModal({ onClose, focusSlot }: WardrobeModalProps) {
+    const styles = useStyles();
     const wardrobe = useWardrobe();
     const scroll = useRef<ScrollView>(null);
 
@@ -65,6 +71,8 @@ type LoadoutCardProps = {
 };
 
 function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const inventory = useInventory();
     const [name, setName] = useState(loadout?.name ?? defaultLoadoutName(slot));
     const [isBusy, setIsBusy] = useState(false);
@@ -98,20 +106,19 @@ function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
         ]);
 
     return (
-        <View style={[styles.card, isActive && styles.cardActive]}>
+        <Panel compact style={[styles.card, isActive && styles.cardActive]}>
             <View style={styles.nameRow}>
-                <TextInput
+                <TextField
                     value={name}
                     onChangeText={setName}
                     maxLength={GEO_LOADOUT_NAME_MAX}
                     placeholder={defaultLoadoutName(slot)}
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.nameInput}
+                    containerStyle={styles.grow}
                     accessibilityLabel={`Loadout ${slot + 1} name`}
                     returnKeyType="done"
                     onSubmitEditing={() => isRenamed && void run(() => playerActions.saveLoadout(slot, trimmed, false))}
                 />
-                {isActive && <Text style={styles.wornTag}>Worn</Text>}
+                {isActive && <Pill label="Worn" color={palette.heal} />}
             </View>
 
             {loadout ? (
@@ -119,12 +126,12 @@ function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
                     {items.length === 0 && !pet && <Text style={styles.muted}>Nothing in it.</Text>}
                     {items.map((item) => (
                         <View key={item.id} style={[styles.itemIcon, { borderColor: rarityInfo(item.rarity).color }]}>
-                            <Icon name={item.icon} size={18} color={colors.emberBright} />
+                            <Icon name={item.icon} size={18} color={palette.ember} />
                         </View>
                     ))}
                     {pet && (
                         <View style={[styles.itemIcon, { borderColor: rarityInfo(pet.rarity).color }]}>
-                            <Icon name="paw-print" size={18} color={colors.emberBright} />
+                            <Icon name="paw-print" size={18} color={palette.ember} />
                         </View>
                     )}
                 </View>
@@ -132,17 +139,19 @@ function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
                 <Text style={styles.muted}>Empty. Save what you&apos;re wearing to fill it.</Text>
             )}
 
-            {loadout && autoSwap && (
+            {loadout && (
                 <View style={styles.autoRow}>
                     <Text style={styles.autoLabel}>Auto-swap for</Text>
                     {[{ id: null, label: "Off" } as const, ...AUTO_ACTIVITIES].map((option) => {
                         const isOn = loadout.autoFor === option.id;
+                        // Combat's tag needs auto-swap bought; one set already shows.
+                        const isLocked = option.id !== null && !isOn && !autoSwapWorks(option.id, autoSwap);
                         return (
                             <Pressable
                                 key={option.label}
                                 onPress={() => !isOn && void run(() => playerActions.setLoadoutAuto(slot, option.id as GeoLoadoutActivity | null))}
-                                disabled={isBusy}
-                                style={[styles.autoChip, isOn && styles.autoChipOn]}
+                                disabled={isBusy || isLocked}
+                                style={[styles.autoChip, isOn && styles.autoChipOn, isLocked && styles.autoChipLocked]}
                                 accessibilityRole="radio"
                                 accessibilityState={{ checked: isOn }}
                             >
@@ -163,11 +172,12 @@ function LoadoutCard({ slot, loadout, isActive, autoSwap }: LoadoutCardProps) {
                 <Action label={loadout ? "Save worn here" : "Save worn gear here"} disabled={isBusy} onPress={saveHere} />
                 {loadout && <Action label="Clear" disabled={isBusy} onPress={clear} />}
             </View>
-        </View>
+        </Panel>
     );
 }
 
 function Upgrades({ wardrobe }: { wardrobe: GeoWardrobe }) {
+    const styles = useStyles();
     const coins = useCoins();
     const [isBusy, setIsBusy] = useState(false);
     const buy = (title: string, cost: number, action: () => Promise<boolean>) =>
@@ -185,9 +195,9 @@ function Upgrades({ wardrobe }: { wardrobe: GeoWardrobe }) {
 
     return (
         <View style={styles.upgrades}>
-            <Text style={styles.sectionTitle}>Upgrades</Text>
+            <SectionTitle>Upgrades</SectionTitle>
 
-            <View style={styles.upgrade}>
+            <Panel compact style={styles.upgrade}>
                 <View style={styles.upgradeText}>
                     <Text style={styles.upgradeName}>
                         Loadout slots · {wardrobe.slots}/{wardrobe.maxSlots}
@@ -204,14 +214,14 @@ function Upgrades({ wardrobe }: { wardrobe: GeoWardrobe }) {
                 ) : (
                     <Text style={styles.owned}>All bought</Text>
                 )}
-            </View>
+            </Panel>
 
-            <View style={styles.upgrade}>
+            <Panel compact style={styles.upgrade}>
                 <View style={styles.upgradeText}>
-                    <Text style={styles.upgradeName}>Auto-swap</Text>
+                    <Text style={styles.upgradeName}>Combat auto-swap</Text>
                     <Text style={styles.muted}>
-                        Tag a loadout for Combat or Fishing and it&apos;s worn as a fight or a cast starts, then swapped
-                        back the next time.
+                        Your Fishing loadout goes on by itself when you fish. Unlock this to tag one for Combat too,
+                        worn as a fight starts.
                     </Text>
                 </View>
                 {wardrobe.autoSwap ? (
@@ -221,10 +231,10 @@ function Upgrades({ wardrobe }: { wardrobe: GeoWardrobe }) {
                         label={`${formatCoins(wardrobe.autoSwapCost)}`}
                         coins
                         disabled={isBusy || coins < wardrobe.autoSwapCost}
-                        onPress={() => buy("Unlock auto-swap?", wardrobe.autoSwapCost, playerActions.buyAutoSwap)}
+                        onPress={() => buy("Unlock combat auto-swap?", wardrobe.autoSwapCost, playerActions.buyAutoSwap)}
                     />
                 )}
-            </View>
+            </Panel>
         </View>
     );
 }
@@ -232,6 +242,8 @@ function Upgrades({ wardrobe }: { wardrobe: GeoWardrobe }) {
 type ActionProps = { label: string; onPress: () => void; disabled?: boolean; primary?: boolean; coins?: boolean };
 
 function Action({ label, onPress, disabled = false, primary = false, coins = false }: ActionProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <Pressable
             onPress={onPress}
@@ -240,53 +252,36 @@ function Action({ label, onPress, disabled = false, primary = false, coins = fal
             accessibilityRole="button"
             accessibilityState={{ disabled }}
         >
-            {coins && <Icon name="two-coins" size={14} color={colors.coins} />}
+            {coins && <Icon name="two-coins" size={14} color={palette.reward} />}
             <Text style={[styles.actionText, primary && styles.actionTextPrimary, coins && styles.actionTextCoins]}>{label}</Text>
         </Pressable>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    grow: {
+        flex: 1,
+    },
     page: {
         gap: 12,
         paddingBottom: 16,
     },
     intro: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         lineHeight: 19,
     },
     card: {
         gap: 10,
         padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     cardActive: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     nameRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-    },
-    nameInput: {
-        flex: 1,
-        color: colors.textPrimary,
-        fontSize: 15,
-        fontWeight: "700",
-        paddingVertical: 4,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    wornTag: {
-        color: colors.emberBright,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
     },
     contents: {
         flexDirection: "row",
@@ -300,10 +295,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 6,
         borderWidth: 1,
-        backgroundColor: colors.surface,
+        backgroundColor: p.surface,
     },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
@@ -314,7 +309,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     autoLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         marginRight: 2,
     },
@@ -323,19 +318,22 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     autoChipOn: {
-        borderColor: colors.ember,
-        backgroundColor: colors.ember,
+        borderColor: p.ember,
+        backgroundColor: p.ember,
+    },
+    autoChipLocked: {
+        opacity: 0.4,
     },
     autoChipText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     autoChipTextOn: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
     },
     actions: {
         flexDirection: "row",
@@ -350,10 +348,10 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     actionPrimary: {
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     disabled: {
         opacity: 0.4,
@@ -362,49 +360,38 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     actionText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     actionTextPrimary: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
     },
     actionTextCoins: {
-        color: colors.coins,
+        color: p.reward,
     },
     upgrades: {
         gap: 10,
         marginTop: 8,
-    },
-    sectionTitle: {
-        color: colors.textPrimary,
-        fontSize: 13,
-        fontWeight: "700",
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
     },
     upgrade: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
         padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     upgradeText: {
         flex: 1,
         gap: 3,
     },
     upgradeName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     owned: {
-        color: colors.toastSuccess,
+        color: p.heal,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-});
+}));

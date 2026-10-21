@@ -8,10 +8,12 @@ import {
     View,
     type ImageSourcePropType,
 } from "react-native";
+import Icon from "@/components/Icon/Icon";
 import StatBar from "@/features/hud/components/StatBar";
 import { HIT_TIMING as T } from "@/features/run/fx/hitTiming";
 import type { Box } from "@/features/run/fx/HitEffects";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 /** What a hit sequence can make a combatant do. */
 export type CombatantHandle = {
@@ -39,6 +41,10 @@ type CombatantProps = {
     health?: { current: number; max: number; barrier?: number };
     /** Flash white when hit. Off for the player's knight. */
     flashOnHit?: boolean;
+    /** Shown as a shield chip by the name when above 0: taken off each hit. */
+    defense?: number;
+    /** Guard up until its bearer's next turn: a blue shield badge at the bar's end. */
+    guard?: number;
 };
 
 const HEALTH_BAR_WIDTH = 130;
@@ -59,7 +65,11 @@ export default function Combatant({
     name,
     health,
     flashOnHit = true,
+    defense = 0,
+    guard = 0,
 }: CombatantProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const figureRef = useRef<View>(null);
     const [offset] = useState(() => new Animated.Value(0));
     const [shake] = useState(() => new Animated.Value(0));
@@ -122,20 +132,35 @@ export default function Combatant({
             {(name !== undefined || health) && (
                 <View style={styles.plate}>
                     {name !== undefined && (
-                        <Text style={styles.name} numberOfLines={1}>
-                            {name}
-                        </Text>
+                        <View style={styles.nameRow}>
+                            <Text style={styles.name} numberOfLines={1}>
+                                {name}
+                            </Text>
+                            {defense > 0 && (
+                                <View style={styles.defense} accessible accessibilityLabel={`Defense ${defense}`}>
+                                    <Icon name="shield" size={11} color={palette.textMuted} />
+                                    <Text style={styles.defenseText}>{defense}</Text>
+                                </View>
+                            )}
+                        </View>
                     )}
                     {health && (
-                        <StatBar
-                            label={`${name ?? "Enemy"} health`}
-                            current={health.current}
-                            max={health.max}
-                            barrier={health.barrier}
-                            gradient={colors.healthGradient}
-                            width={HEALTH_BAR_WIDTH}
-                            animateChanges
-                        />
+                        <View>
+                            <StatBar
+                                label={`${name ?? "Enemy"} health`}
+                                current={health.current}
+                                max={health.max}
+                                barrier={health.barrier}
+                                width={HEALTH_BAR_WIDTH}
+                                animateChanges
+                            />
+                            {guard > 0 && (
+                                <View style={styles.guard} accessible accessibilityLabel={`Guard ${guard}`}>
+                                    <Icon name="checked-shield" size={12} color={palette.game.guard} />
+                                    <Text style={styles.guardText}>{guard}</Text>
+                                </View>
+                            )}
+                        </View>
                     )}
                 </View>
             )}
@@ -167,7 +192,7 @@ export default function Combatant({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     container: {
         alignItems: "center",
         gap: 10,
@@ -176,12 +201,55 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 6,
     },
+    nameRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
     name: {
-        maxWidth: HEALTH_BAR_WIDTH + 30,
-        color: colors.textPrimary,
+        maxWidth: HEALTH_BAR_WIDTH,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
+    },
+    defense: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        borderRadius: 999,
+        borderWidth: 2,
+        borderColor: p.outline,
+        backgroundColor: p.surface,
+    },
+    defenseText: {
+        color: p.textMuted,
+        fontSize: 11,
+        fontFamily: FONTS.bodyHeavy,
+        fontVariant: ["tabular-nums"],
+    },
+    // Hangs off the bar's right end, centred on it, so the bar keeps its width.
+    guard: {
+        position: "absolute",
+        left: HEALTH_BAR_WIDTH - 10,
+        top: -3,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+        paddingHorizontal: 5,
+        height: 23,
+        borderRadius: 999,
+        borderWidth: 2,
+        borderColor: p.game.guard,
+        backgroundColor: p.surface,
+    },
+    guardText: {
+        color: p.game.guard,
+        fontSize: 12,
+        fontFamily: FONTS.bodyHeavy,
+        fontVariant: ["tabular-nums"],
     },
     figure: {
         alignItems: "center",
@@ -194,4 +262,4 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "rgba(0, 0, 0, 0.55)",
     },
-});
+}));

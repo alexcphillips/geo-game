@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Icon from "@/components/Icon/Icon";
+import { View } from "react-native";
+import Button from "@/components/Button/Button";
+import { Hint } from "@/components/Text/Text";
 import { geoStackCost } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { createStyles } from "@/theme/theme";
 import { formatCoins, totalForSale, type MarketProduct } from "../market";
 import { Field, NumberInput } from "./FormFields";
 
@@ -22,6 +23,7 @@ export default function StackBuyPanel({
     isBusy: boolean;
     onBuy: (quantity: number, total: number) => void;
 }) {
+    const styles = useStyles();
     const [text, setText] = useState("1");
     const available = totalForSale(product);
     const quantity = Number(text) || 0;
@@ -42,50 +44,22 @@ export default function StackBuyPanel({
             <Field label="How many" hint={`${formatCoins(available)} for sale, cheapest first`}>
                 <NumberInput value={text} onChange={setText} accessibilityLabel="How many to buy" />
             </Field>
-            <Pressable
+            <Button
+                label={`Buy ${formatCoins(quantity)} · ${formatCoins(total ?? 0)}`}
+                variant="primary"
+                size="large"
+                icon="two-coins"
                 onPress={() => total !== null && onBuy(quantity, total)}
                 disabled={!canBuy}
-                style={({ pressed }) => [styles.primary, !canBuy && styles.disabled, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !canBuy }}
-            >
-                <Text style={styles.primaryText}>Buy {formatCoins(quantity)}</Text>
-                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
-                <Text style={styles.primaryText}>{formatCoins(total ?? 0)}</Text>
-            </Pressable>
-            {problem && <Text style={styles.hint}>{problem}</Text>}
+                stretch
+            />
+            {problem && <Hint>{problem}</Hint>}
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     wrap: {
         gap: 8,
     },
-    primary: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "800",
-        fontVariant: ["tabular-nums"],
-    },
-    disabled: {
-        opacity: 0.4,
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        textAlign: "center",
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-});
+}));

@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
-import { colors } from "@/theme/colors";
+import { Image, Text, View, type ImageSourcePropType } from "react-native";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 
 export type TurnOrderEntry = {
     id: string;
@@ -25,6 +26,7 @@ const TILE_SIZE = 44;
  * the same way.
  */
 export default function TurnOrder({ entries }: TurnOrderProps) {
+    const styles = useStyles();
     return (
         <View
             style={styles.row}
@@ -55,7 +57,7 @@ export default function TurnOrder({ entries }: TurnOrderProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     row: {
         flexDirection: "row",
         alignItems: "center",
@@ -63,14 +65,14 @@ const styles = StyleSheet.create({
     },
     label: {
         marginRight: 4,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     arrow: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 20,
         lineHeight: 22,
     },
@@ -78,22 +80,22 @@ const styles = StyleSheet.create({
         width: TILE_SIZE,
         height: TILE_SIZE,
         padding: 3,
-        borderRadius: 8,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
+        borderRadius: 10,
+        borderWidth: 2.5,
+        borderColor: p.outline,
+        backgroundColor: p.surfaceAlt,
         overflow: "hidden",
     },
     tilePlayer: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     // Next to act: brighter, and lifted slightly, so it reads as "now".
     tileNext: {
-        backgroundColor: "#2A221F",
+        backgroundColor: p.surfaceAlt,
         transform: [{ scale: 1.08 }],
     },
     image: {
         width: "100%",
         height: "100%",
     },
-});
+}));

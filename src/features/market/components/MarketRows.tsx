@@ -1,8 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import { rarityInfo } from "@/features/inventory/rarity";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import {
     ENDING_SOON_MS,
     formatCoins,
@@ -19,18 +21,22 @@ import {
 
 const ROW_TILE_SIZE = 66;
 
-const SALE_TYPES: Record<ListingType, { label: string; icon: "gavel" | "price-tag"; color: string }> = {
-    auction: { label: "Auction", icon: "gavel", color: colors.listingAuction },
-    bin: { label: "Buy now", icon: "price-tag", color: colors.listingBuyNow },
+/** Each listing type's look; its colour is a game colour, read in the mood. */
+const SALE_TYPES: Record<ListingType, { label: string; icon: "gavel" | "price-tag"; color: "listingAuction" | "listingBuyNow" }> = {
+    auction: { label: "Auction", icon: "gavel", color: "listingAuction" },
+    bin: { label: "Buy now", icon: "price-tag", color: "listingBuyNow" },
 };
 
 /** "Auction" or "Buy now", in its colour, so the type never rests on colour alone. */
 export function SaleBadge({ type }: { type: ListingType }) {
+    const palette = useTheme();
+    const styles = useStyles();
     const sale = SALE_TYPES[type];
+    const saleColor = palette.game[sale.color];
     return (
-        <View style={[styles.badge, { borderColor: sale.color }]}>
-            <Icon name={sale.icon} size={10} color={sale.color} />
-            <Text style={[styles.badgeText, { color: sale.color }]}>{sale.label}</Text>
+        <View style={[styles.badge, { borderColor: saleColor }]}>
+            <Icon name={sale.icon} size={10} color={saleColor} />
+            <Text style={[styles.badgeText, { color: saleColor }]}>{sale.label}</Text>
         </View>
     );
 }
@@ -49,9 +55,12 @@ export function ListingRow({
     now: number;
     onPress: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { item } = listing;
     const rarity = rarityInfo(item.rarity);
     const sale = SALE_TYPES[listing.type];
+    const saleColor = palette.game[sale.color];
     const price = formatCoins(listingPrice(listing));
     const left = listing.type === "auction" ? timeLeft(listing, now) : 0;
     const timing =
@@ -62,13 +71,9 @@ export function ListingRow({
         listing.type === "auction" ? (listing.bids > 0 ? `${listing.bids} bids` : "Starting bid") : null;
 
     return (
-        <Pressable
+        <Panel compact
             onPress={onPress}
-            style={({ pressed }) => [
-                styles.row,
-                { borderLeftColor: sale.color },
-                pressed && styles.rowPressed,
-            ]}
+            style={[styles.row, { borderLeftColor: saleColor }]}
             accessibilityRole="button"
             accessibilityLabel={`${item.name}, ${rarity.label}, ${sale.label}, ${price} coins, ${timing}`}
         >
@@ -85,7 +90,7 @@ export function ListingRow({
             </View>
             <View style={styles.rowPrice}>
                 <View style={styles.priceLine}>
-                    <Icon name="two-coins" size={14} color={colors.coins} />
+                    <Icon name="two-coins" size={14} color={palette.reward} />
                     <Text style={styles.priceText}>{price}</Text>
                 </View>
                 {priceNote && <Text style={styles.meta}>{priceNote}</Text>}
@@ -99,25 +104,23 @@ export function ListingRow({
                     {timing}
                 </Text>
             </View>
-        </Pressable>
+        </Panel>
     );
 }
 
 /** One stackable: its cheapest price each and how many are for sale in all. */
 export function ProductRow({ product, onPress }: { product: MarketProduct; onPress: () => void }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { item } = product;
     const rarity = rarityInfo(item.rarity);
     const price = formatCoins(lowestPrice(product));
     const forSale = formatCoins(totalForSale(product));
 
     return (
-        <Pressable
+        <Panel compact
             onPress={onPress}
-            style={({ pressed }) => [
-                styles.row,
-                { borderLeftColor: colors.listingBuyNow },
-                pressed && styles.rowPressed,
-            ]}
+            style={[styles.row, { borderLeftColor: palette.game.listingBuyNow }]}
             accessibilityRole="button"
             accessibilityLabel={`${item.name}, ${rarity.label}, from ${price} coins each, ${forSale} for sale`}
         >
@@ -133,22 +136,25 @@ export function ProductRow({ product, onPress }: { product: MarketProduct; onPre
             </View>
             <View style={styles.rowPrice}>
                 <View style={styles.priceLine}>
-                    <Icon name="two-coins" size={14} color={colors.coins} />
+                    <Icon name="two-coins" size={14} color={palette.reward} />
                     <Text style={styles.priceText}>{price}</Text>
                 </View>
                 <Text style={styles.meta}>each</Text>
             </View>
-        </Pressable>
+        </Panel>
     );
 }
 
 /** Above a single listing's item page: how it's sold, its price, and its timer. */
 export function ListingSummary({ listing, now }: { listing: MarketListing; now: number }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const sale = SALE_TYPES[listing.type];
+    const saleColor = palette.game[sale.color];
     const left = listing.type === "auction" ? timeLeft(listing, now) : 0;
 
     return (
-        <View style={[styles.panel, { borderLeftColor: sale.color }]}>
+        <Panel compact style={[styles.panel, { borderLeftColor: saleColor }]}>
             <View style={styles.panelTop}>
                 <SaleBadge type={listing.type} />
                 <Text style={styles.meta}>Listed {formatListedAgo(listing.listedAt, now)}</Text>
@@ -162,7 +168,7 @@ export function ListingSummary({ listing, now }: { listing: MarketListing; now: 
                           : `Current bid · ${listing.bids} bids`}
                 </Text>
                 <View style={styles.priceLine}>
-                    <Icon name="two-coins" size={16} color={colors.coins} />
+                    <Icon name="two-coins" size={16} color={palette.reward} />
                     <Text style={styles.panelPrice}>{formatCoins(listingPrice(listing))}</Text>
                 </View>
             </View>
@@ -181,7 +187,7 @@ export function ListingSummary({ listing, now }: { listing: MarketListing; now: 
                         <Icon
                             name="hourglass"
                             size={14}
-                            color={left < ENDING_SOON_MS ? colors.toastError : colors.listingAuction}
+                            color={left < ENDING_SOON_MS ? palette.danger : palette.game.listingAuction}
                         />
                         <Text style={[styles.timerLarge, left < ENDING_SOON_MS && styles.timerUrgent]}>
                             {formatTimeLeft(left)}
@@ -193,14 +199,16 @@ export function ListingSummary({ listing, now }: { listing: MarketListing; now: 
                 <Text style={styles.panelLabel}>Seller</Text>
                 <Text style={styles.panelName}>{listing.seller}</Text>
             </View>
-        </View>
+        </Panel>
     );
 }
 
 /** Every offer for one stackable, cheapest first: what buying N would cost. */
 export function PriceLadder({ product }: { product: MarketProduct }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
-        <View style={[styles.panel, { borderLeftColor: colors.listingBuyNow }]}>
+        <Panel compact style={[styles.panel, { borderLeftColor: palette.game.listingBuyNow }]}>
             <View style={styles.panelTop}>
                 <SaleBadge type="bin" />
                 <Text style={styles.meta}>{formatCoins(totalForSale(product))} for sale</Text>
@@ -212,7 +220,7 @@ export function PriceLadder({ product }: { product: MarketProduct }) {
             {product.offers.map((offer, index) => (
                 <View key={offer.price} style={styles.panelRow}>
                     <View style={styles.priceLine}>
-                        <Icon name="two-coins" size={14} color={colors.coins} />
+                        <Icon name="two-coins" size={14} color={palette.reward} />
                         <Text style={[styles.ladderPrice, index === 0 && styles.ladderPriceBest]}>
                             {formatCoins(offer.price)}
                         </Text>
@@ -220,15 +228,15 @@ export function PriceLadder({ product }: { product: MarketProduct }) {
                     <Text style={styles.ladderQuantity}>×{formatCoins(offer.quantity)}</Text>
                 </View>
             ))}
-        </View>
+        </Panel>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     panelName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         flexShrink: 1,
         textAlign: "right",
     },
@@ -245,7 +253,7 @@ const styles = StyleSheet.create({
     },
     badgeText: {
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
         textTransform: "uppercase",
     },
@@ -254,15 +262,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 12,
         padding: 8,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
-    },
-    rowPressed: {
-        borderColor: colors.ember,
-        transform: [{ scale: 0.98 }],
     },
     rowTile: {
         width: ROW_TILE_SIZE,
@@ -273,13 +273,13 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     rowName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     rowRarity: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     rowPrice: {
         alignItems: "flex-end",
@@ -291,31 +291,27 @@ const styles = StyleSheet.create({
         gap: 5,
     },
     priceText: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     meta: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     timer: {
-        color: colors.listingAuction,
-        fontWeight: "600",
+        color: p.game.listingAuction,
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
     },
     timerUrgent: {
-        color: colors.toastError,
+        color: p.danger,
     },
     panel: {
         gap: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
     },
     panelTop: {
@@ -329,40 +325,40 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     panelLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
     },
     panelPrice: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 17,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     timerLarge: {
-        color: colors.listingAuction,
+        color: p.game.listingAuction,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     ladderHeading: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     ladderPrice: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
     },
     ladderPriceBest: {
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
     },
     ladderQuantity: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

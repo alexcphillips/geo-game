@@ -1,47 +1,68 @@
 import { create } from "zustand";
-import type { GeoQuestView } from "@/lib/geo/contracts";
-import { SAMPLE_QUESTS } from "./quests";
+import { usePlayerStore } from "@/features/player/playerStore";
+import { api } from "@/lib/api";
+import { GEO_API_PATHS, type GeoCombatTier, type GeoQuestsResponse, type GeoQuestView } from "@/lib/geo/contracts";
+
+const withQuestId = (path: string, questId: string) => path.replace(":questId", encodeURIComponent(questId));
 
 type QuestState = {
     /** Active and ready quests, as the server sends them (unsorted). */
     quests: GeoQuestView[];
-    setQuests: (quests: GeoQuestView[]) => void;
+    /** The player's enemy tier and what the next one needs. Null until first read. */
+    combatTier: GeoCombatTier | null;
+    /** Re-reads the quests; failures are quiet, the next refresh tries again. */
+    refresh: () => Promise<void>;
     /** Follow this quest in the tracker; only one is tracked at a time. */
-    track: (questId: string) => void;
-    /** Dev only: one step on the first unmet objective, for testing updates. */
-    devAdvance: (questId?: string) => void;
-    /** Dev only: claims a ready quest by dropping it, as the server will. */
-    devClaim: (questId: string) => void;
+    track: (questId: string) => Promise<void>;
+    /** Turns in a ready quest. Throws ApiError with the server's reason. */
+    claim: (questId: string) => Promise<void>;
 };
 
+let inFlight: Promise<void> | null = null;
+let again = false;
+
 /**
- * The player's quests. Starts with samples in dev builds and empty otherwise,
- * so the tracker stays hidden in release builds until the server serves
- * quests. `track` is local for now; it becomes a request then.
+ * The player's quests, from the server. The server counts progress (kills,
+ * dungeons, cooking, banking), so this re-reads whenever the player does:
+ * a finished Run, a craft or a deposit all refresh the player.
  */
-export const useQuestStore = create<QuestState>()((set) => ({
-    quests: __DEV__ ? SAMPLE_QUESTS : [],
-    setQuests: (quests) => set({ quests }),
-    track: (questId) =>
-        set((state) => ({
-            quests: state.quests.map((quest) => ({ ...quest, tracked: quest.id === questId })),
-        })),
-    devAdvance: (questId) =>
-        set((state) => {
-            const target =
-                state.quests.find((quest) => quest.id === questId) ??
-                state.quests.find((quest) => quest.tracked && quest.status === "active") ??
-                state.quests.find((quest) => quest.status === "active");
-            if (!target) return state;
-            let stepped = false;
-            const objectives = target.objectives.map((objective) => {
-                if (stepped || objective.current >= objective.target) return objective;
-                stepped = true;
-                return { ...objective, current: objective.current + 1 };
-            });
-            const isDone = objectives.every((objective) => objective.current >= objective.target);
-            const next = { ...target, objectives, status: isDone ? ("ready" as const) : target.status };
-            return { quests: state.quests.map((quest) => (quest.id === target.id ? next : quest)) };
-        }),
-    devClaim: (questId) => set((state) => ({ quests: state.quests.filter((quest) => quest.id !== questId) })),
-}));
+export const useQuestStore = create<QuestState>()((set) => {
+    const adopt = ({ quests, combatTier }: GeoQuestsResponse) => set({ quests, combatTier });
+
+    return {
+        quests: [],
+        combatTier: null,
+        refresh: () => {
+            // One read at a time; a refresh asked for mid-read runs once more after.
+            if (inFlight) {
+                again = true;
+                return inFlight;
+            }
+            inFlight = (async () => {
+                try {
+                    do {
+                        again = false;
+                        adopt(await api.get<GeoQuestsResponse>(GEO_API_PATHS.quests.root));
+                    } while (again);
+                } catch {
+                    // Offline or signed out: keep what's shown.
+                } finally {
+                    inFlight = null;
+                }
+            })();
+            return inFlight;
+        },
+        track: async (questId) => adopt(await api.put<GeoQuestsResponse>(withQuestId(GEO_API_PATHS.quests.track, questId))),
+        claim: async (questId) => {
+            adopt(await api.post<GeoQuestsResponse>(withQuestId(GEO_API_PATHS.quests.claim, questId)));
+            // The reward landed in the purse and inventory.
+            void usePlayerStore.getState().refresh();
+        },
+    };
+});
+
+usePlayerStore.subscribe((state, previous) => {
+    if (state.me === previous.me) return;
+    if (state.me) void useQuestStore.getState().refresh();
+    else useQuestStore.setState({ quests: [], combatTier: null });
+});

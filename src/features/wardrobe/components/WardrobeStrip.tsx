@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Pressable, ScrollView, Text } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { playerActions } from "@/features/player/playerStore";
 import { useWardrobe } from "@/features/player/usePlayer";
 import type { GeoLoadout } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
-import { AUTO_ICONS, defaultLoadoutName } from "../wardrobe";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
+import { AUTO_ICONS, autoSwapWorks, defaultLoadoutName } from "../wardrobe";
 
 type WardrobeStripProps = {
     /** Hold a loadout, or tap the cog: manage the wardrobe, open on that slot if given. */
@@ -19,6 +20,8 @@ type WardrobeStripProps = {
  * tag it for auto-swap.
  */
 export default function WardrobeStrip({ onManage }: WardrobeStripProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const wardrobe = useWardrobe();
     const [busySlot, setBusySlot] = useState<number | null>(null);
     if (!wardrobe) return null;
@@ -39,7 +42,7 @@ export default function WardrobeStrip({ onManage }: WardrobeStripProps) {
                         loadout={loadout}
                         slot={slot}
                         isActive={wardrobe.activeSlot === slot}
-                        showAuto={wardrobe.autoSwap}
+                        autoSwapBought={wardrobe.autoSwap}
                         isBusy={busySlot === slot}
                         disabled={busySlot !== null}
                         onPress={() => {
@@ -57,7 +60,7 @@ export default function WardrobeStrip({ onManage }: WardrobeStripProps) {
                 accessibilityLabel="Manage wardrobe"
                 hitSlop={4}
             >
-                <Icon name="cog" size={16} color={colors.textSecondary} />
+                <Icon name="cog" size={16} color={palette.textMuted} />
             </Pressable>
         </ScrollView>
     );
@@ -67,15 +70,17 @@ type LoadoutChipProps = {
     loadout: GeoLoadout | undefined;
     slot: number;
     isActive: boolean;
-    showAuto: boolean;
+    autoSwapBought: boolean;
     isBusy: boolean;
     disabled: boolean;
     onPress: () => void;
     onLongPress: () => void;
 };
 
-function LoadoutChip({ loadout, slot, isActive, showAuto, isBusy, disabled, onPress, onLongPress }: LoadoutChipProps) {
-    const autoIcon = showAuto && loadout?.autoFor ? AUTO_ICONS[loadout.autoFor] : null;
+function LoadoutChip({ loadout, slot, isActive, autoSwapBought, isBusy, disabled, onPress, onLongPress }: LoadoutChipProps) {
+    const styles = useStyles();
+    const palette = useTheme();
+    const autoIcon = loadout?.autoFor && autoSwapWorks(loadout.autoFor, autoSwapBought) ? AUTO_ICONS[loadout.autoFor] : null;
 
     return (
         <Pressable
@@ -97,7 +102,7 @@ function LoadoutChip({ loadout, slot, isActive, showAuto, isBusy, disabled, onPr
             }
             accessibilityHint="Hold to manage"
         >
-            {autoIcon && <Icon name={autoIcon} size={12} color={isActive ? colors.textOnEmber : colors.emberBright} />}
+            {autoIcon && <Icon name={autoIcon} size={12} color={isActive ? palette.onPrimary : palette.ember} />}
             <Text style={[styles.label, !loadout && styles.labelEmpty, isActive && styles.labelActive]} numberOfLines={1}>
                 {loadout ? loadout.name : "+ Save"}
             </Text>
@@ -105,7 +110,7 @@ function LoadoutChip({ loadout, slot, isActive, showAuto, isBusy, disabled, onPr
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // Out to the screen edges past the character screen's padding, so chips scroll edge to edge.
     scroller: {
         flexGrow: 0,
@@ -127,19 +132,19 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.ember,
-        backgroundColor: colors.surfaceRaised,
+        borderColor: p.ember,
+        backgroundColor: p.surfaceAlt,
     },
     chipEmpty: {
         borderStyle: "dashed",
-        borderColor: colors.border,
+        borderColor: p.outline,
         backgroundColor: "transparent",
     },
     chipActive: {
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     manage: {
-        borderColor: colors.border,
+        borderColor: p.outline,
         backgroundColor: "transparent",
     },
     pressed: {
@@ -147,14 +152,14 @@ const styles = StyleSheet.create({
     },
     label: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     labelEmpty: {
-        color: colors.textSecondary,
+        color: p.textMuted,
     },
     labelActive: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
     },
-});
+}));

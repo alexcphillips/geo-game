@@ -1,14 +1,14 @@
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Badge from "@/components/Badge/Badge";
 import Icon, { type GameIconName } from "@/components/Icon/Icon";
-import { colors } from "@/theme/colors";
 import {
     STATUS_BAR_CLEARANCE,
     TOP_BUTTON_DIAMETER,
     TOP_BUTTON_EDGE_INSET,
     TOP_BUTTON_GAP,
 } from "@/theme/layout";
+import { createStyles, inked, useTheme } from "@/theme/theme";
 
 type TopCornerButtonProps = {
     icon: GameIconName;
@@ -25,6 +25,8 @@ type TopCornerButtonProps = {
  * friends, then the inbox, leftwards. A badge counts what's waiting.
  */
 export default function TopCornerButton({ icon, slot, badge = 0, accessibilityLabel, onPress }: TopCornerButtonProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const insets = useSafeAreaInsets();
 
     return (
@@ -42,13 +44,13 @@ export default function TopCornerButton({ icon, slot, badge = 0, accessibilityLa
             accessibilityLabel={accessibilityLabel}
             hitSlop={6}
         >
-            <Icon name={icon} size={22} color={colors.emberBright} />
+            <Icon name={icon} size={22} color={palette.text} />
             <Badge count={badge} />
         </Pressable>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     button: {
         position: "absolute",
         width: TOP_BUTTON_DIAMETER,
@@ -56,12 +58,11 @@ const styles = StyleSheet.create({
         borderRadius: TOP_BUTTON_DIAMETER / 2,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "rgba(20, 16, 15, 0.92)",
-        borderWidth: 1.5,
-        borderColor: colors.ember,
+        backgroundColor: p.surface,
+        ...inked(p),
     },
     pressed: {
-        transform: [{ scale: 0.94 }],
-        backgroundColor: "rgba(201, 100, 30, 0.25)",
+        transform: [{ translateY: 2 }],
+        boxShadow: `0px 1px 0px ${p.outline}`,
     },
-});
+}));

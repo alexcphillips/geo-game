@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { Pressable, Text, View } from "react-native";
+import { FONTS } from "@/theme/palette";
+import { createStyles, inked } from "@/theme/theme";
 
 type SettingsToggleProps = {
     label: string;
@@ -10,6 +11,7 @@ type SettingsToggleProps = {
 
 /** One on/off row in a settings page: label, a line of explanation, On/Off. */
 export default function SettingsToggle({ label, hint, value, onToggle }: SettingsToggleProps) {
+    const styles = useStyles();
     return (
         <Pressable
             style={({ pressed }) => [
@@ -34,20 +36,19 @@ export default function SettingsToggle({ label, hint, value, onToggle }: Setting
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     toggle: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
         padding: 16,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderRadius: 14,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
     },
     toggleActive: {
-        borderColor: colors.ember,
-        backgroundColor: "rgba(201, 100, 30, 0.18)",
+        borderColor: p.ember,
+        backgroundColor: p.track,
     },
     togglePressed: {
         transform: [{ scale: 0.98 }],
@@ -57,23 +58,23 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     toggleLabel: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     toggleHint: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
     toggleState: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     toggleStateActive: {
-        color: colors.emberBright,
+        color: p.ember,
     },
-});
+}));

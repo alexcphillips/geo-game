@@ -138,6 +138,16 @@ export const colors = {
     statusBurning: "#FF8A2B",
     statusFrozen: "#5FE3F0",
     statusPoison: "#C9A0F0",
+    statusParalyzed: "#F2DC6B",
+    statusShelled: "#C7A77A",
+
+    /**
+     * An enemy's next move, on its intent badge: hits in `damage` red, guard
+     * in an icy blue (also the Guard readout), heals in green. Barrier uses
+     * the gold of its bar.
+     */
+    guard: "#9FD0FF",
+    heal: "#74C27A",
 
     /**
      * Fish quality tiers — placeholders. Shown as a metal rim around a fish,
@@ -203,13 +213,15 @@ export const colors = {
     stabilityLow: "#E2574C",
 
     /**
-     * The farm plot: soil goes from dry tan to dark loam to waterlogged
-     * blue-brown, so a bed's moisture reads before its number.
+     * The farm plot: soil goes from dry tan to dark loam to wet blue-brown,
+     * so a bed's ground on the coming cycle reads at a glance.
      */
     soilDry: "#8A6B44",
-    soilMoist: "#4E3A26",
+    soilNormal: "#4E3A26",
     soilWet: "#2E3440",
-    moisture: "#4FA3D6",
+    /** A Greenhouse roof over a farm tile: a pale pane, so the crop still reads through it. */
+    glass: "rgba(190, 230, 235, 0.16)",
+    glassEdge: "rgba(190, 230, 235, 0.45)",
     nutrients: "#B98ADF",
     cropLeaf: "#5DA84A",
     pest: "#E2574C",
@@ -217,10 +229,6 @@ export const colors = {
     frostCover: "#BFE4F2",
     /** A ripe crop's rim: ready to harvest, or to push. */
     cropRipe: "#E3C55A",
-    /** Soil types, as a dot on the tile. */
-    soilRich: "#6FCF5A",
-    soilBoggy: "#4FA3D6",
-    soilCursed: "#B56BD8",
     /** Nuclear waste: a sick glow over the soil. */
     waste: "#3F5A1E",
     wasteGlow: "#B6E84A",
@@ -246,6 +254,30 @@ export const colors = {
     noise: "#E39B4C",
     basket: "#C9A26B",
     toxic: "#C04BD0",
+
+    /**
+     * Dungeon maps, top-down: a near-black ground, corridors a shade up, and
+     * each room style's tone as a floor and a wall. Tones come from the
+     * server's room styles (stone, moss, ember, bone, void).
+     */
+    dungeonGround: "#0D0B0A",
+    dungeonGrid: "#1C1816",
+    dungeonCorridor: "#2A2421",
+    dungeonCorridorWall: "#5C514A",
+    dungeonStoneFloor: "#2B2522",
+    dungeonStoneWall: "#A99C90",
+    dungeonMossFloor: "#222A1D",
+    dungeonMossWall: "#8FAE7C",
+    dungeonEmberFloor: "#36211C",
+    dungeonEmberWall: "#D98A6E",
+    dungeonBoneFloor: "#312B22",
+    dungeonBoneWall: "#CDBE98",
+    dungeonVoidFloor: "#26213A",
+    dungeonVoidWall: "#B6A5E8",
+    /** A room you've finished: its wall and check badge. */
+    dungeonDone: "#5DA84A",
+    /** A locked door and its padlock: cold steel, so it never reads as loot. */
+    dungeonLock: "#8FA6C4",
 } as const;
 
 export type ColorName = keyof typeof colors;

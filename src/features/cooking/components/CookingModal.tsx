@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import EmptyState from "@/components/EmptyState/EmptyState";
+import Button from "@/components/Button/Button";
 import Modal from "@/components/Modal/Modal";
 import { craftingActions } from "@/features/crafting/craftingActions";
 import { useRecipeStatuses, type RecipeStatus } from "@/features/crafting/recipes";
@@ -9,7 +12,8 @@ import { formatCoins } from "@/features/market/market";
 import { useSkillXp } from "@/features/player/usePlayer";
 import { catalogueItem } from "@/features/player/toInventoryItem";
 import { skillLabel, skillProgress } from "@/features/skills/skills";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 
 const rarityRank = (status: RecipeStatus) => RARITIES.find((info) => info.id === status.output.rarity)?.rank ?? 0;
 
@@ -20,6 +24,7 @@ const rarityRank = (status: RecipeStatus) => RARITIES.find((info) => info.id ===
  * ready to pack in the lunchbox at Camp.
  */
 export default function CookingModal({ onClose }: { onClose: () => void }) {
+    const styles = useStyles();
     const statuses = useRecipeStatuses();
     const xp = useSkillXp();
     const { level, progress, isMax } = skillProgress(xp.cooking ?? 0);
@@ -60,13 +65,14 @@ export default function CookingModal({ onClose }: { onClose: () => void }) {
                         onCook={(times) => void cook(status, times)}
                     />
                 ))}
-                {rows.length === 0 && <Text style={styles.empty}>No cooking recipes yet.</Text>}
+                {rows.length === 0 && <EmptyState title="No cooking recipes yet." />}
             </ScrollView>
         </Modal>
     );
 }
 
 function CookingRow({ status, busy, onCook }: { status: RecipeStatus; busy: boolean; onCook: (times: number) => void }) {
+    const styles = useStyles();
     const { output, recipe } = status;
     const rarity = rarityInfo(output.rarity);
     const heals = output.stats.find((row) => row.label === "Heals")?.value;
@@ -77,7 +83,7 @@ function CookingRow({ status, busy, onCook }: { status: RecipeStatus; busy: bool
         .join(" · ");
 
     return (
-        <View style={[styles.row, { borderLeftColor: rarity.color }]}>
+        <Panel compact style={[styles.row, { borderLeftColor: rarity.color }]}>
             <View style={styles.tile}>
                 <ItemTile item={{ ...catalogueItem(output, `cook-${output.id}`), quantity: recipe.output.quantity }} compact />
             </View>
@@ -104,34 +110,32 @@ function CookingRow({ status, busy, onCook }: { status: RecipeStatus; busy: bool
             </View>
 
             <View style={styles.buttons}>
-                <Pressable
+                <Button
+                    label="Cook"
+                    variant="primary"
+                    icon="cooking-pot"
                     onPress={() => onCook(1)}
                     disabled={!canCook}
-                    style={({ pressed }) => [styles.button, !canCook && styles.disabled, pressed && styles.pressed]}
-                    accessibilityRole="button"
+                    style={styles.grow}
                     accessibilityLabel={`Cook one ${output.name}`}
-                    accessibilityState={{ disabled: !canCook }}
-                >
-                    <Text style={styles.buttonText}>Cook</Text>
-                </Pressable>
+                />
                 {status.maxCrafts > 1 && (
-                    <Pressable
+                    <Button
+                        label={`All ×${formatCoins(status.maxCrafts)}`}
                         onPress={() => onCook(status.maxCrafts)}
                         disabled={!canCook}
-                        style={({ pressed }) => [styles.buttonAll, !canCook && styles.disabled, pressed && styles.pressed]}
-                        accessibilityRole="button"
                         accessibilityLabel={`Cook ${status.maxCrafts} ${output.name}`}
-                        accessibilityState={{ disabled: !canCook }}
-                    >
-                        <Text style={styles.buttonAllText}>All ×{formatCoins(status.maxCrafts)}</Text>
-                    </Pressable>
+                    />
                 )}
             </View>
-        </View>
+        </Panel>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    grow: {
+        flex: 1,
+    },
     list: {
         gap: 8,
         paddingBottom: 8,
@@ -141,31 +145,27 @@ const styles = StyleSheet.create({
         paddingBottom: 4,
     },
     levelText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     meter: {
         height: 6,
         borderRadius: 999,
-        backgroundColor: colors.surface,
+        backgroundColor: p.surface,
         overflow: "hidden",
     },
     meterFill: {
         height: "100%",
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     row: {
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
         padding: 10,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
     },
     tile: {
@@ -176,66 +176,28 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     details: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     cost: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
     },
     costLabel: {
-        color: colors.textSecondary,
-        fontWeight: "700",
+        color: p.textMuted,
+        fontFamily: FONTS.bodyHeavy,
     },
     short: {
-        color: colors.toastError,
+        color: p.danger,
     },
     buttons: {
         gap: 6,
         alignItems: "stretch",
     },
-    button: {
-        alignItems: "center",
-        paddingVertical: 7,
-        paddingHorizontal: 16,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontSize: 13,
-        fontWeight: "800",
-    },
-    buttonAll: {
-        alignItems: "center",
-        paddingVertical: 5,
-        paddingHorizontal: 10,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.ember,
-    },
-    buttonAllText: {
-        color: colors.textPrimary,
-        fontSize: 12,
-        fontWeight: "700",
-    },
-    disabled: {
-        opacity: 0.4,
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-    empty: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        textAlign: "center",
-        paddingTop: 16,
-    },
-});
+}));

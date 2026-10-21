@@ -37,17 +37,23 @@ const gameLayerSpecs: LayerSpec[] = GAME_LAYERS.map((layer) => ({
  * values. The type is inferred from the property prefixes, since that is what
  * determines which spec applies.
  */
-const overrideSpecs: LayerSpec[] = BASEMAP_OVERRIDES.map((override, index) => {
+const allOverrides = Object.entries(BASEMAP_OVERRIDES).flatMap(([mood, overrides]) =>
+    overrides.map((override) => ({ mood, override })),
+);
+
+const overrideSpecs: LayerSpec[] = allOverrides.map(({ mood, override }, index) => {
     const properties = Object.keys({ ...override.paint, ...override.layout });
 
     const type = properties.some((key) => key.startsWith("line-"))
         ? "line"
         : properties.some((key) => key.startsWith("background-"))
           ? "background"
-          : "fill";
+          : properties.some((key) => key.startsWith("text-"))
+            ? "symbol"
+            : "fill";
 
     return {
-        id: `override-check-${index}-${override.layer}`,
+        id: `override-check-${mood}-${index}-${override.layer}`,
         type,
         // Background layers take no source; everything else needs one to validate.
         ...(type === "background"
@@ -77,7 +83,7 @@ const errors = validateStyleMin({
 
 if (errors.length === 0) {
     console.log(
-        `map style VALID — ${GAME_LAYERS.length} game layers and ${BASEMAP_OVERRIDES.length} basemap overrides checked`,
+        `map style VALID — ${GAME_LAYERS.length} game layers and ${allOverrides.length} basemap overrides (both moods) checked`,
     );
 } else {
     console.error(`map style INVALID — ${errors.length} error(s):`);

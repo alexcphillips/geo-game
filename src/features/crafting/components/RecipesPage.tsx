@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView } from "react-native";
 import { Chip, ChipRow } from "@/components/Chips/Chips";
 import SearchField from "@/components/SearchField/SearchField";
-import { colors } from "@/theme/colors";
+import { Hint } from "@/components/Text/Text";
+import { createStyles } from "@/theme/theme";
 import {
     RECIPE_CATEGORIES,
     recipeCategory,
@@ -50,6 +51,7 @@ export default function RecipesPage({
     onInspect: (itemId: string) => void;
     onCraft: (recipeId: string) => void;
 }) {
+    const styles = useStyles();
     // Cooking recipes live on the Cooking menu.
     const all = useRecipeStatuses();
     const statuses = useMemo(() => all.filter((status) => status.recipe.station !== "cooking"), [all]);
@@ -110,7 +112,7 @@ export default function RecipesPage({
                 />
             ))}
             {shown.length === 0 && (
-                <Text style={styles.emptyText}>
+                <Hint>
                     {statuses.length === 0
                         ? "No recipes yet."
                         : query.trim()
@@ -118,22 +120,15 @@ export default function RecipesPage({
                           : availability === "craftable"
                             ? "Nothing here you can craft yet."
                             : "No recipes match these filters."}
-                </Text>
+                </Hint>
             )}
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 10,
         paddingBottom: 8,
     },
-    emptyText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        textAlign: "center",
-        paddingTop: 16,
-    },
-});
+}));

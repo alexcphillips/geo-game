@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import EmptyState from "@/components/EmptyState/EmptyState";
+import Button from "@/components/Button/Button";
 import { Chip, ChipRow } from "@/components/Chips/Chips";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import { SPRITES, type SpriteName } from "@/features/spawns/sprites";
 import { toErrorMessage } from "@/lib/api";
 import type {
     GeoDungeon,
     GeoDungeonEntrance,
     GeoDungeonLobby,
-    GeoRunResponse,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
-import { useDungeonStore } from "../dungeonStore";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
+import { useDungeonStore, type DungeonEntry } from "../dungeonStore";
 
 type DungeonsModalProps = {
     /**
@@ -22,8 +26,8 @@ type DungeonsModalProps = {
      * joining need a POI.
      */
     entrance: GeoDungeonEntrance | null;
-    /** The host started the lobby: open their Run. */
-    onEntered: (opened: GeoRunResponse) => void;
+    /** The host started the lobby: open their map, or their boss fight for a dungeon without one. */
+    onEntered: (where: DungeonEntry) => void;
     onClose: () => void;
 };
 
@@ -37,6 +41,8 @@ type Page = "list" | "create" | "lobby";
  * keeps the menu fresh (`useDungeonPolling`).
  */
 export default function DungeonsModal({ entrance, onEntered, onClose }: DungeonsModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const data = useDungeonStore((state) => state.data);
     const error = useDungeonStore((state) => state.error);
     const myLobby = data?.myLobby ?? null;
@@ -74,7 +80,7 @@ export default function DungeonsModal({ entrance, onEntered, onClose }: Dungeons
                         accessibilityLabel="Create a lobby"
                         hitSlop={8}
                     >
-                        <Icon name="portal" size={14} color={colors.emberBright} />
+                        <Icon name="portal" size={14} color={palette.ember} />
                         <Text style={styles.headerButtonText}>Create</Text>
                     </Pressable>
                 )
@@ -82,7 +88,7 @@ export default function DungeonsModal({ entrance, onEntered, onClose }: Dungeons
             onClose={onClose}
         >
             {!data ? (
-                <Text style={styles.empty}>{error ?? "Finding lobbies…"}</Text>
+                <EmptyState title={error ?? "Finding lobbies…"} />
             ) : page === "create" ? (
                 <CreatePage
                     dungeons={data.dungeons}
@@ -158,6 +164,7 @@ function ListPage({
     entrance: GeoDungeonEntrance | null;
     onOpenMine: () => void;
 }) {
+    const styles = useStyles();
     const join = useDungeonStore((state) => state.join);
     const { isBusy, run } = useAction();
     // Filters: dungeons (none on = all), a minimum required level, joinable only.
@@ -233,16 +240,16 @@ function ListPage({
             </View>
 
             {!entrance && !myLobby && (
-                <Text style={styles.note}>Go to a POI to create or join a lobby.</Text>
+                <Hint>Go to a POI to create or join a lobby.</Hint>
             )}
 
             <ScrollView style={styles.scroll} contentContainerStyle={styles.rows}>
                 {shown.length === 0 ? (
-                    <Text style={styles.empty}>
+                    <Hint center>
                         {lobbies.length === 0
                             ? "No lobbies right now. Create one!"
                             : "No lobbies match your filters."}
-                    </Text>
+                    </Hint>
                 ) : (
                     shown.map((lobby) => (
                         <LobbyRow
@@ -283,13 +290,15 @@ function LobbyRow({
     isDisabled: boolean;
     onPress: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const isFull = lobby.playerCount >= lobby.maxPlayers;
     const name = dungeon?.name ?? "Dungeon";
     return (
-        <Pressable
+        <Panel compact
             onPress={onPress}
             disabled={isDisabled}
-            style={({ pressed }) => [styles.row, (isFull || isLevelTooLow) && styles.rowDim, pressed && styles.pressed]}
+            style={[styles.row, (isFull || isLevelTooLow) && styles.rowDim]}
             accessibilityRole="button"
             accessibilityLabel={`${name}, hosted by ${lobby.hostName}, ${levelLabel(lobby.requiredLevel)}, ${lobby.playerCount} of ${lobby.maxPlayers} players`}
         >
@@ -305,13 +314,13 @@ function LobbyRow({
             <View style={styles.rowStats}>
                 <Text style={[styles.rowLevel, isLevelTooLow && styles.tooLow]}>{levelLabel(lobby.requiredLevel)}</Text>
                 <View style={styles.rowPlayers}>
-                    <Icon name="two-shadows" size={12} color={isFull ? colors.damage : colors.textSecondary} />
+                    <Icon name="two-shadows" size={12} color={isFull ? palette.game.damage : palette.textMuted} />
                     <Text style={[styles.rowPlayersText, isFull && styles.tooLow]}>
                         {lobby.playerCount}/{lobby.maxPlayers}
                     </Text>
                 </View>
             </View>
-        </Pressable>
+        </Panel>
     );
 }
 
@@ -324,6 +333,8 @@ function MyLobbyBanner({
     dungeon: GeoDungeon | undefined;
     onPress: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <Pressable
             onPress={onPress}
@@ -331,7 +342,7 @@ function MyLobbyBanner({
             accessibilityRole="button"
             accessibilityLabel={`Your lobby: ${dungeon?.name ?? "Dungeon"}`}
         >
-            <Icon name="portal" size={18} color={colors.emberBright} />
+            <Icon name="portal" size={18} color={palette.ember} />
             <Text style={styles.bannerText} numberOfLines={1}>
                 {dungeon?.name ?? "Your lobby"}
             </Text>
@@ -354,6 +365,7 @@ function CreatePage({
     combatLevel: number;
     entrance: GeoDungeonEntrance | null;
 }) {
+    const styles = useStyles();
     const create = useDungeonStore((state) => state.create);
     const { isBusy, run } = useAction();
     const firstOpen = dungeons.find((dungeon) => dungeon.requiredLevel <= combatLevel);
@@ -374,18 +386,12 @@ function CreatePage({
                     const isLocked = combatLevel < candidate.requiredLevel;
                     const isPicked = candidate.id === dungeonId;
                     return (
-                        <Pressable
+                        <Panel compact
                             key={candidate.id}
                             onPress={() => pick(candidate)}
                             disabled={isLocked}
-                            style={({ pressed }) => [
-                                styles.dungeonCard,
-                                isPicked && styles.dungeonCardPicked,
-                                isLocked && styles.rowDim,
-                                pressed && styles.pressed,
-                            ]}
+                            style={[styles.dungeonCard, isPicked && styles.dungeonCardPicked, isLocked && styles.rowDim]}
                             accessibilityRole="radio"
-                            accessibilityState={{ selected: isPicked, disabled: isLocked }}
                             accessibilityLabel={`${candidate.name}, boss ${candidate.bossName}, ${dungeonLevelLabel(candidate.requiredLevel)}`}
                         >
                             <Image
@@ -401,7 +407,7 @@ function CreatePage({
                                     {`${dungeonLevelLabel(candidate.requiredLevel)} · up to ${candidate.maxPlayers} players`}
                                 </Text>
                             </View>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </ScrollView>
@@ -416,7 +422,7 @@ function CreatePage({
                         max={combatLevel}
                         onChange={setRequiredLevel}
                     />
-                    {!entrance && <Text style={styles.note}>Go to a POI to create a lobby.</Text>}
+                    {!entrance && <Hint>Go to a POI to create a lobby.</Hint>}
                     <PrimaryButton
                         label="Create lobby"
                         disabled={!entrance || isBusy}
@@ -440,19 +446,21 @@ function LobbyPage({
 }: {
     lobby: GeoDungeonLobby;
     dungeon: GeoDungeon | undefined;
-    onEntered: (opened: GeoRunResponse) => void;
+    onEntered: (where: DungeonEntry) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { leave, start } = useDungeonStore.getState();
     const { isBusy, run } = useAction();
     const members = lobby.members ?? [];
     const amHost = members.some((member) => member.isHost && member.isYou);
 
     const startLobby = async () => {
-        const { opened, leftOut } = await start(lobby.id);
+        const { dungeonRun, leftOut } = await start(lobby.id);
         if (leftOut.length > 0) {
             showToast(`${leftOut.join(", ")} couldn't fight right now and stayed behind`);
         }
-        onEntered(opened);
+        onEntered(dungeonRun ? "map" : "fight");
     };
 
     return (
@@ -466,32 +474,32 @@ function LobbyPage({
                 </Text>
                 <Text style={styles.cardMeta}>{levelLabel(lobby.requiredLevel)}</Text>
 
-                <View style={styles.members}>
-                    <Text style={styles.sectionTitle}>
+                <Panel compact style={styles.members}>
+                    <SectionTitle>
                         Players {lobby.playerCount}/{lobby.maxPlayers}
-                    </Text>
+                    </SectionTitle>
                     {members.map((member) => (
                         <View key={member.displayName} style={styles.member}>
                             <Icon
                                 name={member.isHost ? "crown" : "hooded-figure"}
                                 size={16}
-                                color={member.isHost ? colors.effect : colors.textSecondary}
+                                color={member.isHost ? palette.game.effect : palette.textMuted}
                             />
                             <Text style={styles.memberName}>{member.displayName}</Text>
                         </View>
                     ))}
                     {Array.from({ length: Math.max(0, lobby.maxPlayers - members.length) }, (_, index) => (
                         <View key={`empty-${index}`} style={styles.member}>
-                            <Icon name="uncertainty" size={16} color={colors.border} />
+                            <Icon name="uncertainty" size={16} color={palette.outline} />
                             <Text style={styles.memberWaiting}>Waiting…</Text>
                         </View>
                     ))}
-                </View>
+                </Panel>
 
-                <Text style={styles.note}>
+                <Hint>
                     Starting takes everyone in at once. For now each player fights the boss in their own Run;
                     fighting together is coming.
-                </Text>
+                </Hint>
             </ScrollView>
 
             <View style={styles.createFooter}>
@@ -524,6 +532,7 @@ function Stepper({
     max: number;
     onChange: (value: number) => void;
 }) {
+    const styles = useStyles();
     const step = (by: number) => onChange(Math.min(max, Math.max(min, value + by)));
     return (
         <View
@@ -544,6 +553,7 @@ function Stepper({
 }
 
 function StepButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -558,34 +568,14 @@ function StepButton({ label, disabled, onPress }: { label: string; disabled: boo
 }
 
 function PrimaryButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            disabled={disabled}
-            style={({ pressed }) => [styles.primary, disabled && styles.primaryDisabled, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityState={{ disabled }}
-        >
-            <Text style={[styles.primaryText, disabled && styles.primaryTextDisabled]}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} variant="primary" size="large" onPress={onPress} disabled={disabled} stretch />;
 }
 
 function SecondaryButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            disabled={disabled}
-            style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityState={{ disabled }}
-        >
-            <Text style={styles.secondaryText}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} onPress={onPress} disabled={disabled} stretch />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         flex: 1,
         gap: 10,
@@ -596,17 +586,6 @@ const styles = StyleSheet.create({
     rows: {
         gap: 8,
         paddingBottom: 8,
-    },
-    empty: {
-        marginTop: 24,
-        color: colors.textSecondary,
-        fontSize: 13,
-        textAlign: "center",
-    },
-    note: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        textAlign: "center",
     },
     pressed: {
         transform: [{ scale: 0.98 }],
@@ -619,16 +598,16 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     headerButtonPressed: {
         transform: [{ scale: 0.95 }],
-        backgroundColor: "rgba(201, 100, 30, 0.25)",
+        backgroundColor: p.track,
     },
     headerButtonText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     filters: {
         gap: 8,
@@ -644,10 +623,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 10,
         padding: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     rowDim: {
         opacity: 0.45,
@@ -661,12 +636,12 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     rowName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     rowHost: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     rowStats: {
@@ -674,13 +649,13 @@ const styles = StyleSheet.create({
         gap: 3,
     },
     rowLevel: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     tooLow: {
-        color: colors.damage,
+        color: p.game.damage,
     },
     rowPlayers: {
         flexDirection: "row",
@@ -688,9 +663,9 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     rowPlayersText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
     },
     banner: {
@@ -700,51 +675,47 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 12,
         borderWidth: 1.5,
-        borderColor: colors.ember,
-        backgroundColor: "rgba(201, 100, 30, 0.12)",
+        borderColor: p.ember,
+        backgroundColor: p.track,
     },
     bannerText: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     bannerTimer: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     dungeonCard: {
         flexDirection: "row",
         gap: 12,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     dungeonCardPicked: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     cardSprite: {
         width: 56,
         height: 56,
     },
     cardBoss: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     cardDescription: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
     cardMeta: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     createFooter: {
         gap: 10,
@@ -756,9 +727,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     stepperLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
@@ -769,20 +740,20 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     stepButtonText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     // Fixed width so the buttons don't shift as the number changes.
     stepperValue: {
         minWidth: 36,
         textAlign: "center",
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     lobbyBody: {
@@ -797,15 +768,15 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     lobbyName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     lobbyWaiting: {
         marginTop: 16,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         textAlign: "center",
     },
     members: {
@@ -814,17 +785,6 @@ const styles = StyleSheet.create({
         marginTop: 16,
         marginBottom: 12,
         padding: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
-    },
-    sectionTitle: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
     },
     member: {
         flexDirection: "row",
@@ -833,46 +793,13 @@ const styles = StyleSheet.create({
     },
     memberName: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     memberWaiting: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         fontStyle: "italic",
     },
-    primary: {
-        alignItems: "center",
-        paddingVertical: 13,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    primaryDisabled: {
-        backgroundColor: "transparent",
-        borderColor: colors.border,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    primaryTextDisabled: {
-        color: colors.textSecondary,
-    },
-    secondary: {
-        alignItems: "center",
-        paddingVertical: 11,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-    },
-    secondaryText: {
-        color: colors.textSecondary,
-        fontSize: 14,
-        fontWeight: "700",
-    },
-});
+}));

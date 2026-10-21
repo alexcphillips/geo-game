@@ -55,6 +55,14 @@ export const GEO_API_PATHS = {
         petItem: "/geo/me/pets/:inventoryId/item",
     },
     /** Dev servers only: testing tools. Production answers 404. */
+    quests: {
+        /** GET: the player's quests (GeoQuestsResponse). */
+        root: "/geo/quests",
+        /** PUT: follow this quest in the tracker; only one at a time. */
+        track: "/geo/quests/:questId/track",
+        /** POST: turn in a ready quest, from anywhere, for its reward. */
+        claim: "/geo/quests/:questId/claim",
+    },
     dev: {
         /** POST: puts an enemy within reach of the player now. */
         spawn: "/geo/dev/spawns",
@@ -125,6 +133,8 @@ export const GEO_API_PATHS = {
         electionEndsAt: "/geo/admin/elections/ends-at",
         /** GET / PUT { always }: the calling admin's switch making every bite a sea creature. */
         seaCreatures: "/geo/admin/fishing/sea-creatures",
+        /** POST: playtesting; the calling admin's farm takes its next cycle now. Returns GeoFarmView. */
+        farmNextCycle: "/geo/admin/farm/next-cycle",
         /** POST: takes a listing down and hands everything back. */
         removeListing: "/geo/admin/market/listings/:listingId/remove",
         /** GET ?status=: location suggestions to review. */
@@ -167,6 +177,18 @@ export const GEO_API_PATHS = {
         leave: "/geo/dungeons/lobbies/:lobbyId/leave",
         /** POST, host only: take everyone in (GeoStartDungeonLobbyResponse). */
         start: "/geo/dungeons/lobbies/:lobbyId/start",
+    },
+    dungeonRuns: {
+        /** GET: the dungeon run in progress (GeoDungeonRunResponse), or null. */
+        active: "/geo/dungeon-runs/active",
+        /** GET: one of the player's dungeon runs, finished or not (GeoDungeonRunResponse): how it ended. */
+        one: "/geo/dungeon-runs/:dungeonRunId",
+        /** POST GeoDungeonMoveRequest. */
+        move: "/geo/dungeon-runs/:dungeonRunId/move",
+        /** POST GeoDungeonPuzzleRequest. */
+        puzzle: "/geo/dungeon-runs/:dungeonRunId/puzzle",
+        /** POST: leave the dungeon. It counts as failing it. */
+        leave: "/geo/dungeon-runs/:dungeonRunId/leave",
     },
     fishing: {
         /** POST { tier }: open a fishing Run at a spot, or resume the open one. */

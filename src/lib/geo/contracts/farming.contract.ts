@@ -4,9 +4,11 @@ import type { GeoHandCard } from "./run.contract";
 
 /**
  * Farming: one grid per player that runs on a real clock. Every 12h the farm
- * takes a turn on its own: crops grow, weather lands, pests move, and Labor
- * refills for watering, harvesting and farming cards. After a couple of
- * turns without the player looking, the farm waits for them. The server
+ * takes a turn on its own: crops grow, weather lands, pests move, and the
+ * farming hand is ready again: each card plays once a cycle, up to
+ * GEO_HAND_SIZE plays in all. Planting, harvesting and clearing are free.
+ * After a couple of turns without the player looking, the farm waits for
+ * them. The server
  * runs every rule (catching up when the farm is next looked at); the app
  * shows what it says.
  *
@@ -18,19 +20,19 @@ import type { GeoHandCard } from "./run.contract";
 export const GEO_FARM_SIZE = 9;
 
 /** A farm turn's weather: a seeded roll per turn, the same whenever it's asked. */
-export const GEO_FARM_WEATHERS = ["clear", "overcast", "rain", "heatwave", "storm", "frost"] as const;
+export const GEO_FARM_WEATHERS = ["clear", "rain", "heatwave", "frost"] as const;
 export type GeoFarmWeather = (typeof GEO_FARM_WEATHERS)[number];
 
-/** What a farming card aims at, so the app can preview it on the grid. */
 /**
- * Soil. Every tile starts `normal`; amendment items change it for good, and
- * cards lay a soil over it for a few turns. `rocky` and `ancient` come from
- * skills not built yet.
+ * A tile's ground on a cycle, set by the sky and what's around it (nobody
+ * waters): wet under rain or beside a Pond; dry in
+ * a heatwave out in the open with no Well near; else normal. Crops on dry
+ * ground don't grow that cycle. Mutation recipes can need either.
  */
-export const GEO_FARM_SOILS = ["normal", "rich", "boggy", "cursed", "rocky", "ancient"] as const;
-export type GeoFarmSoil = (typeof GEO_FARM_SOILS)[number];
+export const GEO_FARM_GROUNDS = ["normal", "wet", "dry"] as const;
+export type GeoFarmGround = (typeof GEO_FARM_GROUNDS)[number];
 
-/** `ring` is the 8 tiles around the one aimed at; `cross` the 4 beside it, not the middle. */
+/** What a farming card aims at, so the app can preview it on the grid. `ring` is the 8 tiles around the one aimed at; `cross` the 4 beside it, not the middle. */
 export type GeoFarmCardShape = "tile" | "row" | "square3" | "ring" | "cross" | "none";
 
 /** A crop growing (or rotting) on a tile. */
@@ -58,26 +60,24 @@ export type GeoFarmTile = {
     /** Locked, but next to an owned tile: can be bought now. */
     unlockable: boolean;
     crop: GeoFarmCrop | null;
-    /** 0–GEO_FARM_MAX_MOISTURE. A growing crop drinks 1 per turn and doesn't grow without it. */
-    moisture: number;
-    /** Turns left in which growing here drinks nothing. */
-    soakTurns: number;
-    /** 0–10. Harvests drain it; empty tiles recover. Low = smaller harvests, high = bigger. */
-    fertility: number;
+    /** Its ground on the coming cycle, by the forecast. Dry: a growing crop won't grow. */
+    ground: GeoFarmGround;
     /** The planned crop: a faded ghost, nothing more. */
     blueprint: string | null;
     /** A Snap Trap: catches a pest that moves onto it on the next turn. */
     trap: boolean;
     /** Hand Pollinated: better mutation odds here on the next turn. */
     pollinated: boolean;
-    /** A structure standing here instead of a crop. */
+    /** A structure standing here instead of a crop (a multi-tile one stands on its middle tile). */
     structure: GeoFarmStructure | null;
+    /** Covered by the multi-tile structure standing on the tile with this index. */
+    partOf: number | null;
+    /** Mutation recipes that have held on this empty tile for `cycles` cycles in a row: each one raises its chance here. */
+    setups: { mutationId: string; cycles: number }[];
+    /** Under a Greenhouse roof placed from tile `anchor`: crops grow here, sheltered. Demolishing works from any tile under it. */
+    roof: { anchor: number; structureId: string } | null;
     /** Nuclear waste: nothing grows here, it spreads, and it stirs up mutations and glowing pests nearby. */
     waste: boolean;
-    /** The tile's own soil, changed only by an amendment. */
-    soil: GeoFarmSoil;
-    /** A card's soil laid over it for `turnsLeft` more turns; it counts instead of `soil`. */
-    soilOverlay: { soil: GeoFarmSoil; turnsLeft: number } | null;
 };
 
 /** What a structure does; the rules are the server's. */
@@ -91,8 +91,7 @@ export type GeoStructureKind =
     | "reactor"
     | "portal"
     | "shrine"
-    | "well"
-    | "lightning-rod";
+    | "well";
 
 /** A structure on a tile, with what it holds. */
 export type GeoFarmStructure = {
@@ -101,12 +100,10 @@ export type GeoFarmStructure = {
     tune: string | null;
     /** Pest Cage: the pest kept inside, or null when empty. */
     caged: string | null;
-    /** Compost Bin: compost waiting, spent 1 a turn to feed the soil around. */
+    /** Compost Bin: harvests and clears toward its next Compost. */
     compost: number;
     /** Portal: torn open, so elite pests come through on the next turn. */
     open: boolean;
-    /** Well: water stored; plain watering draws on it for no Labor. */
-    water: number;
 };
 
 /** A farm event, as the app shows it. */
@@ -176,8 +173,16 @@ export type GeoStructureView = {
     name: string;
     icon: string;
     description: string;
-    /** The item placed from the inventory, and given back on pick-up. */
-    itemId: string;
+    /** Extra lines for the Build list. */
+    stats: { label: string; value: string }[];
+    /** Taken from the inventory when it's built; never refunded. */
+    cost: GeoFarmGain[];
+    /** Tiles it covers, centred on the tile it's placed from (an even side reaches one further right or down). */
+    size: { width: number; height: number };
+    /** The farming level needed to place it; 0 = none. */
+    requiredLevel: number;
+    /** Compost Bin: harvests and clears per Compost it makes; null for anything else. */
+    capacity: number | null;
 };
 
 /**
@@ -190,8 +195,6 @@ export type GeoFarmPestIntent =
     | { kind: "eat"; tile: number }
     /** Moves onto `tile` (its own tile: stays put). */
     | { kind: "move"; tile: number }
-    /** Takes fertility from the tile it's on. */
-    | { kind: "drain"; tile: number; amount: number }
     /** The crop on its tile doesn't grow. */
     | { kind: "sap"; tile: number }
     /** A new pest of its kind appears on `tile`; the crop it's on doesn't grow. */
@@ -229,8 +232,6 @@ export type GeoPesthunter = {
     shop: { itemId: string; price: number }[];
 };
 
-export const GEO_FARM_MAX_MOISTURE = 3;
-export const GEO_FARM_MAX_FERTILITY = 10;
 
 /**
  * A crop as the app needs it to plant, plan and draw. Mutations are listed
@@ -274,10 +275,11 @@ export type GeoResearchLab = {
 /** `POST /geo/farm/lab`. */
 export type GeoResearchRequest = { mutationId: string };
 
-/** One farming card in hand, with what it costs and aims at. */
+/** One farming card in hand, with what it aims at and whether it has played this cycle. */
 export type GeoFarmHandCard = GeoHandCard & {
-    labor: number;
     shape: GeoFarmCardShape;
+    /** Played this cycle: it's ready again next cycle, even if moved out of the hand and back. */
+    played: boolean;
 };
 
 /** Items a farm action put in the inventory. */
@@ -288,11 +290,10 @@ export type GeoFarmView = {
     tiles: GeoFarmTile[];
     /** Turns the farm has taken so far. */
     turn: number;
-    labor: number;
-    /** What each turn refills Labor to; it grows with farming level. */
-    laborPerTurn: number;
-    /** The farming level that next adds 1 Labor per turn; null past the last. */
-    laborNextLevel: number | null;
+    /** Card plays left this cycle, out of GEO_HAND_SIZE. Swapping cards in doesn't add any. */
+    playsLeft: number;
+    /** The player's farming level, for what it unlocks (structures' `requiredLevel`). */
+    farmingLevel: number;
     /** Farming Fortune from gear, talismans and global perks: each 100 adds a harvest's crops again (1000 = ×11). */
     fortune: number;
     /** When the farm takes its next turn. */
@@ -309,12 +310,12 @@ export type GeoFarmView = {
     global: GeoGlobalFarmEvent | null;
     /** This week's contests, with the player's standing. */
     contests: GeoFarmContests;
-    /** Amendment items and the soil each makes, for the tile panel. */
-    amendments: { itemId: string; soil: GeoFarmSoil }[];
     /** Shrine blessings (and curses) on the farm, each with the turns it has left. */
     blessings: { id: string; name: string; description: string; curse: boolean; turnsLeft: number }[];
-    /** Coins the next tile costs; null when every tile is owned. */
-    unlockCost: number | null;
+    /** What the next tile costs: coins, and Compost (`compostItemId`) once a few are bought. Null when every tile is owned. */
+    unlockCost: { coins: number; compost: number } | null;
+    /** The item tile unlocks take as Compost. */
+    compostItemId: string;
     hand: GeoFarmHandCard[];
     crops: GeoCropView[];
     /** Every pest on the farm, each with its next move. */
@@ -323,9 +324,10 @@ export type GeoFarmView = {
     pestTypes: GeoPestView[];
     lab: GeoResearchLab;
     pesthunter: GeoPesthunter;
+    /** The structures on the farm, and the ones the player can build: what the app draws and lists. */
     structureTypes: GeoStructureView[];
-    /** Structures the player holds, ready to place. */
-    structureKit: { structureId: string; itemId: string; quantity: number }[];
+    /** What can be built now (its farming level reached), by id, cheapest level first. Costs come from the inventory. */
+    buildList: string[];
     /** What the last action did, in order. */
     log: string[];
     /** What the last action put in the inventory. */
@@ -342,21 +344,19 @@ export type GeoFarmView = {
 export type GeoFarmAction =
     /** Free: takes one of these seeds from the inventory. */
     | { type: "plant"; tile: number; itemId: string }
-    /** 1 Labor, or 1 water from a Well instead: +1 moisture. */
-    | { type: "water"; tile: number }
-    /** 1 Labor: a ripe crop into the inventory. */
+    /** Free: a ripe crop into the inventory. */
     | { type: "harvest"; tile: number }
-    /** 1 Labor: pulls up whatever is there, rotten or not, for nothing. */
+    /** Free: every ripe crop on the farm into the inventory. */
+    | { type: "harvest-all" }
+    /** Free: pulls up whatever is there, rotten or not, for nothing. */
     | { type: "clear"; tile: number }
-    /** 2 Labor: hits every pest on the tile; each one cleared rolls its drops. */
-    | { type: "swat"; tile: number }
-    /** Free: a structure from the inventory onto an empty tile. */
-    | { type: "place"; tile: number; itemId: string }
-    /** Free: the structure back into the inventory (a Pest Cage must be empty). */
-    | { type: "pickup"; tile: number }
+    /** Its cost from the inventory: a structure off the Build list, centred on the tile; every tile it covers must be owned and clear (a Greenhouse can go over crops). */
+    | { type: "place"; tile: number; structureId: string }
+    /** Free: the structure on or over the tile is torn down, whole, with nothing back (a Pest Cage must be empty). */
+    | { type: "demolish"; tile: number }
     /** Free: the Jukebox plays this pest's tune, or nothing. */
     | { type: "tune"; tile: number; pestId: string | null }
-    /** 2 Labor: one pest on `tile` into an empty Pest Cage on or next to it, alive. */
+    /** Free: one pest on `tile` into an empty Pest Cage on or next to it, alive. */
     | { type: "cage"; tile: number }
     /** Free: the Pest Cage's pest is let out and cleared, rolling its drops. */
     | { type: "release"; tile: number }
@@ -364,10 +364,6 @@ export type GeoFarmAction =
     | { type: "turn-in"; tile: number }
     /** Pesthunter points: one of the Pesthunter's shop items, by index. */
     | { type: "pesthunter-buy"; offer: number }
-    /** Free: an amendment item from the inventory changes the tile's soil for good. */
-    | { type: "amend"; tile: number; itemId: string }
-    /** 3 Labor: scrubs the nuclear waste off a tile (Hazmat Scrub does it for 1). */
-    | { type: "scrub"; tile: number }
     /** Free: items onto the Mysterious Shrine. Their NPC value buys a roll for a blessing; it may answer with a curse. */
     | { type: "offer"; tile: number; itemId: string; quantity: number }
     /** Coins: buy the Travelling Merchant's offer at this index. */
@@ -385,20 +381,17 @@ export type GeoFarmAction =
 
 export const GEO_FARM_ACTION_TYPES = [
     "plant",
-    "water",
     "harvest",
+    "harvest-all",
     "clear",
-    "swat",
     "place",
-    "pickup",
+    "demolish",
     "tune",
     "cage",
     "release",
     "turn-in",
     "pesthunter-buy",
-    "scrub",
     "offer",
-    "amend",
     "buy",
     "accept-order",
     "deliver-order",

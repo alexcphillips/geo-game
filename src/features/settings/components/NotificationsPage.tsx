@@ -1,11 +1,12 @@
-import { StyleSheet, Text, View } from "react-native";
+import { View } from "react-native";
+import { Hint } from "@/components/Text/Text";
 import { NOTIFICATION_CATEGORIES } from "@/features/notifications/notificationCategories";
 import {
     isCategoryEnabled,
     useNotificationSettingsStore,
 } from "@/features/notifications/notificationSettingsStore";
 import { setCategoryEnabled } from "@/features/notifications/setCategoryEnabled";
-import { colors } from "@/theme/colors";
+import { createStyles } from "@/theme/theme";
 import SettingsToggle from "./SettingsToggle";
 
 /**
@@ -14,6 +15,7 @@ import SettingsToggle from "./SettingsToggle";
  * page. Switching one off also cancels anything already scheduled for it.
  */
 export default function NotificationsPage() {
+    const styles = useStyles();
     const overrides = useNotificationSettingsStore((state) => state.overrides);
 
     return (
@@ -30,22 +32,16 @@ export default function NotificationsPage() {
                     />
                 );
             })}
-            <Text style={styles.note}>
+            <Hint>
                 These choose what geo-game sends. Your phone&apos;s own settings can
                 still turn notifications off entirely.
-            </Text>
+            </Hint>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 12,
     },
-    note: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        lineHeight: 17,
-        textAlign: "center",
-    },
-});
+}));

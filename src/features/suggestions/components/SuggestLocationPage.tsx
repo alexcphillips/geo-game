@@ -1,15 +1,15 @@
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Pressable,
     ScrollView,
-    StyleSheet,
     Text,
-    TextInput,
     View,
 } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import type { PlayerPosition } from "@/features/location/hooks/usePlayerLocation";
 import { distanceMetres } from "@/features/location/distance";
 import { api, toErrorMessage } from "@/lib/api";
@@ -20,7 +20,8 @@ import {
 } from "@/lib/geo/contracts";
 import { useSuggestionDraft } from "../suggestionDraft";
 import { SUGGESTION_KINDS } from "../suggestionKinds";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type SuggestLocationPageProps = {
     position: PlayerPosition;
@@ -39,6 +40,8 @@ export default function SuggestLocationPage({
     position,
     onDropPin,
 }: SuggestLocationPageProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { kind, note, pin, setKind, setNote, setPin, reset } =
         useSuggestionDraft();
     const [isSent, setIsSent] = useState(false);
@@ -75,22 +78,13 @@ export default function SuggestLocationPage({
     if (isSent) {
         return (
             <View style={styles.sent}>
-                <Icon name="check-mark" size={40} color={colors.emberBright} />
+                <Icon name="check-mark" size={40} color={palette.ember} />
                 <Text style={styles.sentTitle}>Suggestion sent</Text>
-                <Text style={styles.hint}>
+                <Hint>
                     Thanks — it will be checked against the map before it goes
                     into the world.
-                </Text>
-                <Pressable
-                    onPress={() => setIsSent(false)}
-                    style={({ pressed }) => [
-                        styles.secondaryButton,
-                        pressed && styles.pressed,
-                    ]}
-                    accessibilityRole="button"
-                >
-                    <Text style={styles.secondaryButtonText}>Suggest another</Text>
-                </Pressable>
+                </Hint>
+                <Button label="Suggest another" onPress={() => setIsSent(false)} stretch />
             </View>
         );
     }
@@ -103,45 +97,40 @@ export default function SuggestLocationPage({
             // iOS: keeps the note field above the keyboard.
             automaticallyAdjustKeyboardInsets
         >
-            <Text style={styles.sectionTitle}>What should be here?</Text>
+            <SectionTitle>What should be here?</SectionTitle>
             <View style={styles.kinds}>
                 {SUGGESTION_KINDS.map((info) => {
                     const isSelected = info.id === kind;
                     return (
-                        <Pressable
+                        <Panel compact
                             key={info.id}
                             onPress={() => setKind(info.id)}
-                            style={({ pressed }) => [
-                                styles.kind,
-                                isSelected && { borderColor: info.color },
-                                pressed && styles.pressed,
-                            ]}
+                            style={[styles.kind, isSelected && { borderColor: info.color }]}
                             accessibilityRole="radio"
-                            accessibilityState={{ selected: isSelected }}
                             accessibilityLabel={info.label}
                         >
                             <Icon
                                 name={info.icon}
                                 size={22}
-                                color={isSelected ? info.color : colors.textSecondary}
+                                color={isSelected ? info.color : palette.textMuted}
                             />
                             <Text
                                 style={[
                                     styles.kindLabel,
-                                    isSelected && { color: colors.textPrimary },
+                                    isSelected && { color: palette.text },
                                 ]}
                                 numberOfLines={1}
                             >
                                 {info.label}
                             </Text>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </View>
 
-            <Text style={styles.sectionTitle}>Where?</Text>
-            <View style={styles.card}>
-                <Icon name="pin" size={22} color={colors.emberBright} />
+            <SectionTitle>Where?</SectionTitle>
+            <Panel compact style={styles.card}>
+                <Icon name="pin" size={22} color={palette.ember} />
                 <View style={styles.cardText}>
                     <Text style={styles.cardLabel}>
                         {pin ? `Pin · ${distance} m from you` : "Your current location"}
@@ -150,81 +139,35 @@ export default function SuggestLocationPage({
                         {target.latitude.toFixed(6)}, {target.longitude.toFixed(6)}
                     </Text>
                 </View>
-            </View>
+            </Panel>
             <View style={styles.row}>
-                <Pressable
-                    onPress={onDropPin}
-                    style={({ pressed }) => [
-                        styles.secondaryButton,
-                        styles.rowButton,
-                        pressed && styles.pressed,
-                    ]}
-                    accessibilityRole="button"
-                >
-                    <Text style={styles.secondaryButtonText}>
-                        {pin ? "Move pin" : "Drop a pin"}
-                    </Text>
-                </Pressable>
+                <Button label={pin ? "Move pin" : "Drop a pin"} icon="pin" onPress={onDropPin} stretch />
                 {pin && (
-                    <Pressable
-                        onPress={() => setPin(null)}
-                        style={({ pressed }) => [
-                            styles.secondaryButton,
-                            styles.rowButton,
-                            pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.secondaryButtonText}>Use my location</Text>
-                    </Pressable>
+                    <Button label="Use my location" onPress={() => setPin(null)} stretch />
                 )}
             </View>
 
-            <Text style={styles.sectionTitle}>Anything to add?</Text>
-            <TextInput
+            <SectionTitle>Anything to add?</SectionTitle>
+            <TextField
                 value={note}
                 onChangeText={setNote}
                 placeholder="e.g. old quarry behind the rec centre, public path along the fence"
-                placeholderTextColor={colors.textSecondary}
-                style={styles.note}
                 multiline
                 maxLength={GEO_SUGGESTION_NOTE_MAX}
-                textAlignVertical="top"
             />
 
-            <Pressable
-                onPress={() => void send()}
-                disabled={isSending}
-                style={({ pressed }) => [styles.sendButton, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityState={{ busy: isSending }}
-            >
-                {isSending ? (
-                    <ActivityIndicator color={colors.textOnEmber} />
-                ) : (
-                    <Icon name="share" size={18} color={colors.textOnEmber} />
-                )}
-                <Text style={styles.sendButtonText}>Send suggestion</Text>
-            </Pressable>
-            <Text style={styles.hint}>
+            <Button label="Send suggestion" variant="primary" size="large" icon="share" onPress={() => void send()} busy={isSending} stretch />
+            <Hint>
                 Only suggest places anyone can walk to — no private land.
-            </Text>
+            </Hint>
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 10,
         paddingBottom: 8,
-    },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
     },
     kinds: {
         flexDirection: "row",
@@ -238,94 +181,35 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 6,
         paddingVertical: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1.5,
-        borderColor: colors.border,
     },
     kindLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     card: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
         padding: 14,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     cardText: {
         flex: 1,
         gap: 2,
     },
     cardLabel: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     coords: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         fontVariant: ["tabular-nums"],
     },
     row: {
         flexDirection: "row",
         gap: 8,
-    },
-    rowButton: {
-        flex: 1,
-    },
-    secondaryButton: {
-        alignItems: "center",
-        paddingVertical: 11,
-        paddingHorizontal: 16,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    secondaryButtonText: {
-        color: colors.emberBright,
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    note: {
-        minHeight: 84,
-        padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.textPrimary,
-        fontSize: 14,
-    },
-    sendButton: {
-        marginTop: 8,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        paddingVertical: 14,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    sendButtonText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        lineHeight: 17,
-        textAlign: "center",
     },
     sent: {
         flex: 1,
@@ -335,8 +219,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
     },
     sentTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-});
+}));

@@ -1,8 +1,10 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
+import { Hint } from "@/components/Text/Text";
 import type { GeoCropView, GeoFarmContestId, GeoFarmContests } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { untilText } from "../farmText";
 
 type ContestsModalProps = {
@@ -23,26 +25,28 @@ const CONTEST_INFO: Record<GeoFarmContestId, { name: string; rule: string }> = {
  * and the prizes. Harvests count as they happen; prizes are paid Monday.
  */
 export default function ContestsModal({ contests, crops, now, onClose }: ContestsModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const prizes = contests.prizes.map((prize, i) => `${["1st", "2nd", "3rd"][i] ?? `${i + 1}th`} ${prize.toLocaleString()}`).join(" · ");
     return (
         <Modal title="Contests" size="fill" showBack onClose={onClose}>
             <ScrollView contentContainerStyle={styles.list}>
-                <Text style={styles.hint}>
+                <Hint>
                     Close and pay out {untilText(contests.endsAt, now)}. Prizes in each: {prizes} coins, and {contests.participation} for everyone else who
                     entered.
-                </Text>
+                </Hint>
                 {contests.standings.map((standing) => {
                     const info = CONTEST_INFO[standing.contest];
                     const title = standing.contest === "crop" ? `${info.name}: ${crops[contests.cropId]?.name ?? contests.cropId}` : info.name;
                     return (
                         <View key={standing.contest} style={styles.contest}>
                             <View style={styles.header}>
-                                <Icon name="trophy" size={18} color={colors.coins} />
+                                <Icon name="trophy" size={18} color={palette.reward} />
                                 <Text style={styles.name}>{title}</Text>
                             </View>
-                            <Text style={styles.hint}>{info.rule}</Text>
+                            <Hint>{info.rule}</Hint>
                             {standing.top.length === 0 ? (
-                                <Text style={styles.hint}>Nobody has entered yet.</Text>
+                                <Hint>Nobody has entered yet.</Hint>
                             ) : (
                                 standing.top.map((leader, i) => (
                                     <Text key={i} style={styles.row}>
@@ -63,7 +67,7 @@ export default function ContestsModal({ contests, crops, now, onClose }: Contest
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 16,
         paddingBottom: 16,
@@ -77,21 +81,17 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     row: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
     },
     mine: {
-        color: colors.cropRipe,
+        color: p.game.cropRipe,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-    },
-});
+}));

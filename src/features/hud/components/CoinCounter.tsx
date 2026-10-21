@@ -1,6 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type CoinCounterProps = {
     coins: number;
@@ -14,32 +16,33 @@ type CoinCounterProps = {
  * this stays a plain row that can be dropped anywhere.
  */
 export default function CoinCounter({ coins }: CoinCounterProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
-        <View style={styles.row} accessibilityRole="text" accessibilityLabel={`${coins} coins`}>
-            <Icon name="two-coins" size={18} color={colors.coins} />
+        <Panel tone="surface" style={styles.row} accessibilityRole="text" accessibilityLabel={`${coins} coins`}>
+            <Icon name="two-coins" size={18} color={palette.reward} />
             {/* `toLocaleString` because balances reach six figures and an
                 unseparated run of digits is unreadable at a glance. */}
             <Text style={styles.count}>{coins.toLocaleString()}</Text>
-        </View>
+        </Panel>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    // A pill of its own, so it reads over any patch of map.
     row: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
+        paddingVertical: 6,
+        paddingLeft: 8,
+        paddingRight: 12,
     },
     count: {
-        color: colors.coins,
+        color: p.text,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 15,
-        fontWeight: "600",
         // Tabular figures so the row doesn't jitter as the count changes.
         fontVariant: ["tabular-nums"],
-        // The HUD floats over the map with no panel behind it, so the text
-        // carries its own contrast.
-        textShadowColor: "rgba(0, 0, 0, 0.95)",
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
     },
-});
+}));

@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
-import { colors } from "@/theme/colors";
+import { SectionTitle } from "@/components/Text/Text";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { rarityInfo } from "@/features/inventory/rarity";
 import { useActivityAlert } from "@/features/notifications/useActivityAlert";
 import {
@@ -55,6 +58,7 @@ export default function PlaceModal({
     onEdit,
     onRemove,
 }: PlaceModalProps) {
+    const styles = useStyles();
     const type = placeTypeInfo(place.skill);
     const canStart = inReach || !startNeedsReach;
 
@@ -107,6 +111,7 @@ export default function PlaceModal({
 }
 
 function AdminButton({ label, onPress, danger = false }: { label: string; onPress: () => void; danger?: boolean }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -123,6 +128,8 @@ function AdminButton({ label, onPress, danger = false }: { label: string; onPres
  * data, display only), and the rarities boosted here.
  */
 function FishingWaters({ place }: { place: MapPlace }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const tier = fishingTier(place.water ?? null, place.handMade?.settings.fishing);
     // Read once on opening, so the meter can't change while you look.
     const [now] = useState(() => Date.now());
@@ -130,8 +137,8 @@ function FishingWaters({ place }: { place: MapPlace }) {
     const activityAlert = useActivityAlert(place.id, place.name || tier.label, now);
 
     return (
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Waters</Text>
+        <Panel compact style={styles.section}>
+            <SectionTitle>Waters</SectionTitle>
             <Text style={styles.sectionHeading}>{tier.label}</Text>
             <Text style={styles.sectionBody}>{tier.blurb}</Text>
             <View
@@ -176,7 +183,7 @@ function FishingWaters({ place }: { place: MapPlace }) {
                     <Icon
                         name="ringing-bell"
                         size={14}
-                        color={activityAlert.isOn ? colors.emberBright : colors.textSecondary}
+                        color={activityAlert.isOn ? palette.ember : palette.textMuted}
                     />
                     <Text style={[styles.bellText, activityAlert.isOn && styles.bellTextOn]}>
                         {activityAlert.isOn ? "Notifying" : "Notify me"}
@@ -214,11 +221,11 @@ function FishingWaters({ place }: { place: MapPlace }) {
                     );
                 })}
             </View>
-        </View>
+        </Panel>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // Full height: the space between the type and Start is where a place's
     // details (what can be caught or found here) will go.
     body: {
@@ -235,28 +242,28 @@ const styles = StyleSheet.create({
         marginBottom: 6,
         borderRadius: 30,
         borderWidth: 2,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         textAlign: "center",
     },
     type: {
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1.5,
         textTransform: "uppercase",
     },
     distance: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
     description: {
         marginTop: 8,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
         lineHeight: 20,
         textAlign: "center",
@@ -271,43 +278,32 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     adminButtonDanger: {
-        borderColor: colors.blood,
+        borderColor: p.game.blood,
     },
     adminButtonText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     adminButtonTextDanger: {
-        color: colors.damage,
+        color: p.game.damage,
     },
     section: {
         alignSelf: "stretch",
         gap: 6,
         marginTop: 18,
         padding: 14,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    sectionTitle: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
     },
     sectionHeading: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     sectionBody: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         lineHeight: 18,
     },
@@ -318,9 +314,9 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     activityLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     activityMeter: {
         flex: 1,
@@ -331,14 +327,14 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 6,
         borderRadius: 3,
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     // Fixed width so the meter is the same length whatever the word.
     activityValue: {
         width: 64,
         textAlign: "right",
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     activityFooter: {
         flexDirection: "row",
@@ -353,41 +349,41 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     bellOn: {
-        borderColor: colors.ember,
-        backgroundColor: "rgba(201, 100, 30, 0.18)",
+        borderColor: p.ember,
+        backgroundColor: p.track,
     },
     bellText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     bellTextOn: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     bellDisabled: {
         opacity: 0.45,
     },
     bellNote: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     bellBlocked: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 11,
     },
     activityChange: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
     catchesLabel: {
         marginTop: 6,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     rarities: {
         flexDirection: "row",
@@ -402,12 +398,12 @@ const styles = StyleSheet.create({
     },
     rarityText: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     tooFar: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     // Pinned to the bottom of the panel, just above the close button.
     start: {
@@ -416,24 +412,24 @@ const styles = StyleSheet.create({
         marginTop: "auto",
         paddingVertical: 13,
         borderRadius: 999,
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
         borderWidth: 1.5,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     startDisabled: {
         backgroundColor: "transparent",
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     startPressed: {
         transform: [{ scale: 0.97 }],
     },
     startText: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
     },
     startTextDisabled: {
-        color: colors.textSecondary,
+        color: p.textMuted,
     },
-});
+}));

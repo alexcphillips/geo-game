@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import EmptyState from "@/components/EmptyState/EmptyState";
 import Modal from "@/components/Modal/Modal";
+import { Hint } from "@/components/Text/Text";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { rarityInfo } from "@/features/inventory/rarity";
 import { playerActions } from "@/features/player/playerStore";
 import { useEquipment, useInventory } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 import type { EquipmentSlot } from "../characterSlots";
 
 const GRID_COLUMNS = 3;
@@ -28,6 +31,7 @@ type EquipPickerModalProps = {
  * finger) are listed too, and equipping one here moves it.
  */
 export default function EquipPickerModal({ slot, onClose }: EquipPickerModalProps) {
+    const styles = useStyles();
     const items = useInventory();
     const equipped = useEquipment();
     const [inspected, setInspected] = useState<InventoryItem | null>(null);
@@ -60,13 +64,13 @@ export default function EquipPickerModal({ slot, onClose }: EquipPickerModalProp
             {inspected ? (
                 <ItemDetail item={inspected} />
             ) : fits.length === 0 ? (
-                <Text style={styles.empty}>Nothing you own fits this slot yet.</Text>
+                <EmptyState title="Nothing you own fits this slot yet." />
             ) : (
                 <View style={styles.body}>
-                    <Text style={styles.hint}>
+                    <Hint>
                         Tap to equip{currentId ? " · tap the equipped one to remove it" : ""} · hold
                         for details
-                    </Text>
+                    </Hint>
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.grid}
@@ -92,15 +96,10 @@ export default function EquipPickerModal({ slot, onClose }: EquipPickerModalProp
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     body: {
         flexShrink: 1,
         gap: 10,
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        textAlign: "center",
     },
     grid: {
         flexDirection: "row",
@@ -112,18 +111,11 @@ const styles = StyleSheet.create({
     },
     elsewhere: {
         marginTop: 3,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 9,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         textAlign: "center",
         textTransform: "uppercase",
         letterSpacing: 0.5,
     },
-    empty: {
-        paddingVertical: 28,
-        textAlign: "center",
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-    },
-});
+}));

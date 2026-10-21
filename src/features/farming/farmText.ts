@@ -1,15 +1,19 @@
 import type { GameIconName } from "@/components/Icon/Icon";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
-import type { GeoFarmCardShape, GeoFarmPest, GeoFarmSoil, GeoFarmTile, GeoFarmWeather } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import type { GeoFarmCardShape, GeoFarmGround, GeoFarmPest, GeoFarmTile, GeoFarmWeather } from "@/lib/geo/contracts";
 
 export const WEATHER_INFO: Record<GeoFarmWeather, { label: string; icon: GameIconName; effect: string }> = {
-    clear: { label: "Clear", icon: "sun", effect: "Growing crops drink 1 water." },
-    overcast: { label: "Overcast", icon: "fluffy-cloud", effect: "Crops grow without drinking." },
-    rain: { label: "Rain", icon: "raining", effect: "+2 water on every tile." },
-    heatwave: { label: "Heatwave", icon: "heat-haze", effect: "Every tile dries by 1." },
-    storm: { label: "Storm", icon: "lightning-storm", effect: "+2 water, but crops in the open may be flattened." },
-    frost: { label: "Frost", icon: "snowflake-1", effect: "Nothing grows, and young crops in the open die." },
+    clear: { label: "Clear", icon: "sun", effect: "Crops grow as usual." },
+    rain: { label: "Rain", icon: "raining", effect: "Open ground is wet." },
+    heatwave: { label: "Heatwave", icon: "heat-haze", effect: "Open ground dries out: crops there don't grow, unless a Well is near." },
+    frost: { label: "Frost", icon: "snowflake-1", effect: "Nothing grows in the open; under a Greenhouse it grows as usual." },
+};
+
+/** A tile's ground on the coming cycle, for its facts line. */
+export const GROUND_FACT: Record<GeoFarmGround, string> = {
+    normal: "normal ground next cycle",
+    wet: "wet next cycle",
+    dry: "dry next cycle, won't grow",
 };
 
 export const SHAPE_HINT: Record<GeoFarmCardShape, string> = {
@@ -19,15 +23,6 @@ export const SHAPE_HINT: Record<GeoFarmCardShape, string> = {
     ring: "Tap the tile to draw them onto",
     cross: "Tap the middle: the 4 tiles beside it",
     none: "",
-};
-
-export const SOIL_INFO: Record<GeoFarmSoil, { label: string; color: string | null; effect: string }> = {
-    normal: { label: "Normal", color: null, effect: "" },
-    rich: { label: "Rich", color: colors.soilRich, effect: "rests to a higher fertility, faster" },
-    boggy: { label: "Boggy", color: colors.soilBoggy, effect: "never dries out; earthworms like it" },
-    cursed: { label: "Cursed", color: colors.soilCursed, effect: "plain crops yield 1 less; some mutations want it" },
-    rocky: { label: "Rocky", color: colors.textSecondary, effect: "" },
-    ancient: { label: "Ancient", color: colors.cropRipe, effect: "" },
 };
 
 /** A crop's icon if this build has it; seedlings otherwise. */
@@ -64,6 +59,25 @@ export function threatenedTiles(pests: GeoFarmPest[]): Set<number> {
 }
 
 /** Tiles a card would touch if aimed at `index`, for the preview. */
+/**
+ * The tiles a structure of `footprint` covers placed from `index`, as the
+ * server works it out: centred, an even side reaching one further right or
+ * down. Clipped to the grid (the server refuses one that runs off).
+ */
+export function footprintTiles(footprint: { width: number; height: number }, index: number, size: number): Set<number> {
+    const left = (index % size) - Math.floor((footprint.width - 1) / 2);
+    const top = Math.floor(index / size) - Math.floor((footprint.height - 1) / 2);
+    const tiles = new Set<number>();
+    for (let dy = 0; dy < footprint.height; dy++) {
+        for (let dx = 0; dx < footprint.width; dx++) {
+            const x = left + dx;
+            const y = top + dy;
+            if (x >= 0 && y >= 0 && x < size && y < size) tiles.add(y * size + x);
+        }
+    }
+    return tiles;
+}
+
 export function shapeTiles(shape: GeoFarmCardShape, index: number, size: number): Set<number> {
     const x = index % size;
     const y = Math.floor(index / size);

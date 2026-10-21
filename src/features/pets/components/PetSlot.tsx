@@ -1,9 +1,10 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { SLOT_SIZE } from "@/features/character/components/EquipmentSlot";
 import { rarityInfo } from "@/features/inventory/rarity";
 import { useActivePetId, useInventory } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme, inked } from "@/theme/theme";
 import { petArt } from "../petArt";
 
 type PetSlotProps = {
@@ -20,6 +21,8 @@ type PetSlotProps = {
  * rarity colour with its level, or "Pet" when none is out.
  */
 export default function PetSlot({ onPress, onLongPress }: PetSlotProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const activeId = useActivePetId();
     const pet = useInventory().find((item) => item.id === activeId && item.pet);
     const art = petArt(pet?.petInfo?.image);
@@ -38,7 +41,7 @@ export default function PetSlot({ onPress, onLongPress }: PetSlotProps) {
                     art ? (
                         <Image source={art} style={styles.art} resizeMode="contain" />
                     ) : (
-                        <Icon name={pet.icon} size={40} color={colors.emberBright} />
+                        <Icon name={pet.icon} size={40} color={palette.ember} />
                     )
                 ) : (
                     <Text style={styles.label}>Pet</Text>
@@ -49,17 +52,16 @@ export default function PetSlot({ onPress, onLongPress }: PetSlotProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // Matches EquipmentSlot's square.
     square: {
         width: SLOT_SIZE,
         height: SLOT_SIZE,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 6,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
+        borderRadius: 14,
     },
     art: {
         width: SLOT_SIZE - 14,
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
         transform: [{ scale: 0.96 }],
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 10,
         letterSpacing: 0.5,
         textTransform: "uppercase",
@@ -79,12 +81,12 @@ const styles = StyleSheet.create({
         position: "absolute",
         right: 3,
         bottom: 2,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 9,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
         textShadowColor: "rgba(0, 0, 0, 0.95)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
     },
-});
+}));

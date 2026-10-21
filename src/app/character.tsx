@@ -3,13 +3,13 @@ import { router } from "expo-router";
 import {
     Pressable,
     ScrollView,
-    StyleSheet,
     Text,
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MenuTile from "@/components/MenuTile/MenuTile";
 import Modal from "@/components/Modal/Modal";
+import Tabs from "@/components/Tabs/Tabs";
 import ItemEquipAction from "@/features/character/components/ItemEquipAction";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import EquipmentSlot, { SLOT_SIZE } from "@/features/character/components/EquipmentSlot";
@@ -26,7 +26,8 @@ import PetsModal from "@/features/pets/components/PetsModal";
 import PetSlot from "@/features/pets/components/PetSlot";
 import WardrobeModal from "@/features/wardrobe/components/WardrobeModal";
 import WardrobeStrip from "@/features/wardrobe/components/WardrobeStrip";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, MoodProvider } from "@/theme/theme";
 import {
     BOTTOM_ACTION_DIAMETER,
     HOME_INDICATOR_CLEARANCE,
@@ -86,6 +87,16 @@ type LowerTabId = (typeof LOWER_TABS)[number]["id"];
  * server's, and counts in fights.
  */
 export default function CharacterScreen() {
+    // The character screen is home: parchment, whatever the time.
+    return (
+        <MoodProvider mood="day">
+            <CharacterScreenContent />
+        </MoodProvider>
+    );
+}
+
+function CharacterScreenContent() {
+    const styles = useStyles();
     const insets = useSafeAreaInsets();
     const [lowerTab, setLowerTab] = useState<LowerTabId>("menu");
     const [isTalismanBagOpen, setIsTalismanBagOpen] = useState(false);
@@ -154,22 +165,7 @@ export default function CharacterScreen() {
                 </View>
 
                 <View style={styles.lower}>
-                    <View style={styles.tabs} accessibilityRole="tablist">
-                        {LOWER_TABS.map((tab) => {
-                            const isActive = tab.id === lowerTab;
-                            return (
-                                <Pressable
-                                    key={tab.id}
-                                    onPress={() => setLowerTab(tab.id)}
-                                    style={[styles.tab, isActive && styles.tabActive]}
-                                    accessibilityRole="tab"
-                                    accessibilityState={{ selected: isActive }}
-                                >
-                                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
-                                </Pressable>
-                            );
-                        })}
-                    </View>
+                    <Tabs tabs={LOWER_TABS} value={lowerTab} onChange={setLowerTab} />
 
                     {lowerTab === "stats" ? (
                         <CharacterStats />
@@ -237,22 +233,22 @@ export default function CharacterScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     container: {
         flex: 1,
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     header: {
         alignItems: "center",
         paddingHorizontal: 20,
         paddingBottom: 14,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: p.outline,
     },
     title: {
-        color: colors.ember,
+        color: p.ember,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 2,
         textTransform: "uppercase",
     },
@@ -275,35 +271,7 @@ const styles = StyleSheet.create({
         marginTop: 28,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: colors.border,
-    },
-    tabs: {
-        flexDirection: "row",
-        marginBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 10,
-        // Overlaps the bar's hairline, so the active underline sits on it.
-        marginBottom: -1,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        borderBottomColor: colors.ember,
-    },
-    tabLabel: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontWeight: "700",
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
-    },
-    tabLabelActive: {
-        color: colors.emberBright,
+        borderTopColor: p.outline,
     },
     // Negative margin cancels the cells' outer padding, so the tiles line up
     // with the gear columns' edges.
@@ -331,15 +299,15 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         backgroundColor: "rgba(20, 16, 15, 0.92)",
         borderWidth: 1.5,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     closeButtonPressed: {
         transform: [{ scale: 0.94 }],
         backgroundColor: "rgba(201, 100, 30, 0.25)",
     },
     closeIcon: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 18,
         lineHeight: 20,
     },
-});
+}));

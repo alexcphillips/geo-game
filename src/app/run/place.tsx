@@ -1,13 +1,15 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
+import { Hint } from "@/components/Text/Text";
 import { CARD_SKILLS, type CardSkill } from "@/features/cards/cardSkills";
 import { placeTitle, placeTypeInfo } from "@/features/places/places";
 import { useCurrentHand } from "@/features/player/usePlayer";
 import RunHand from "@/features/run/components/RunHand";
 import RunScreen from "@/features/run/components/RunScreen";
 import { SKILL_COLORS, type Skill } from "@/theme/mapStyle";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, MoodProvider } from "@/theme/theme";
 import { useReportActivity } from "@/features/friends/presenceStore";
 
 const isSkill = (value: string | undefined): value is Skill =>
@@ -23,6 +25,16 @@ const isCardSkill = (value: Skill): value is Skill & CardSkill =>
  * you'd bring. Fishing has its own Run (`run/fishing`).
  */
 export default function PlaceRunScreen() {
+    // Gathering happens out in the day.
+    return (
+        <MoodProvider mood="day">
+            <PlaceRunScreenContent />
+        </MoodProvider>
+    );
+}
+
+function PlaceRunScreenContent() {
+    const styles = useStyles();
     const { name, skill: skillParam } = useLocalSearchParams<{ name?: string; skill?: string }>();
     const skill = isSkill(skillParam) ? skillParam : null;
     // A place Run is training its skill; one with no skill is just a visit.
@@ -41,7 +53,7 @@ export default function PlaceRunScreen() {
                         <Icon name={type.icon} size={40} color={type.color} />
                     </View>
                     <Text style={styles.name}>{title}</Text>
-                    <Text style={styles.note}>This Run is coming soon.</Text>
+                    <Hint>This Run is coming soon.</Hint>
                 </View>
             }
             hand={skill && isCardSkill(skill) ? <SkillHand skill={skill} /> : <View />}
@@ -54,7 +66,7 @@ function SkillHand({ skill }: { skill: CardSkill }) {
     return <RunHand cards={useCurrentHand(skill)} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     arena: {
         flex: 1,
         alignItems: "center",
@@ -69,17 +81,12 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 42,
         borderWidth: 2,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         textAlign: "center",
     },
-    note: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-    },
-});
+}));

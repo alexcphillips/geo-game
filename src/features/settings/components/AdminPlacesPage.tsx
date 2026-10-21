@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
 import { showToast } from "@/components/Toast/toastStore";
 import { distanceMetres, type Coordinates } from "@/features/location/distance";
@@ -10,7 +11,8 @@ import { PLACE_TYPES, kindToSkill, placeTitle } from "@/features/places/places";
 import { usePlacesStore } from "@/features/places/placesStore";
 import { api, toErrorMessage } from "@/lib/api";
 import { GEO_API_PATHS, type GeoAdminPlace, type GeoAdminPlacesResponse } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { Action, type SuggestionFocus } from "./AdminSuggestionsPage";
 
 type AdminPlacesPageProps = {
@@ -26,6 +28,8 @@ type AdminPlacesPageProps = {
  * Make a new one at your position, or show, edit or remove one.
  */
 export default function AdminPlacesPage({ position, onOpenEditor, onShowOnMap }: AdminPlacesPageProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [places, setPlaces] = useState<GeoAdminPlace[] | null>(null);
     const version = usePlacesStore((state) => state.version);
     const startNew = usePlaceDraft((draft) => draft.startNew);
@@ -55,17 +59,17 @@ export default function AdminPlacesPage({ position, onOpenEditor, onShowOnMap }:
                 style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
                 accessibilityRole="button"
             >
-                <Icon name="pin" size={18} color={colors.textOnEmber} />
+                <Icon name="pin" size={18} color={palette.onPrimary} />
                 <Text style={styles.newText}>New place here</Text>
             </Pressable>
             {!sorted ? (
-                <ActivityIndicator color={colors.textSecondary} />
+                <ActivityIndicator color={palette.textMuted} />
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
                     {sorted.map(({ place, distance }) => {
                         const info = PLACE_TYPES[place.kind];
                         return (
-                            <View key={place.id} style={[styles.card, !place.active && styles.inactive]}>
+                            <Panel compact key={place.id} style={[styles.card, !place.active && styles.inactive]}>
                                 <View style={styles.cardHeader}>
                                     <Icon name={info.icon} size={20} color={info.color} />
                                     <Text style={styles.name} numberOfLines={1}>
@@ -97,7 +101,7 @@ export default function AdminPlacesPage({ position, onOpenEditor, onShowOnMap }:
                                     />
                                     <Action label="Remove" danger onPress={() => confirmRemovePlace(place, () => {})} />
                                 </View>
-                            </View>
+                            </Panel>
                         );
                     })}
                     {sorted.length === 0 && <Text style={styles.muted}>No hand-made places yet.</Text>}
@@ -111,7 +115,7 @@ function formatDistance(metres: number): string {
     return metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         flex: 1,
         gap: 10,
@@ -123,12 +127,12 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingVertical: 12,
         borderRadius: 999,
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     newText: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     list: {
         gap: 10,
@@ -137,10 +141,6 @@ const styles = StyleSheet.create({
     card: {
         gap: 6,
         padding: 14,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     inactive: {
         opacity: 0.6,
@@ -152,17 +152,17 @@ const styles = StyleSheet.create({
     },
     name: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     description: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
         lineHeight: 19,
     },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
@@ -174,4 +174,4 @@ const styles = StyleSheet.create({
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

@@ -15,12 +15,13 @@ import Icon, { type GameIconName } from "@/components/Icon/Icon";
 import MenuTile from "@/components/MenuTile/MenuTile";
 import CharacterPortraitButton from "@/features/character/components/CharacterPortraitButton";
 import { ACTION_GROUPS, ACTIONS, type ActionBindings } from "@/features/hud/actions";
-import { colors } from "@/theme/colors";
 import {
     ABOVE_BAR_GAP,
     ACTIONS_BUTTON_DIAMETER,
     BOTTOM_BAR_HEIGHT,
 } from "@/theme/layout";
+import { FONTS } from "@/theme/palette";
+import { createStyles, inked, useMood, useTheme } from "@/theme/theme";
 
 export type BarSlotId = "character" | "inventory" | "skills" | "deck";
 
@@ -77,6 +78,9 @@ export default function BottomBar({
     badges = {},
     actions,
 }: BottomBarProps) {
+    const styles = useStyles();
+    const palette = useTheme();
+    const mood = useMood();
     const insets = useSafeAreaInsets();
     const barHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
     const { height: screenHeight } = useWindowDimensions();
@@ -189,7 +193,7 @@ export default function BottomBar({
                             {isActionsOpen ? (
                                 <Text style={styles.closeIcon}>✕</Text>
                             ) : (
-                                <Icon name="magic-swirl" size={28} color={colors.emberBright} />
+                                <Icon name="magic-swirl" size={28} color={mood === "day" ? "#FFFFFF" : palette.onPrimary} />
                             )}
                             <Badge count={isActionsOpen ? 0 : actionsBadge} />
                         </Pressable>
@@ -212,6 +216,8 @@ type BarSlotProps = {
 };
 
 function BarSlot({ icon, label, badge = 0, onPress }: BarSlotProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.slot} pointerEvents="box-none">
             <Pressable
@@ -221,14 +227,15 @@ function BarSlot({ icon, label, badge = 0, onPress }: BarSlotProps) {
                 accessibilityLabel={badge > 0 ? `Open ${label.toLowerCase()}, ${badge} new` : `Open ${label.toLowerCase()}`}
                 hitSlop={6}
             >
-                <Icon name={icon} size={26} color={colors.emberBright} />
+                <Icon name={icon} size={26} color={palette.text} />
                 <Badge count={badge} />
             </Pressable>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+/** The Actions button is the bar's one bright thing: ember by day, lantern at dusk. */
+const useStyles = createStyles((p, mood) => ({
     bar: {
         position: "absolute",
         left: 0,
@@ -241,9 +248,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(11, 9, 8, 0.78)",
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
+        backgroundColor: p.surface,
+        borderTopWidth: 3,
+        borderTopColor: p.outline,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
     },
     slots: {
         flexDirection: "row",
@@ -268,7 +277,7 @@ const styles = StyleSheet.create({
     },
     pressed: {
         transform: [{ scale: 0.94 }],
-        backgroundColor: "rgba(201, 100, 30, 0.25)",
+        backgroundColor: p.surfaceAlt,
     },
     actionsButton: {
         width: ACTIONS_BUTTON_DIAMETER,
@@ -278,15 +287,16 @@ const styles = StyleSheet.create({
         marginTop: -ACTIONS_RAISE,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "rgba(20, 16, 15, 0.96)",
-        borderWidth: 1.5,
-        borderColor: colors.ember,
+        backgroundColor: mood === "day" ? p.ember : p.primary,
+        ...inked(p, 4),
+        borderWidth: 3,
     },
     actionsButtonOpen: {
-        backgroundColor: "rgba(201, 100, 30, 0.25)",
+        backgroundColor: p.surfaceAlt,
     },
     closeIcon: {
-        color: colors.emberBright,
+        color: p.text,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 18,
         lineHeight: 20,
     },
@@ -294,19 +304,18 @@ const styles = StyleSheet.create({
         position: "absolute",
         left: 12,
         right: 12,
-        borderRadius: 16,
-        backgroundColor: "rgba(11, 9, 8, 0.94)",
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderRadius: 22,
+        backgroundColor: p.surface,
+        ...inked(p, 4),
     },
     sheetContent: {
         padding: 12,
         gap: 12,
     },
     groupLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 11,
-        fontWeight: "700",
         letterSpacing: 1.5,
         textTransform: "uppercase",
         marginBottom: 6,
@@ -322,4 +331,4 @@ const styles = StyleSheet.create({
         width: `${100 / SHEET_COLUMNS}%`,
         padding: SHEET_GAP / 2,
     },
-});
+}));

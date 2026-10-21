@@ -2,13 +2,14 @@ import { useState } from "react";
 import {
     Pressable,
     ScrollView,
-    StyleSheet,
     Text,
     View,
 } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import Icon from "@/components/Icon/Icon";
 import SearchField from "@/components/SearchField/SearchField";
 import Modal from "@/components/Modal/Modal";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import { CARD_SKILLS, HAND_SIZE, type CardSkill } from "@/features/cards/cardSkills";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
 import ItemTile from "@/features/inventory/components/ItemTile";
@@ -18,7 +19,8 @@ import { playerActions, usePlayerStore } from "@/features/player/playerStore";
 import { useHands, useInventory, useSavedHands } from "@/features/player/usePlayer";
 import type { GeoSavedHand } from "@/lib/geo/contracts";
 import { checkAddToHand, type HandRejection } from "../handRules";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type SortMode = "rarity" | "charges" | "newest" | "name";
 
@@ -80,6 +82,8 @@ type DeckModalProps = {
  * Every change is saved to the server, which re-checks the hand rules.
  */
 export default function DeckModal({ onClose }: DeckModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const items = useInventory();
     const [skill, setSkill] = useState<CardSkill>("combat");
     const [query, setQuery] = useState("");
@@ -187,7 +191,7 @@ export default function DeckModal({ onClose }: DeckModalProps) {
                             onPress={() => selectSkill(info.id)}
                             style={({ pressed }) => [
                                 styles.skill,
-                                isActive && { backgroundColor: colors.surfaceRaised, borderBottomColor: info.color },
+                                isActive && { backgroundColor: palette.surfaceAlt, borderBottomColor: info.color },
                                 pressed && styles.pressed,
                             ]}
                             accessibilityRole="tab"
@@ -197,7 +201,7 @@ export default function DeckModal({ onClose }: DeckModalProps) {
                             <Icon
                                 name={info.icon}
                                 size={20}
-                                color={isActive ? info.color : colors.textSecondary}
+                                color={isActive ? info.color : palette.textMuted}
                             />
                             <Text
                                 style={[styles.skillLabel, isActive && styles.skillLabelActive]}
@@ -212,9 +216,9 @@ export default function DeckModal({ onClose }: DeckModalProps) {
 
             {/* --- current hand --- */}
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
+                <SectionTitle>
                     Hand · {handCards.length}/{HAND_SIZE}
-                </Text>
+                </SectionTitle>
                 <View style={styles.headerActions}>
                     <TextButton
                         label="Clear"
@@ -254,10 +258,10 @@ export default function DeckModal({ onClose }: DeckModalProps) {
                 style={styles.savedScroll}
             >
                 {saved.length === 0 ? (
-                    <Text style={styles.hint}>Saved hands appear here.</Text>
+                    <Hint>Saved hands appear here.</Hint>
                 ) : (
                     saved.map((preset) => (
-                        <View key={preset.id} style={styles.preset}>
+                        <Panel key={preset.id} style={styles.preset}>
                             <Pressable
                                 onPress={() => loadPreset(preset)}
                                 style={({ pressed }) => [styles.presetLoad, pressed && styles.pressed]}
@@ -276,7 +280,7 @@ export default function DeckModal({ onClose }: DeckModalProps) {
                             >
                                 <Text style={styles.presetDeleteIcon}>✕</Text>
                             </Pressable>
-                        </View>
+                        </Panel>
                     ))
                 )}
             </ScrollView>
@@ -324,14 +328,14 @@ export default function DeckModal({ onClose }: DeckModalProps) {
                         </View>
                     ))}
                     {skillCards.length === 0 && (
-                        <Text style={styles.empty}>
+                        <Hint center>
                             {needle
                                 ? `No cards match “${query.trim()}”.`
                                 : "No cards for this skill yet."}
-                        </Text>
+                        </Hint>
                     )}
                 </ScrollView>
-                <Text style={styles.hint}>Tap to add or remove · hold for details</Text>
+                <Hint>Tap to add or remove · hold for details</Hint>
             </View>
         </Modal>
     );
@@ -346,6 +350,7 @@ function TextButton({
     onPress: () => void;
     disabled?: boolean;
 }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -370,7 +375,7 @@ function TextButton({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     skills: {
         flexDirection: "row",
         gap: 4,
@@ -378,7 +383,7 @@ const styles = StyleSheet.create({
         marginTop: -8,
         paddingBottom: 6,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: p.outline,
     },
     skill: {
         flex: 1,
@@ -390,13 +395,13 @@ const styles = StyleSheet.create({
         borderBottomColor: "transparent",
     },
     skillLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 9,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         letterSpacing: 0.3,
     },
     skillLabelActive: {
-        color: colors.textPrimary,
+        color: p.text,
     },
     pressed: {
         transform: [{ scale: 0.95 }],
@@ -408,34 +413,27 @@ const styles = StyleSheet.create({
         marginTop: 12,
         marginBottom: 8,
     },
-    sectionTitle: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
     headerActions: {
         flexDirection: "row",
         gap: 8,
     },
     textButtonBox: {
         borderWidth: 1,
-        borderColor: colors.emberBright,
+        borderColor: p.ember,
         borderRadius: 6,
         paddingHorizontal: 10,
         paddingVertical: 4,
     },
     textButtonBoxDisabled: {
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     textButton: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     textButtonDisabled: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         opacity: 0.5,
     },
     textButtonPressed: {
@@ -450,7 +448,7 @@ const styles = StyleSheet.create({
     },
     message: {
         marginTop: 8,
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 12,
         textAlign: "center",
     },
@@ -463,13 +461,13 @@ const styles = StyleSheet.create({
         alignItems: "center",
         minHeight: 34,
     },
+    // A pill-shaped bar, not a card.
     preset: {
         flexDirection: "row",
         alignItems: "center",
+        gap: 0,
+        padding: 0,
         borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     presetLoad: {
         flexDirection: "row",
@@ -480,12 +478,12 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
     },
     presetName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     presetCount: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
@@ -495,7 +493,7 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
     },
     presetDeleteIcon: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     collection: {
@@ -504,7 +502,7 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         gap: 10,
         borderTopWidth: 1,
-        borderTopColor: colors.border,
+        borderTopColor: p.outline,
     },
     search: {
         marginHorizontal: GRID_GAP / 2,
@@ -516,9 +514,9 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sortLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
         marginRight: 2,
@@ -528,19 +526,19 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     sortChipActive: {
-        borderColor: colors.ember,
-        backgroundColor: "rgba(201, 100, 30, 0.18)",
+        borderColor: p.ember,
+        backgroundColor: p.track,
     },
     sortText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     sortTextActive: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     // No negative margin here — inside a ScrollView it causes sideways panning
     // and top-row clipping. See the same note in InventoryModal.
@@ -554,17 +552,4 @@ const styles = StyleSheet.create({
         width: `${100 / GRID_COLUMNS}%`,
         padding: GRID_GAP / 2,
     },
-    empty: {
-        width: "100%",
-        paddingTop: 24,
-        textAlign: "center",
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        textAlign: "center",
-    },
-});
+}));

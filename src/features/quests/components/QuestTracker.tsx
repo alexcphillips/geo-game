@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, LayoutAnimation, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Animated, LayoutAnimation, Pressable, Text, useWindowDimensions, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
 import { useIsFocused } from "expo-router";
 import Icon from "@/components/Icon/Icon";
 import { showToast } from "@/components/Toast/toastStore";
 import type { GeoQuestView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { headlineQuest, isObjectiveDone, objectiveCount, sortQuests } from "../quests";
+import { toErrorMessage } from "@/lib/api";
 import { useQuestStore } from "../questStore";
 import ObjectiveLine, { glowStyles, useCountGlow } from "./ObjectiveLine";
 
@@ -34,6 +37,8 @@ const MAX_WIDTH = 340;
  * its new order rather than jumping.
  */
 export default function QuestTracker({ onOpenLog }: QuestTrackerProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const quests = useQuestStore((state) => state.quests);
     const track = useQuestStore((state) => state.track);
     const sorted = useMemo(() => sortQuests(quests), [quests]);
@@ -56,14 +61,14 @@ export default function QuestTracker({ onOpenLog }: QuestTrackerProps) {
 
     if (!isOpen) {
         return (
-            <View style={[styles.panel, styles.panelCollapsed, { maxWidth }]}>
+            <Panel tone="surface" style={[styles.panel, styles.panelCollapsed, { maxWidth }]}>
                 <CollapsedQuest quest={headline} others={sorted.length - 1} othersReady={readyCount - (headline.status === "ready" ? 1 : 0)} onPress={toggle} />
-            </View>
+            </Panel>
         );
     }
 
     return (
-        <View style={[styles.panel, { maxWidth }]}>
+        <Panel tone="surface" style={[styles.panel, { maxWidth }]}>
             <Pressable
                 style={({ pressed }) => [styles.header, pressed && styles.pressed]}
                 onPress={toggle}
@@ -72,7 +77,7 @@ export default function QuestTracker({ onOpenLog }: QuestTrackerProps) {
                 accessibilityState={{ expanded: isOpen }}
                 accessibilityLabel={`Quests, ${sorted.length}${readyCount > 0 ? `, ${readyCount} ready` : ""}. ${isOpen ? "Collapse" : "Expand"}`}
             >
-                <Icon name="scroll-unfurled" size={14} color={colors.emberBright} />
+                <Icon name="scroll-unfurled" size={14} color={palette.ember} />
                 <Text style={styles.headerLabel}>Quests</Text>
                 {readyCount > 0 && <Text style={styles.readyCount}>{readyCount} ready</Text>}
                 {!isOpen && sorted.length > 1 && <Text style={styles.more}>+{sorted.length - 1}</Text>}
@@ -84,7 +89,7 @@ export default function QuestTracker({ onOpenLog }: QuestTrackerProps) {
                     key={quest.id}
                     quest={quest}
                     // Collapsed, the whole panel opens the list; expanded, a quest tracks itself.
-                    onPress={isOpen ? () => track(quest.id) : toggle}
+                    onPress={isOpen ? () => void track(quest.id).catch((error) => showToast(toErrorMessage(error), "error")) : toggle}
                     isMarked={isOpen && quest.tracked}
                 />
             ))}
@@ -101,7 +106,7 @@ export default function QuestTracker({ onOpenLog }: QuestTrackerProps) {
                     </Text>
                 </Pressable>
             )}
-        </View>
+        </Panel>
     );
 }
 
@@ -115,6 +120,8 @@ type CollapsedQuestProps = {
 
 /** The collapsed tracker: one line, the next thing to do. */
 function CollapsedQuest({ quest, others, othersReady, onPress }: CollapsedQuestProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const isReady = quest.status === "ready";
     const next = quest.objectives.find((objective) => !isObjectiveDone(objective)) ?? quest.objectives[0];
     // Keyed on the quest's total, so a step on any objective lights the line.
@@ -134,7 +141,7 @@ function CollapsedQuest({ quest, others, othersReady, onPress }: CollapsedQuestP
                 <Icon
                     name={isReady ? "check-mark" : "scroll-unfurled"}
                     size={12}
-                    color={isReady ? colors.toastSuccess : colors.emberBright}
+                    color={isReady ? palette.heal : palette.ember}
                 />
                 {isReady || !next ? (
                     <Text style={[styles.titleCompact, styles.titleReady]} numberOfLines={1}>
@@ -166,6 +173,8 @@ type QuestBlockProps = {
 };
 
 function QuestBlock({ quest, onPress, isMarked }: QuestBlockProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const isReady = quest.status === "ready";
 
     return (
@@ -176,7 +185,7 @@ function QuestBlock({ quest, onPress, isMarked }: QuestBlockProps) {
             accessibilityLabel={`${quest.title}${isReady ? ", ready to turn in" : ""}${quest.tracked ? ", tracked" : ""}`}
         >
             <View style={styles.titleRow}>
-                {isReady && <Icon name="check-mark" size={13} color={colors.toastSuccess} />}
+                {isReady && <Icon name="check-mark" size={13} color={palette.heal} />}
                 <Text style={[styles.title, isReady && styles.titleReady]} numberOfLines={1}>
                     {quest.title}
                 </Text>
@@ -226,45 +235,33 @@ function useQuestUpdates() {
     );
 }
 
-const TEXT_SHADOW = {
-    textShadowColor: "rgba(0, 0, 0, 0.95)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-} as const;
-
-const styles = StyleSheet.create({
-    // A light backing: the text keeps its own shadow, and the map shows through.
+const useStyles = createStyles((p) => ({
+    // An inked panel, like the health above it, so it reads over any map.
     panel: {
         marginTop: 4,
-        paddingVertical: 6,
-        paddingHorizontal: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
         gap: 6,
-        borderRadius: 10,
-        backgroundColor: "rgba(11, 9, 8, 0.55)",
-        borderLeftWidth: 2,
-        borderLeftColor: colors.ember,
     },
     panelCollapsed: {
-        paddingVertical: 4,
-        paddingHorizontal: 6,
-        borderRadius: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 14,
     },
     titleCompact: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
-        ...TEXT_SHADOW,
+        fontFamily: FONTS.bodyBold,
     },
     countCompact: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         fontVariant: ["tabular-nums"],
-        ...TEXT_SHADOW,
     },
     moreReady: {
-        color: colors.toastSuccess,
+        color: p.heal,
     },
     header: {
         flexDirection: "row",
@@ -272,27 +269,24 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     headerLabel: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1.2,
         textTransform: "uppercase",
-        ...TEXT_SHADOW,
     },
     readyCount: {
-        color: colors.toastSuccess,
+        color: p.heal,
         fontSize: 11,
-        fontWeight: "700",
-        ...TEXT_SHADOW,
+        fontFamily: FONTS.bodyHeavy,
     },
     more: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "600",
-        ...TEXT_SHADOW,
+        fontFamily: FONTS.bodyBold,
     },
     chevron: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     pressed: {
@@ -305,7 +299,7 @@ const styles = StyleSheet.create({
         borderLeftColor: "transparent",
     },
     questMarked: {
-        borderLeftColor: colors.emberBright,
+        borderLeftColor: p.ember,
     },
     titleRow: {
         flexDirection: "row",
@@ -314,26 +308,24 @@ const styles = StyleSheet.create({
     },
     title: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
-        ...TEXT_SHADOW,
+        fontFamily: FONTS.bodyHeavy,
     },
     titleReady: {
-        color: colors.toastSuccess,
+        color: p.heal,
     },
     readyLine: {
-        color: colors.toastSuccess,
+        color: p.heal,
+        fontFamily: FONTS.bodyBold,
         fontSize: 12,
-        ...TEXT_SHADOW,
     },
     logLink: {
         alignSelf: "flex-start",
     },
     logLinkText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 12,
-        fontWeight: "600",
-        ...TEXT_SHADOW,
+        fontFamily: FONTS.bodyBold,
     },
-});
+}));

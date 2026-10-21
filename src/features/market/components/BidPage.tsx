@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import ItemTile from "@/features/inventory/components/ItemTile";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { ENDING_SOON_MS, formatCoins, formatTimeLeft, timeLeft, type MarketListing } from "../market";
 import { Field, NumberInput } from "./FormFields";
 import { SaleBadge } from "./MarketRows";
@@ -29,6 +32,8 @@ export default function BidPage({
     now: number;
     onBid: (amount: number) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [custom, setCustom] = useState("");
     const left = timeLeft(listing, now);
     const isOver = left <= 0;
@@ -79,14 +84,14 @@ export default function BidPage({
                 </View>
             </View>
 
-            <View style={styles.panel}>
+            <Panel compact style={styles.panel}>
                 <View style={styles.row}>
                     <Text style={styles.rowLabel}>Time left</Text>
                     <View style={styles.rowValue}>
                         <Icon
                             name="hourglass"
                             size={14}
-                            color={left < ENDING_SOON_MS ? colors.toastError : colors.listingAuction}
+                            color={left < ENDING_SOON_MS ? palette.danger : palette.game.listingAuction}
                         />
                         <Text style={[styles.timer, left < ENDING_SOON_MS && styles.timerUrgent]}>
                             {formatTimeLeft(left)}
@@ -97,28 +102,14 @@ export default function BidPage({
                     <View key={label} style={styles.row}>
                         <Text style={styles.rowLabel}>{label}</Text>
                         <View style={styles.rowValue}>
-                            {isCoins && <Icon name="two-coins" size={13} color={colors.coins} />}
+                            {isCoins && <Icon name="two-coins" size={13} color={palette.reward} />}
                             <Text style={isCoins ? styles.coinsText : styles.plainText}>{value}</Text>
                         </View>
                     </View>
                 ))}
-            </View>
+            </Panel>
 
-            <Pressable
-                onPress={() => onBid(minBid)}
-                disabled={minProblem !== null}
-                style={({ pressed }) => [
-                    styles.primary,
-                    minProblem !== null && styles.disabled,
-                    pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: minProblem !== null }}
-            >
-                <Text style={styles.primaryText}>Bid minimum</Text>
-                <Icon name="two-coins" size={15} color={colors.textOnEmber} />
-                <Text style={styles.primaryText}>{formatCoins(minBid)}</Text>
-            </Pressable>
+            <Button label={`Bid minimum · ${formatCoins(minBid)}`} variant="primary" size="large" icon="two-coins" onPress={() => onBid(minBid)} disabled={minProblem !== null} stretch />
 
             <View style={styles.orRow}>
                 <View style={styles.orLine} />
@@ -138,22 +129,12 @@ export default function BidPage({
 
             {customProblem && <Text style={styles.problem}>{customProblem}</Text>}
 
-            <Pressable
-                onPress={() => onBid(amount)}
-                disabled={!canBidCustom}
-                style={({ pressed }) => [styles.secondary, !canBidCustom && styles.disabled, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !canBidCustom }}
-            >
-                <Text style={styles.secondaryText}>
-                    {canBidCustom ? `Place bid of ${formatCoins(amount)}` : "Place bid"}
-                </Text>
-            </Pressable>
+            <Button label={canBidCustom ? `Place bid of ${formatCoins(amount)}` : "Place bid"} onPress={() => onBid(amount)} disabled={!canBidCustom} stretch />
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 14,
         paddingBottom: 12,
@@ -171,20 +152,16 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     itemName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     panel: {
         gap: 10,
         paddingHorizontal: 12,
         paddingVertical: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
-        borderLeftColor: colors.listingAuction,
+        borderLeftColor: p.game.listingAuction,
     },
     row: {
         flexDirection: "row",
@@ -193,7 +170,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     rowLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
     },
     rowValue: {
@@ -202,55 +179,24 @@ const styles = StyleSheet.create({
         gap: 5,
     },
     coinsText: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     plainText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     timer: {
-        color: colors.listingAuction,
+        color: p.game.listingAuction,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     timerUrgent: {
-        color: colors.toastError,
-    },
-    primary: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "800",
-        fontVariant: ["tabular-nums"],
-    },
-    secondary: {
-        alignItems: "center",
-        paddingVertical: 12,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    secondaryText: {
-        color: colors.emberBright,
-        fontSize: 15,
-        fontWeight: "700",
-        fontVariant: ["tabular-nums"],
-    },
-    disabled: {
-        opacity: 0.4,
+        color: p.danger,
     },
     orRow: {
         flexDirection: "row",
@@ -260,18 +206,15 @@ const styles = StyleSheet.create({
     orLine: {
         flex: 1,
         height: 1,
-        backgroundColor: colors.border,
+        backgroundColor: p.outline,
     },
     orText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     problem: {
-        color: colors.toastError,
+        color: p.danger,
         fontSize: 13,
         textAlign: "center",
     },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-});
+}));

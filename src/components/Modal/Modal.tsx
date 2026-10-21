@@ -16,8 +16,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ToastHost from "@/components/Toast/ToastHost";
-import { colors } from "@/theme/colors";
 import { BOTTOM_ACTION_DIAMETER } from "@/theme/layout";
+import { FONTS, INK } from "@/theme/palette";
+import { createStyles, inked } from "@/theme/theme";
 
 /**
  * How much vertical room the panel may take.
@@ -126,6 +127,7 @@ export default function Modal({
     headerAccessory,
     dismissOnBackdropPress = true,
 }: ModalProps) {
+    const styles = useStyles();
     const insets = useSafeAreaInsets();
     const { height: windowHeight } = useWindowDimensions();
 
@@ -292,7 +294,7 @@ export default function Modal({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     root: {
         flex: 1,
         justifyContent: "flex-end",
@@ -304,14 +306,13 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(4, 3, 3, 0.4)",
+        backgroundColor: "rgba(11, 10, 16, 0.45)",
     },
     panel: {
         marginHorizontal: 12,
-        backgroundColor: colors.surface,
-        borderRadius: 18,
-        borderWidth: 1.5,
-        borderColor: colors.border,
+        backgroundColor: p.surface,
+        borderRadius: 24,
+        ...inked(p, INK.liftLarge),
         overflow: "hidden",
     },
     header: {
@@ -320,20 +321,18 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         paddingLeft: 18,
         paddingRight: 10,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        paddingVertical: 12,
+        borderBottomWidth: 2,
+        borderBottomColor: p.surfaceAlt,
     },
     headerWithBack: {
         paddingLeft: 6,
     },
     title: {
         flex: 1,
-        color: colors.ember,
-        fontSize: 16,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
+        color: p.text,
+        fontFamily: FONTS.display,
+        fontSize: 20,
     },
     backButton: {
         flexDirection: "row",
@@ -341,31 +340,30 @@ const styles = StyleSheet.create({
         // Shrinks rather than pushing the close button off a narrow header.
         flexShrink: 1,
         gap: 6,
-        height: 34,
+        height: 36,
         paddingLeft: 8,
         paddingRight: 12,
-        borderRadius: 17,
+        borderRadius: 18,
     },
     backTitle: {
         flexShrink: 1,
-        color: colors.ember,
-        fontSize: 16,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
+        color: p.text,
+        fontFamily: FONTS.display,
+        fontSize: 20,
     },
     headerButton: {
-        width: 34,
-        height: 34,
+        width: 36,
+        height: 36,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: 17,
+        borderRadius: 18,
+        backgroundColor: p.surfaceAlt,
     },
     headerButtonPressed: {
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.track,
     },
     backIcon: {
-        color: colors.emberBright,
+        color: p.text,
         fontSize: 30,
         lineHeight: 32,
         // The chevron sits high and left in its glyph box.
@@ -373,7 +371,8 @@ const styles = StyleSheet.create({
         marginLeft: -2,
     },
     closeIcon: {
-        color: colors.textSecondary,
+        color: p.textMuted,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 16,
     },
     // Sized panels hug their content (shrinking to the max height); `flex: 1`
@@ -398,17 +397,17 @@ const styles = StyleSheet.create({
         borderRadius: BOTTOM_ACTION_DIAMETER / 2,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
     },
     footerClosePressed: {
         transform: [{ scale: 0.94 }],
-        backgroundColor: "rgba(201, 100, 30, 0.25)",
+        backgroundColor: p.track,
     },
     footerCloseIcon: {
-        color: colors.emberBright,
+        color: p.text,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 18,
         lineHeight: 20,
     },
-});
+}));

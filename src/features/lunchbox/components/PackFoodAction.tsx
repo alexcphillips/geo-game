@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import Button from "@/components/Button/Button";
+import { Hint } from "@/components/Text/Text";
 import { useCampStatus } from "@/features/camp/camp";
 import { playerActions } from "@/features/player/playerStore";
 import { useHealth, useInventory } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { createStyles } from "@/theme/theme";
 import { PACKS, usePack, type PackKind } from "../packs";
 
 type PackFoodActionProps = {
@@ -27,6 +29,7 @@ type PackFoodActionProps = {
  * full health, since some foods hurt.
  */
 export default function PackFoodAction({ itemId, kind = "lunchbox" }: PackFoodActionProps) {
+    const styles = useStyles();
     const { title, stackSize, pack, unpack, needsCamp } = PACKS[kind];
     const { canRestock } = useCampStatus();
     const isAway = needsCamp && !canRestock;
@@ -51,7 +54,7 @@ export default function PackFoodAction({ itemId, kind = "lunchbox" }: PackFoodAc
     };
 
     if (slot === undefined) {
-        return <Text style={styles.note}>Every {title.toLowerCase()} slot is full. Unpack one to make room.</Text>;
+        return <Hint>Every {title.toLowerCase()} slot is full. Unpack one to make room.</Hint>;
     }
 
     // Nothing more to add: the slot is full, or holds all you have.
@@ -66,90 +69,29 @@ export default function PackFoodAction({ itemId, kind = "lunchbox" }: PackFoodAc
                     ? `Slot ${slot + 1} · ${packed.quantity}/${stackSize}`
                     : `Goes in slot ${slot + 1} · up to ${stackSize}`}
             </Text>
-            <Pressable
-                onPress={() => void send(() => pack(slot, itemId, fill))}
-                disabled={isPackDisabled}
-                style={({ pressed }) => [
-                    styles.button,
-                    isPackDisabled && styles.buttonDisabled,
-                    pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: isPackDisabled }}
-            >
-                <Text style={styles.buttonText}>{isAway && !isFull ? "Pack at camp" : label}</Text>
-            </Pressable>
+            <Button label={isAway && !isFull ? "Pack at camp" : label} variant="primary" onPress={() => void send(() => pack(slot, itemId, fill))} disabled={isPackDisabled} stretch />
             {packed && kind === "lunchbox" && (
                 <>
                     <Text style={styles.label}>
                         Health {health.current}/{health.max} · eating here only touches health
                     </Text>
-                    <Pressable
-                        onPress={() => void send(() => playerActions.eatLunchbox(slot))}
-                        disabled={isSending}
-                        style={({ pressed }) => [styles.button, isSending && styles.buttonDisabled, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        accessibilityState={{ disabled: isSending }}
-                    >
-                        <Text style={styles.buttonText}>Eat one</Text>
-                    </Pressable>
+                    <Button label="Eat one" variant="primary" icon="heart-plus" onPress={() => void send(() => playerActions.eatLunchbox(slot))} busy={isSending} stretch />
                 </>
             )}
             {packed && (
-                <Pressable
-                    onPress={() => void send(() => unpack(slot))}
-                    disabled={isSending}
-                    style={({ pressed }) => [styles.button, styles.buttonQuiet, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                >
-                    <Text style={[styles.buttonText, styles.buttonTextQuiet]}>Unpack</Text>
-                </Pressable>
+                <Button label="Unpack" variant="quiet" onPress={() => void send(() => unpack(slot))} disabled={isSending} stretch />
             )}
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     box: {
         gap: 10,
     },
     label: {
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
-    note: {
-        textAlign: "center",
-        color: colors.textSecondary,
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    button: {
-        alignSelf: "stretch",
-        alignItems: "center",
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    buttonDisabled: {
-        opacity: 0.45,
-    },
-    // Unpack is the quieter action: outlined, not filled.
-    buttonQuiet: {
-        backgroundColor: "transparent",
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    buttonTextQuiet: {
-        color: colors.emberBright,
-    },
-});
+}));

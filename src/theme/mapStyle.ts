@@ -1,4 +1,5 @@
 import { colors } from "./colors";
+import type { Mood } from "./palette";
 
 /**
  * Everything about how the world looks: the basemap, the deviations we make to
@@ -101,86 +102,210 @@ type BasemapOverride = {
 };
 
 /**
- * Deviations from the hosted basemap, applied after it loads.
+ * The world's colours, per mood: a parchment map by day, an inky one at night
+ * (see `palette.ts`). The night values are close to the night mockup; day is
+ * the same map drawn in daylight.
+ */
+type MapColors = {
+    land: string;
+    residential: string;
+    building: string;
+    /** Buildings get a faint inked edge, like everything else in the game. */
+    buildingEdge: string;
+    wood: string;
+    park: string;
+    /**
+     * Gameplay-relevant terrain: things spawn at water, so it must be
+     * identifiable at a glance without glowing.
+     */
+    water: string;
+    path: string;
+    minor: string;
+    majorCasing: string;
+    majorInner: string;
+    majorSubtle: string;
+    motorwayCasing: string;
+    motorwayInner: string;
+    rail: string;
+    /** The gaps in a railway's dashes: the land showing through. */
+    railDash: string;
+    ice: string;
+    aeroway: string;
+    boundary: string;
+    label: string;
+    labelHalo: string;
+    waterLabel: string;
+};
+
+export const MAP_COLORS: Record<Mood, MapColors> = {
+    day: {
+        land: "#E6DCC4",
+        residential: "#E1D6BC",
+        building: "#D8CCB1",
+        buildingEdge: "rgba(58, 48, 36, 0.35)",
+        wood: "#A3BC84",
+        park: "#B9CC94",
+        water: "#9DBFD3",
+        path: "#D3C6A6",
+        minor: "#FBF6EA",
+        majorCasing: "#C9BB9C",
+        majorInner: "#FBF6EA",
+        majorSubtle: "#F3ECDC",
+        motorwayCasing: "#B9A988",
+        motorwayInner: "#FFF8E8",
+        rail: "#BFB194",
+        railDash: "#E6DCC4",
+        ice: "#EEF2F2",
+        aeroway: "#D8CFBA",
+        boundary: "#A89A7E",
+        label: "#5A4E3E",
+        labelHalo: "#F4EDDC",
+        waterLabel: "#4E6E86",
+    },
+    dusk: {
+        land: "#1E1D2A",
+        residential: "#22212F",
+        building: "#2B2A40",
+        buildingEdge: "rgba(11, 10, 16, 0.9)",
+        wood: "#1F2925",
+        park: "#232F2C",
+        water: "#1A2B40",
+        path: "#2C2A3D",
+        minor: "#363349",
+        majorCasing: "#121119",
+        majorInner: "#403D58",
+        majorSubtle: "#363349",
+        motorwayCasing: "#0E0D14",
+        motorwayInner: "#4A4664",
+        rail: "#2C2A3D",
+        railDash: "#1E1D2A",
+        ice: "#262636",
+        aeroway: "#24232F",
+        boundary: "#3A3850",
+        label: "#ABA3B8",
+        labelHalo: "#17151F",
+        waterLabel: "#7FA5BD",
+    },
+};
+
+const LABEL_LAYERS = [
+    "highway_name_other",
+    "highway_name_motorway",
+    "place_other",
+    "place_suburb",
+    "place_village",
+    "place_town",
+    "place_city",
+    "place_city_large",
+    "place_state",
+    "place_country_other",
+    "place_country_minor",
+    "place_country_major",
+];
+
+/**
+ * Deviations from the hosted basemap, per mood, applied after it loads and
+ * again whenever the mood changes.
  *
- * Two jobs:
+ * The basemap is OpenFreeMap's `dark` style, whose own colours are near-black
+ * throughout. So every layer that draws a colour is listed here, not just the
+ * ones we want to tweak: anything left out would stay black on the day map.
  *
- * 1. **Brightness.** OpenFreeMap's `dark` style puts land at `rgb(12,12,12)` and
- *    buildings at `rgb(10,10,10)` — effectively black, which reads as muddy and
- *    leaves roads invisible.
- * 2. **Pokémon Go-ish legibility.** Roads become wide rounded ribbons that are
- *    clearly lighter than the land, and areas (residential, woodland, buildings)
- *    get distinct values so the world reads as *places* rather than one flat
- *    field.
- *
- * The greys carry a slight warm tint — red channel a few points above blue — so
- * the world reads as ash and dust rather than neutral concrete, and so the ember
- * UI isn't the only colour on screen.
+ * Roads are Pokémon Go-ish: wide, rounded ribbons, clearly set apart from the
+ * land, because the road network is what you navigate by. Casings contrast
+ * with their inner fill, which gives a road the outlined-ribbon look rather
+ * than a flat smear.
  *
  * Unknown layer ids are skipped rather than throwing, so a basemap that renames
  * something degrades into "less styled" instead of a blank map.
  */
-export const BASEMAP_OVERRIDES: BasemapOverride[] = [
-    // --- ground ---
-    { layer: "background", paint: { "background-color": "#262220" } },
-    { layer: "landuse_residential", paint: { "fill-color": "#2C2724" } },
-    { layer: "building", paint: { "fill-color": "#38322C" } },
+function basemapOverrides(c: MapColors): BasemapOverride[] {
+    return [
+        // --- ground ---
+        { layer: "background", paint: { "background-color": c.land } },
+        { layer: "landuse_residential", paint: { "fill-color": c.residential } },
+        { layer: "building", paint: { "fill-color": c.building, "fill-outline-color": c.buildingEdge } },
+        // Woodland reads green but stays darker than a park, so parks remain
+        // the brightest natural thing on the map.
+        { layer: "landcover_wood", paint: { "fill-color": c.wood } },
+        { layer: "landuse_park", paint: { "fill-color": c.park } },
+        { layer: "landcover_ice_shelf", paint: { "fill-color": c.ice } },
+        { layer: "landcover_glacier", paint: { "fill-color": c.ice } },
+        { layer: "aeroway-area", paint: { "fill-color": c.aeroway } },
+        { layer: "road_area_pier", paint: { "fill-color": c.land } },
 
-    // Woodland reads green but stays darker than a park, so parks remain the
-    // brightest natural thing on the map.
-    { layer: "landcover_wood", paint: { "fill-color": "#2A3B2C" } },
-    { layer: "landuse_park", paint: { "fill-color": "#2F4A35" } },
+        // --- water: the basemap's own, under ours (see GAME_LAYERS) ---
+        { layer: "water", paint: { "fill-color": c.water } },
+        { layer: "waterway", paint: { "line-color": c.water } },
+        { layer: "game-water-fill", paint: { "fill-color": c.water } },
+        { layer: "game-waterway", paint: { "line-color": c.water } },
 
-    // --- roads: pale, wide, rounded ---
-    // Casings are darker than their inner fill, which is what gives a road the
-    // outlined-ribbon look rather than a flat smear.
-    {
-        layer: "highway_path",
-        paint: { "line-color": "#4A443D", "line-width": roadWidth(0.8, 1.6, 3) },
-        layout: ROUND_LINE,
-    },
-    {
-        layer: "highway_minor",
-        paint: { "line-color": "#574F46", "line-width": roadWidth(1.4, 3, 7) },
-        layout: ROUND_LINE,
-    },
-    {
-        layer: "highway_major_casing",
-        paint: {
-            "line-color": "#1C1917",
-            "line-width": roadWidth(3.6, 6.4, 13.5),
+        // --- roads: wide and rounded ---
+        {
+            layer: "highway_path",
+            paint: { "line-color": c.path, "line-width": roadWidth(0.8, 1.6, 3) },
+            layout: ROUND_LINE,
         },
-        layout: ROUND_LINE,
-    },
-    {
-        layer: "highway_major_inner",
-        paint: { "line-color": "#6B6156", "line-width": roadWidth(2.6, 5, 11) },
-        layout: ROUND_LINE,
-    },
-    {
-        layer: "highway_major_subtle",
-        paint: { "line-color": "#574F46", "line-width": roadWidth(1.6, 3.2, 7) },
-        layout: ROUND_LINE,
-    },
-    {
-        layer: "highway_motorway_casing",
-        paint: {
-            "line-color": "#1C1917",
-            "line-width": roadWidth(4.4, 7.6, 15.5),
+        {
+            layer: "highway_minor",
+            paint: { "line-color": c.minor, "line-width": roadWidth(1.4, 3, 7) },
+            layout: ROUND_LINE,
         },
-        layout: ROUND_LINE,
-    },
-    {
-        layer: "highway_motorway_subtle",
-        paint: { "line-color": "#7A6E60", "line-width": roadWidth(3.2, 6, 13) },
-        layout: ROUND_LINE,
-    },
+        {
+            layer: "highway_major_casing",
+            paint: { "line-color": c.majorCasing, "line-width": roadWidth(3.6, 6.4, 13.5) },
+            layout: ROUND_LINE,
+        },
+        {
+            layer: "highway_major_inner",
+            paint: { "line-color": c.majorInner, "line-width": roadWidth(2.6, 5, 11) },
+            layout: ROUND_LINE,
+        },
+        {
+            layer: "highway_major_subtle",
+            paint: { "line-color": c.majorSubtle, "line-width": roadWidth(1.6, 3.2, 7) },
+            layout: ROUND_LINE,
+        },
+        {
+            layer: "highway_motorway_casing",
+            paint: { "line-color": c.motorwayCasing, "line-width": roadWidth(4.4, 7.6, 15.5) },
+            layout: ROUND_LINE,
+        },
+        { layer: "highway_motorway_inner", paint: { "line-color": c.motorwayInner } },
+        {
+            layer: "highway_motorway_subtle",
+            paint: { "line-color": c.motorwayInner, "line-width": roadWidth(3.2, 6, 13) },
+            layout: ROUND_LINE,
+        },
+        { layer: "road_pier", paint: { "line-color": c.land } },
+        { layer: "aeroway-taxiway", paint: { "line-color": c.aeroway } },
+        { layer: "aeroway-runway-casing", paint: { "line-color": c.majorCasing } },
+        { layer: "aeroway-runway", paint: { "line-color": c.aeroway } },
 
-    // --- rail: present but recessive, it isn't walkable ---
-    { layer: "railway", paint: { "line-color": "#473F39" } },
-    { layer: "railway_minor", paint: { "line-color": "#413A34" } },
-    { layer: "railway_transit", paint: { "line-color": "#413A34" } },
-];
+        // --- rail: present but recessive, it isn't walkable ---
+        { layer: "railway", paint: { "line-color": c.rail } },
+        { layer: "railway_minor", paint: { "line-color": c.rail } },
+        { layer: "railway_transit", paint: { "line-color": c.rail } },
+        { layer: "railway_dashline", paint: { "line-color": c.railDash } },
+        { layer: "railway_minor_dashline", paint: { "line-color": c.railDash } },
+        { layer: "railway_transit_dashline", paint: { "line-color": c.railDash } },
+
+        // --- boundaries and names ---
+        { layer: "boundary_state", paint: { "line-color": c.boundary } },
+        { layer: "boundary_country_z0-4", paint: { "line-color": c.boundary } },
+        { layer: "boundary_country_z5-", paint: { "line-color": c.boundary } },
+        { layer: "water_name", paint: { "text-color": c.waterLabel, "text-halo-color": c.labelHalo } },
+        ...LABEL_LAYERS.map((layer) => ({
+            layer,
+            paint: { "text-color": c.label, "text-halo-color": c.labelHalo },
+        })),
+    ];
+}
+
+export const BASEMAP_OVERRIDES: Record<Mood, BasemapOverride[]> = {
+    day: basemapOverrides(MAP_COLORS.day),
+    dusk: basemapOverrides(MAP_COLORS.dusk),
+};
 
 /* -------------------------------------------------------- game layers -- */
 
@@ -441,22 +566,22 @@ export const GAME_LAYERS: GameLayer[] = [
     /**
      * Water: ponds, lakes, rivers.
      *
-     * Cold slate-teal purely so it is *identifiable* — the stock dark basemap
-     * renders water nearly the same value as land, so a pond you could navigate
-     * by vanishes. Kept dark so it doesn't outshine the world.
-     * Deliberately no outline: water needs to be recognised, not emphasised.
+     * Slate blue purely so it is *identifiable* — the stock basemap renders
+     * water nearly the same value as land, so a pond you could navigate by
+     * vanishes. Deliberately no outline: water needs to be recognised, not
+     * emphasised. Drawn in day colours; the mood's overrides repaint it.
      */
     {
         id: "game-water-fill",
         type: "fill",
         sourceLayer: "water",
-        paint: { "fill-color": colors.water, "fill-opacity": 1 },
+        paint: { "fill-color": MAP_COLORS.day.water, "fill-opacity": 1 },
     },
     {
         id: "game-waterway",
         type: "line",
         sourceLayer: "waterway",
-        paint: { "line-color": colors.water, "line-width": 2 },
+        paint: { "line-color": MAP_COLORS.day.water, "line-width": 2 },
         layout: ROUND_LINE,
     },
 

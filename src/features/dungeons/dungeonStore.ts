@@ -6,10 +6,14 @@ import {
     GEO_API_PATHS,
     type GeoCreateDungeonLobbyRequest,
     type GeoDungeonEntrance,
+    type GeoDungeonRunResponse,
     type GeoDungeonsResponse,
     type GeoRunResponse,
     type GeoStartDungeonLobbyResponse,
 } from "@/lib/geo/contracts";
+
+/** Where a started lobby takes the player: their dungeon map, or a lone boss fight. */
+export type DungeonEntry = "map" | "fight";
 
 const withLobbyId = (path: string, lobbyId: string) => path.replace(":lobbyId", encodeURIComponent(lobbyId));
 
@@ -26,7 +30,7 @@ type DungeonState = {
     create: (request: GeoCreateDungeonLobbyRequest) => Promise<void>;
     join: (lobbyId: string, entrance: GeoDungeonEntrance) => Promise<void>;
     leave: (lobbyId: string) => Promise<void>;
-    /** Host only: takes everyone in. Open the reply's Run at `/run/combat`. */
+    /** Host only: takes everyone in. Open the reply's map at `/run/dungeon`, or its Run at `/run/combat`. */
     start: (lobbyId: string) => Promise<GeoStartDungeonLobbyResponse>;
 };
 
@@ -93,10 +97,11 @@ export function useDungeonPolling(isMenuOpen: boolean, isEnabled = true) {
 
 /**
  * Notices the player's lobby going away without them leaving it: either the
- * host started it, which put them straight into the fight (`onTakenIn`), or
- * the host closed it. Tells the two apart by whether a Run is now open.
+ * host started it, which put them straight into the dungeon (`onTakenIn`,
+ * with its map or boss fight), or the host closed it. Tells them apart by
+ * whether a dungeon map or a Run is now open.
  */
-export function useLobbyExitWatcher(onTakenIn: () => void) {
+export function useLobbyExitWatcher(onTakenIn: (where: DungeonEntry) => void) {
     const lobbyId = useDungeonStore((state) => state.data?.myLobby?.id ?? null);
     const previous = useRef(lobbyId);
     const onTakenInRef = useRef(onTakenIn);
@@ -112,12 +117,10 @@ export function useLobbyExitWatcher(onTakenIn: () => void) {
             useDungeonStore.setState({ leftOwnLobby: false });
             return;
         }
-        void api
-            .get<GeoRunResponse | null>(GEO_API_PATHS.runs.active)
-            .then((active) => {
-                if (active) onTakenInRef.current();
-                else showToast("Your lobby closed, or started without you");
-            })
-            .catch(() => {});
+        void (async () => {
+            if (await api.get<GeoDungeonRunResponse | null>(GEO_API_PATHS.dungeonRuns.active)) onTakenInRef.current("map");
+            else if (await api.get<GeoRunResponse | null>(GEO_API_PATHS.runs.active)) onTakenInRef.current("fight");
+            else showToast("Your lobby closed, or started without you");
+        })().catch(() => {});
     }, [lobbyId]);
 }

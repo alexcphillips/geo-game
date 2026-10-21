@@ -3,14 +3,14 @@ import {
     Animated,
     PanResponder,
     Pressable,
-    StyleSheet,
     Text,
     useWindowDimensions,
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
 import { STATUS_BAR_CLEARANCE } from "@/theme/layout";
+import { FONTS, type Palette } from "@/theme/palette";
+import { createStyles, inked, useTheme } from "@/theme/theme";
 import { TOAST_LEAVE_MS, useToastStore, type Toast, type ToastKind } from "./toastStore";
 
 /** Share of the screen width a toast takes. */
@@ -19,11 +19,12 @@ const TOAST_WIDTH = 0.7;
 const SWIPE_DISMISS_DISTANCE = 60;
 const ENTER_MS = 220;
 
-const STRIPE: Record<ToastKind, string> = {
-    error: colors.toastError,
-    success: colors.toastSuccess,
-    info: colors.toastInfo,
-};
+/** A toast's stripe, by kind, from the mood's own colours. */
+function stripeColor(kind: ToastKind, palette: Palette): string {
+    if (kind === "error") return palette.danger;
+    if (kind === "success") return palette.heal;
+    return palette.info;
+}
 
 /**
  * Where toasts appear: the top right, newest on top.
@@ -33,6 +34,7 @@ const STRIPE: Record<ToastKind, string> = {
  * in one store, so each host shows the same ones and only the topmost is seen.
  */
 export default function ToastHost() {
+    const styles = useStyles();
     const toasts = useToastStore((state) => state.toasts);
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
@@ -60,6 +62,8 @@ export default function ToastHost() {
  * as it needs; nothing is cut off.
  */
 function ToastCard({ toast, offscreen }: { toast: Toast; offscreen: number }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const dismiss = useToastStore((state) => state.dismiss);
     const [progress] = useState(() => new Animated.Value(0));
     const [drag] = useState(() => new Animated.Value(0));
@@ -104,14 +108,14 @@ function ToastCard({ toast, offscreen }: { toast: Toast; offscreen: number }) {
                 accessibilityLabel={toast.message}
                 accessibilityHint="Tap to dismiss"
             >
-                <View style={[styles.stripe, { backgroundColor: STRIPE[toast.kind] }]} />
+                <View style={[styles.stripe, { backgroundColor: stripeColor(toast.kind, palette) }]} />
                 <Text style={styles.message}>{toast.message}</Text>
             </Pressable>
         </Animated.View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     host: {
         position: "absolute",
         right: 12,
@@ -122,28 +126,25 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: "row",
         overflow: "hidden",
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
-        shadowColor: "#000",
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        borderRadius: 14,
+        backgroundColor: p.surface,
+        ...inked(p),
     },
     pressed: {
         opacity: 0.85,
     },
     stripe: {
-        width: 4,
+        width: 6,
+        borderRightWidth: 2,
+        borderRightColor: p.outline,
     },
     message: {
         flex: 1,
         paddingVertical: 11,
         paddingHorizontal: 12,
-        color: colors.textPrimary,
+        color: p.text,
+        fontFamily: FONTS.bodyBold,
         fontSize: 14,
         lineHeight: 19,
     },
-});
+}));

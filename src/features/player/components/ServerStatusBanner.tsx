@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { usePlayerStore } from "../playerStore";
 
 type ServerStatusBannerProps = {
@@ -13,6 +14,8 @@ type ServerStatusBannerProps = {
  * stays up with a Retry until it answers. Nothing shows once it has.
  */
 export default function ServerStatusBanner({ bottom }: ServerStatusBannerProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const status = usePlayerStore((state) => state.status);
     const error = usePlayerStore((state) => state.error);
     const load = usePlayerStore((state) => state.load);
@@ -25,7 +28,7 @@ export default function ServerStatusBanner({ bottom }: ServerStatusBannerProps) 
         <View style={[styles.banner, isLoading && styles.loading, { bottom }]} accessibilityLiveRegion="polite">
             {isLoading ? (
                 <>
-                    <ActivityIndicator size="small" color={colors.textSecondary} />
+                    <ActivityIndicator size="small" color={palette.textMuted} />
                     <Text style={styles.text}>Connecting to the game server…</Text>
                 </>
             ) : (
@@ -45,7 +48,7 @@ export default function ServerStatusBanner({ bottom }: ServerStatusBannerProps) 
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     banner: {
         position: "absolute",
         left: 20,
@@ -56,17 +59,17 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 12,
         borderRadius: 8,
-        backgroundColor: "rgba(140, 36, 32, 0.9)",
+        backgroundColor: p.danger,
         borderWidth: 1,
-        borderColor: colors.blood,
+        borderColor: p.game.blood,
     },
     loading: {
         justifyContent: "center",
-        backgroundColor: "rgba(20, 16, 14, 0.85)",
-        borderColor: colors.border,
+        backgroundColor: p.surface,
+        borderColor: p.outline,
     },
     text: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
         lineHeight: 17,
     },
@@ -77,14 +80,14 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         paddingHorizontal: 14,
         borderRadius: 999,
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     retryText: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     pressed: {
         transform: [{ scale: 0.95 }],
     },
-});
+}));

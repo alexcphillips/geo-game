@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Divider from "@/components/Divider/Divider";
 import { Chip, ChipRow } from "@/components/Chips/Chips";
 import Icon from "@/components/Icon/Icon";
 import ItemTile from "@/features/inventory/components/ItemTile";
@@ -8,8 +10,9 @@ import { formatCoins } from "@/features/market/market";
 import { catalogueItem } from "@/features/player/toInventoryItem";
 import { skillLabel } from "@/features/skills/skills";
 import type { GeoItemView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
-import { isStructure, type RecipeSort, type RecipeStatus } from "../recipes";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
+import { type RecipeSort, type RecipeStatus } from "../recipes";
 
 /** Rarity · type under an item's name, e.g. "Rare · Weapon". */
 function kindLabel(def: GeoItemView): string {
@@ -28,7 +31,7 @@ function kindLabel(def: GeoItemView): string {
         case "consumable":
             return "Consumable";
         case "misc":
-            return isStructure(def) ? "Structure" : "Item";
+            return "Item";
         case "pet":
             return "Pet";
         case "petItem":
@@ -61,10 +64,11 @@ export function RecipeCard({
     onInspect: (itemId: string) => void;
     footer?: ReactNode;
 }) {
+    const styles = useStyles();
     const { output, recipe } = status;
     const rarity = rarityInfo(output.rarity);
     return (
-        <View style={[styles.card, { borderLeftColor: rarity.color }]}>
+        <Panel compact style={[styles.card, { borderLeftColor: rarity.color }]}>
             <View style={styles.outputRow}>
                 <View style={styles.outputTile}>
                     <ItemTile
@@ -83,11 +87,11 @@ export function RecipeCard({
                 </View>
             </View>
 
-            <View style={styles.divider} />
+            <Divider />
 
             <Requirements status={status} times={times} highlight={highlight} onInspect={onInspect} />
             {footer}
-        </View>
+        </Panel>
     );
 }
 
@@ -108,6 +112,8 @@ function Requirements({
     highlight?: string;
     onInspect: (itemId: string) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.requirements}>
             <Text style={styles.label}>Materials</Text>
@@ -149,7 +155,7 @@ function Requirements({
                                     <Icon
                                         name={short ? "padlock" : "check-mark"}
                                         size={11}
-                                        color={short ? colors.toastError : colors.toastSuccess}
+                                        color={short ? palette.danger : palette.heal}
                                     />
                                     <Text style={[styles.skillText, short ? styles.short : styles.met]}>
                                         {skillLabel(skill)} {level}
@@ -177,6 +183,8 @@ export function RecipeRow({
     onInspect: (itemId: string) => void;
     onCraft: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const canCraft = status.maxCrafts > 0;
     const summary = craftSummary(status);
     return (
@@ -195,7 +203,7 @@ export function RecipeRow({
                         accessibilityLabel={`Craft ${status.output.name}`}
                         accessibilityState={{ disabled: !canCraft }}
                     >
-                        <Icon name="anvil" size={15} color={colors.textOnEmber} />
+                        <Icon name="anvil" size={15} color={palette.onPrimary} />
                         <Text style={styles.craftText}>Craft</Text>
                     </Pressable>
                 </View>
@@ -237,14 +245,10 @@ export function RecipeSortChips({ sort, onSort }: { sort: RecipeSort; onSort: (s
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     card: {
         gap: 12,
         padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
     },
     outputRow: {
@@ -260,29 +264,24 @@ const styles = StyleSheet.create({
         gap: 3,
     },
     outputName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     outputMeta: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
-    },
-    divider: {
-        height: 1,
-        backgroundColor: colors.border,
-        marginHorizontal: -12,
     },
     requirements: {
         gap: 8,
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
@@ -302,36 +301,36 @@ const styles = StyleSheet.create({
         padding: 1,
     },
     inputTileHighlight: {
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     count: {
         alignSelf: "stretch",
         alignItems: "center",
         paddingVertical: 2,
         borderRadius: 999,
-        backgroundColor: colors.surface,
+        backgroundColor: p.surface,
         borderWidth: 1,
     },
     countMet: {
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     countShort: {
-        borderColor: colors.toastError,
+        borderColor: p.danger,
     },
     countText: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     countNeed: {
-        color: colors.textSecondary,
-        fontWeight: "600",
+        color: p.textMuted,
+        fontFamily: FONTS.bodyBold,
     },
     short: {
-        color: colors.toastError,
+        color: p.danger,
     },
     met: {
-        color: colors.textPrimary,
+        color: p.text,
     },
     skills: {
         flexDirection: "row",
@@ -348,14 +347,14 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     skillMet: {
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     skillShort: {
-        borderColor: colors.toastError,
+        borderColor: p.danger,
     },
     skillText: {
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     footer: {
         flexDirection: "row",
@@ -366,9 +365,9 @@ const styles = StyleSheet.create({
     },
     footerText: {
         flex: 1,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     craftButton: {
         flexDirection: "row",
@@ -378,12 +377,12 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 18,
         borderRadius: 999,
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     craftText: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
         fontSize: 14,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
     },
     disabled: {
         opacity: 0.4,
@@ -391,4 +390,4 @@ const styles = StyleSheet.create({
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

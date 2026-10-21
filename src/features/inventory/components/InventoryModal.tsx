@@ -1,13 +1,11 @@
 import { useState } from "react";
 import {
-    Pressable,
     ScrollView,
-    StyleSheet,
     Text,
     View,
 } from "react-native";
 import { Chip, ChipRow } from "@/components/Chips/Chips";
-import Icon from "@/components/Icon/Icon";
+import Tabs from "@/components/Tabs/Tabs";
 import SearchField from "@/components/SearchField/SearchField";
 import Modal from "@/components/Modal/Modal";
 import { CARD_SKILLS, type CardSkill } from "@/features/cards/cardSkills";
@@ -23,7 +21,7 @@ import {
     type InventorySort,
     type InventoryTabId,
 } from "../inventoryItems";
-import { colors } from "@/theme/colors";
+import { createStyles } from "@/theme/theme";
 
 const GRID_COLUMNS = 4;
 const GRID_GAP = 8;
@@ -59,6 +57,7 @@ type InventoryModalProps = {
  * while they're out of the Talisman Bag.
  */
 export default function InventoryModal({ onClose }: InventoryModalProps) {
+    const styles = useStyles();
     const items = useInventory();
     const equipped = useEquipment();
     const bagIds = useTalismanBag().inventoryIds;
@@ -122,71 +121,16 @@ export default function InventoryModal({ onClose }: InventoryModalProps) {
                 />
             ) : (
                 <>
-                    <View style={styles.tabs} accessibilityRole="tablist">
-                        {INVENTORY_TABS.map((candidate) => {
-                            const isActive = candidate.id === tabId;
-                            return (
-                                <Pressable
-                                    key={candidate.id}
-                                    onPress={() => selectTab(candidate.id)}
-                                    style={({ pressed }) => [
-                                        styles.tab,
-                                        isActive && styles.tabActive,
-                                        pressed && styles.tabPressed,
-                                    ]}
-                                    accessibilityRole="tab"
-                                    accessibilityState={{ selected: isActive }}
-                                    accessibilityLabel={candidate.label}
-                                >
-                                    <Icon
-                                        name={candidate.icon}
-                                        size={22}
-                                        color={isActive ? colors.emberBright : colors.textSecondary}
-                                    />
-                                </Pressable>
-                            );
-                        })}
-                    </View>
+                    <Tabs tabs={INVENTORY_TABS} value={tabId} onChange={selectTab} style={styles.tabs} />
 
                     <View style={styles.tabContent}>
                         {isMaterials && (
-                            <View style={styles.subTabs} accessibilityRole="tablist">
-                                {CARD_SKILLS.map((skill) => {
-                                    const isActive = skill.id === materialSkill;
-                                    return (
-                                        <Pressable
-                                            key={skill.id}
-                                            onPress={() => selectMaterialSkill(skill.id)}
-                                            style={({ pressed }) => [
-                                                styles.subTab,
-                                                isActive && {
-                                                    borderColor: skill.color,
-                                                    backgroundColor: colors.surfaceRaised,
-                                                },
-                                                pressed && styles.tabPressed,
-                                            ]}
-                                            accessibilityRole="tab"
-                                            accessibilityState={{ selected: isActive }}
-                                            accessibilityLabel={`${skill.label} materials`}
-                                        >
-                                            <Icon
-                                                name={skill.icon}
-                                                size={16}
-                                                color={isActive ? skill.color : colors.textSecondary}
-                                            />
-                                            <Text
-                                                style={[
-                                                    styles.subTabLabel,
-                                                    isActive && styles.subTabLabelActive,
-                                                ]}
-                                                numberOfLines={1}
-                                            >
-                                                {skill.label}
-                                            </Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
+                            <Tabs
+                                tabs={CARD_SKILLS.map((skill) => ({ id: skill.id, label: skill.label }))}
+                                value={materialSkill}
+                                onChange={selectMaterialSkill}
+                                style={styles.subTabs}
+                            />
                         )}
 
                         <SearchField value={query} onChange={setQuery} placeholder={`Search ${scopeLabel}`} style={styles.search} />
@@ -273,54 +217,14 @@ function InventorySortChips({ sort, onSort }: { sort: InventorySort; onSort: (so
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     tabs: {
-        flexDirection: "row",
-        gap: 4,
-        // Pull the tab strip out to the panel edges so it reads as the top of
-        // the content area rather than a row floating inside it.
-        marginHorizontal: -10,
-        marginTop: -8,
-        paddingBottom: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 9,
-        borderRadius: 8,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        backgroundColor: colors.surfaceRaised,
-        borderBottomColor: colors.ember,
-    },
-    tabPressed: {
-        transform: [{ scale: 0.94 }],
+        marginBottom: 12,
     },
     subTabs: {
         flexDirection: "row",
         gap: 4,
         marginHorizontal: GRID_GAP / 2,
-    },
-    subTab: {
-        flex: 1,
-        alignItems: "center",
-        gap: 2,
-        paddingVertical: 6,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    subTabLabel: {
-        color: colors.textSecondary,
-        fontSize: 9,
-        fontWeight: "600",
-    },
-    subTabLabelActive: {
-        color: colors.textPrimary,
     },
     tabContent: {
         flex: 1,
@@ -351,8 +255,8 @@ const styles = StyleSheet.create({
         width: "100%",
         paddingTop: 24,
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         fontStyle: "italic",
     },
-});
+}));

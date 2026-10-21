@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { playerActions } from "@/features/player/playerStore";
 import { useEquipment, useInventory, useTalismanBag } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { createStyles } from "@/theme/theme";
 import { RING_SLOTS, type EquipmentSlotId } from "../characterSlots";
 
 type ItemEquipActionProps = {
@@ -26,6 +28,7 @@ type ItemEquipActionProps = {
  * nothing.
  */
 export default function ItemEquipAction({ item }: ItemEquipActionProps) {
+    const styles = useStyles();
     const inventory = useInventory();
     const equipped = useEquipment();
     const bag = useTalismanBag();
@@ -60,7 +63,7 @@ export default function ItemEquipAction({ item }: ItemEquipActionProps) {
     }
 
     return (
-        <View style={styles.chooser}>
+        <Panel compact style={styles.chooser}>
             <Text style={styles.chooserTitle}>Both ring slots are full. Replace which ring?</Text>
             <View style={styles.rings}>
                 {RING_SLOTS.map((slot) => {
@@ -79,72 +82,22 @@ export default function ItemEquipAction({ item }: ItemEquipActionProps) {
                     );
                 })}
             </View>
-            <Pressable
-                onPress={() => setChoosingRing(false)}
-                style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}
-                accessibilityRole="button"
-                hitSlop={8}
-            >
-                <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-        </View>
+            <Button label="Cancel" variant="quiet" onPress={() => setChoosingRing(false)} />
+        </Panel>
     );
 }
 
 function EquipButton({ equipped, onPress }: { equipped: boolean; onPress: () => unknown }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => [
-                styles.button,
-                equipped && styles.buttonEquipped,
-                pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-        >
-            <Text style={[styles.buttonText, equipped && styles.buttonTextEquipped]}>
-                {equipped ? "Unequip" : "Equip"}
-            </Text>
-        </Pressable>
-    );
+    return <Button label={equipped ? "Unequip" : "Equip"} variant={equipped ? "secondary" : "primary"} onPress={() => void onPress()} stretch />;
 }
 
-const styles = StyleSheet.create({
-    button: {
-        alignSelf: "stretch",
-        alignItems: "center",
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    // Unequip is the quieter action: outlined, not filled.
-    buttonEquipped: {
-        backgroundColor: "transparent",
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    buttonTextEquipped: {
-        color: colors.emberBright,
-    },
+const useStyles = createStyles((p) => ({
     chooser: {
         gap: 10,
         padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     chooserTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
         textAlign: "center",
@@ -156,14 +109,4 @@ const styles = StyleSheet.create({
     ring: {
         flex: 1,
     },
-    cancel: {
-        alignSelf: "center",
-        paddingVertical: 4,
-        paddingHorizontal: 12,
-    },
-    cancelText: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontWeight: "600",
-    },
-});
+}));

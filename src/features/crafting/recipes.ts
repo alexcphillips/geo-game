@@ -125,7 +125,7 @@ export function searchRecipes(statuses: RecipeStatus[], query: string, sort: Rec
 
 /**
  * What a recipe makes, for the Crafting menu's filter: the inventory tab the
- * output goes in, plus Cards and Structures.
+ * output goes in, plus Cards.
  */
 export type RecipeCategory =
     | "cards"
@@ -134,7 +134,6 @@ export type RecipeCategory =
     | "accessories"
     | "consumables"
     | "materials"
-    | "structures"
     | "pets"
     | "misc";
 
@@ -146,15 +145,10 @@ export const RECIPE_CATEGORIES: { id: RecipeCategory; label: string }[] = [
     { id: "accessories", label: "Accessories" },
     { id: "consumables", label: "Consumables" },
     { id: "materials", label: "Materials" },
-    { id: "structures", label: "Structures" },
     { id: "pets", label: "Pets" },
     { id: "misc", label: "Misc" },
 ];
 
-export function isStructure(output: GeoItemView): boolean {
-    return output.id.startsWith("structure.");
-}
-
 export function recipeCategory(status: RecipeStatus): RecipeCategory {
-    return isStructure(status.output) ? "structures" : tabOf(status.output);
+    return tabOf(status.output);
 }

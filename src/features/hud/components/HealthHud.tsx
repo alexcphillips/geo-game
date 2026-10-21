@@ -1,9 +1,10 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 import { useHealth } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, inked } from "@/theme/theme";
 import StatBar from "./StatBar";
 
-const BAR_WIDTH = 120;
+const BAR_WIDTH = 110;
 
 type HealthHudProps = {
     /** Tapping it opens the lunchbox, the only food there is between fights. */
@@ -17,6 +18,7 @@ type HealthHudProps = {
  * Unpositioned: `PlayerStatusHud` places it.
  */
 export default function HealthHud({ onPress }: HealthHudProps) {
+    const styles = useStyles();
     const health = useHealth();
     return (
         <Pressable
@@ -29,7 +31,6 @@ export default function HealthHud({ onPress }: HealthHudProps) {
             <StatBar
                 current={health.current}
                 max={health.max}
-                gradient={colors.healthGradient}
                 width={BAR_WIDTH}
                 label="Health"
                 animateChanges
@@ -41,23 +42,26 @@ export default function HealthHud({ onPress }: HealthHudProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    // A panel of its own, so it reads over any patch of map.
     row: {
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
+        borderRadius: 16,
+        backgroundColor: p.surface,
+        ...inked(p),
     },
     pressed: {
-        opacity: 0.7,
+        transform: [{ translateY: 2 }],
+        boxShadow: `0px 1px 0px ${p.outline}`,
     },
     count: {
-        color: colors.textPrimary,
+        color: p.text,
+        fontFamily: FONTS.bodyHeavy,
         fontSize: 13,
-        fontWeight: "600",
         fontVariant: ["tabular-nums"],
-        // Floats over the map, so the text carries its own contrast.
-        textShadowColor: "rgba(0, 0, 0, 0.95)",
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
     },
-});
+}));

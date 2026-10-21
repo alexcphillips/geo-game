@@ -4,18 +4,23 @@ import {
     Alert,
     Pressable,
     ScrollView,
-    StyleSheet,
     Text,
-    TextInput,
     View,
 } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Divider from "@/components/Divider/Divider";
+import EmptyState from "@/components/EmptyState/EmptyState";
+import Button from "@/components/Button/Button";
 import Modal from "@/components/Modal/Modal";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
+import { SectionTitle } from "@/components/Text/Text";
 import { formatListedAgo } from "@/features/market/market";
 import { SKILLS } from "@/features/skills/skills";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoFriend, GeoFriendRequest, GeoFriendsResponse, GeoFriendStatus } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { friendsApi } from "../friendsApi";
 import { usePresenceStore } from "../presenceStore";
 
@@ -36,6 +41,8 @@ type FriendsModalProps = {
  * where.
  */
 export default function FriendsModal({ onClose }: FriendsModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [page, setPage] = useState<"friends" | "requests">("friends");
     const [data, setData] = useState<GeoFriendsResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -80,7 +87,7 @@ export default function FriendsModal({ onClose }: FriendsModalProps) {
         >
             {!data ? (
                 <View style={styles.loading}>
-                    {error ? <Text style={styles.empty}>{error}</Text> : <ActivityIndicator color={colors.emberBright} />}
+                    {error ? <EmptyState title={error} /> : <ActivityIndicator color={palette.ember} />}
                 </View>
             ) : page === "friends" ? (
                 <FriendsPage
@@ -122,6 +129,7 @@ function FriendsPage({
     onOpenRequests: () => void;
     onRemove: (friend: GeoFriend) => void;
 }) {
+    const styles = useStyles();
     const [username, setUsername] = useState("");
     const [isSending, setIsSending] = useState(false);
     const incoming = data.incoming.length;
@@ -145,30 +153,17 @@ function FriendsPage({
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
             <View style={styles.addRow}>
-                <TextInput
+                <TextField
                     value={username}
                     onChangeText={setUsername}
                     onSubmitEditing={() => void add()}
                     placeholder="Add by username"
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.input}
+                    containerStyle={styles.grow}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="send"
                 />
-                <Pressable
-                    onPress={() => void add()}
-                    disabled={!username.trim() || isSending}
-                    style={({ pressed }) => [
-                        styles.primary,
-                        (!username.trim() || isSending) && styles.disabled,
-                        pressed && styles.pressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Send friend request"
-                >
-                    <Text style={styles.primaryText}>Add</Text>
-                </Pressable>
+                <Button label="Add" variant="primary" onPress={() => void add()} disabled={!username.trim()} busy={isSending} accessibilityLabel="Send friend request" />
             </View>
 
             <Pressable
@@ -183,12 +178,12 @@ function FriendsPage({
                 </View>
             </Pressable>
 
-            <Text style={styles.sectionTitle}>
+            <SectionTitle>
                 Friends · {data.friends.filter((friend) => friend.status.online).length} online
-            </Text>
-            {data.friends.length === 0 && <Text style={styles.empty}>No friends yet. Add someone by their username.</Text>}
+            </SectionTitle>
+            {data.friends.length === 0 && <EmptyState title="No friends yet. Add someone by their username." />}
             {data.friends.map((friend) => (
-                <View key={friend.playerId} style={styles.row}>
+                <Panel compact key={friend.playerId} style={styles.row}>
                     <View style={[styles.dot, friend.status.online && styles.dotOnline]} />
                     <View style={styles.rowText}>
                         <Text style={styles.name} numberOfLines={1}>
@@ -198,16 +193,8 @@ function FriendsPage({
                             {describeStatus(friend.status)}
                         </Text>
                     </View>
-                    <Pressable
-                        onPress={() => onRemove(friend)}
-                        style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove ${friend.name}`}
-                        hitSlop={6}
-                    >
-                        <Text style={styles.secondaryText}>Remove</Text>
-                    </Pressable>
-                </View>
+                    <Button label="Remove" size="small" onPress={() => onRemove(friend)} accessibilityLabel={`Remove ${friend.name}`} />
+                </Panel>
             ))}
         </ScrollView>
     );
@@ -222,58 +209,38 @@ function RequestsPage({
     onAccept: (request: GeoFriendRequest) => void;
     onDismiss: (request: GeoFriendRequest) => void;
 }) {
+    const styles = useStyles();
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.page}>
-            <Text style={styles.sectionTitle}>Incoming</Text>
-            {data.incoming.length === 0 && <Text style={styles.empty}>No requests waiting.</Text>}
+            <SectionTitle>Incoming</SectionTitle>
+            {data.incoming.length === 0 && <EmptyState title="No requests waiting." />}
             {data.incoming.map((request) => (
-                <View key={request.id} style={styles.row}>
+                <Panel compact key={request.id} style={styles.row}>
                     <View style={styles.rowText}>
                         <Text style={styles.name} numberOfLines={1}>
                             {request.name}
                         </Text>
                         <Text style={styles.detail}>Asked {formatListedAgo(request.createdAt)}</Text>
                     </View>
-                    <Pressable
-                        onPress={() => onDismiss(request)}
-                        style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Decline ${request.name}`}
-                    >
-                        <Text style={styles.secondaryText}>Decline</Text>
-                    </Pressable>
-                    <Pressable
-                        onPress={() => onAccept(request)}
-                        style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Accept ${request.name}`}
-                    >
-                        <Text style={styles.primaryText}>Accept</Text>
-                    </Pressable>
-                </View>
+                    <Button label="Decline" size="small" onPress={() => onDismiss(request)} accessibilityLabel={`Decline ${request.name}`} />
+                    <Button label="Accept" size="small" variant="primary" onPress={() => onAccept(request)} accessibilityLabel={`Accept ${request.name}`} />
+                </Panel>
             ))}
 
-            <View style={styles.divider} />
+            <Divider />
 
-            <Text style={styles.sectionTitle}>Sent</Text>
-            {data.outgoing.length === 0 && <Text style={styles.empty}>No requests sent.</Text>}
+            <SectionTitle>Sent</SectionTitle>
+            {data.outgoing.length === 0 && <EmptyState title="No requests sent." />}
             {data.outgoing.map((request) => (
-                <View key={request.id} style={styles.row}>
+                <Panel compact key={request.id} style={styles.row}>
                     <View style={styles.rowText}>
                         <Text style={styles.name} numberOfLines={1}>
                             {request.name}
                         </Text>
                         <Text style={styles.detail}>Sent {formatListedAgo(request.createdAt)}</Text>
                     </View>
-                    <Pressable
-                        onPress={() => onDismiss(request)}
-                        style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Cancel request to ${request.name}`}
-                    >
-                        <Text style={styles.secondaryText}>Cancel</Text>
-                    </Pressable>
-                </View>
+                    <Button label="Cancel" size="small" onPress={() => onDismiss(request)} accessibilityLabel={`Cancel request to ${request.name}`} />
+                </Panel>
             ))}
         </ScrollView>
     );
@@ -294,7 +261,10 @@ function describeStatus(status: GeoFriendStatus): string {
     }
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    grow: {
+        flex: 1,
+    },
     loading: {
         paddingVertical: 32,
         alignItems: "center",
@@ -307,47 +277,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 8,
     },
-    input: {
-        flex: 1,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
-        color: colors.textPrimary,
-        fontSize: 14,
-    },
-    primary: {
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 16,
-        paddingVertical: 9,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 13,
-        fontWeight: "700",
-    },
-    secondary: {
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    secondaryText: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    disabled: {
-        opacity: 0.4,
-    },
     pressed: {
         transform: [{ scale: 0.96 }],
     },
@@ -358,13 +287,13 @@ const styles = StyleSheet.create({
         padding: 14,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: colors.ember,
-        backgroundColor: colors.surfaceRaised,
+        borderColor: p.ember,
+        backgroundColor: p.surfaceAlt,
     },
     requestsLabel: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     count: {
         minWidth: 24,
@@ -373,71 +302,49 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.toastError,
+        backgroundColor: p.danger,
     },
     countNone: {
-        backgroundColor: colors.border,
+        backgroundColor: p.outline,
     },
     countText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     countTextNone: {
-        color: colors.textSecondary,
-    },
-    sectionTitle: {
-        marginTop: 6,
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
-    empty: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        textAlign: "center",
+        color: p.textMuted,
     },
     row: {
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     dot: {
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: colors.rarityCommon,
+        backgroundColor: p.game.rarityCommon,
     },
     dotOnline: {
-        backgroundColor: colors.toastSuccess,
+        backgroundColor: p.heal,
     },
     rowText: {
         flex: 1,
         gap: 2,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     detail: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     detailOnline: {
-        color: colors.toastSuccess,
+        color: p.heal,
     },
-    divider: {
-        height: 1,
-        marginVertical: 4,
-        backgroundColor: colors.border,
-    },
-});
+}));

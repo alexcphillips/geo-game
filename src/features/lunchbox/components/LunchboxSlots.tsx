@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import ItemTile from "@/features/inventory/components/ItemTile";
-import { colors } from "@/theme/colors";
+import { createStyles, useTheme } from "@/theme/theme";
 import type { PackedSlot } from "../lunchbox";
 import { PACKS, type PackKind } from "../packs";
 
@@ -30,6 +30,8 @@ export default function LunchboxSlots({
     onLongPress,
     disabled = false,
 }: LunchboxSlotsProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { title, maxSlots, stackSize } = PACKS[kind];
     return (
         <View style={styles.row}>
@@ -44,7 +46,7 @@ export default function LunchboxSlots({
                                 accessible
                                 accessibilityLabel={`${title} slot ${slot + 1}, locked`}
                             >
-                                <Icon name="padlock" size={20} color={colors.border} />
+                                <Icon name="padlock" size={20} color={palette.outline} />
                             </View>
                         ) : (
                             <View style={disabled && entry ? styles.dimmed : undefined}>
@@ -66,7 +68,7 @@ export default function LunchboxSlots({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     row: {
         flexDirection: "row",
         gap: 8,
@@ -84,15 +86,15 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1.5,
         borderStyle: "dashed",
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     dimmed: {
         opacity: 0.45,
     },
     count: {
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

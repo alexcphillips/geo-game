@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type DeathCardProps = {
     /** What happened, e.g. "The giant spider got the better of you." */
@@ -17,13 +18,15 @@ type DeathCardProps = {
  * admin kill. The caller places it, over a fight or on its own screen.
  */
 export default function DeathCard({ body, coinsLost, actions }: DeathCardProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.card}>
             <Text style={styles.title}>Defeated</Text>
             <Text style={styles.body}>{body}</Text>
             {coinsLost !== null && (
                 <View style={styles.coins}>
-                    <Icon name="two-coins" size={18} color={colors.coins} />
+                    <Icon name="two-coins" size={18} color={palette.reward} />
                     <Text style={styles.coinsText}>
                         You lost {coinsLost.toLocaleString()} {coinsLost === 1 ? "coin" : "coins"}!
                     </Text>
@@ -34,7 +37,7 @@ export default function DeathCard({ body, coinsLost, actions }: DeathCardProps) 
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     card: {
         alignItems: "center",
         gap: 8,
@@ -43,18 +46,18 @@ const styles = StyleSheet.create({
         marginHorizontal: 24,
         borderRadius: 16,
         borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
+        borderColor: p.outline,
+        backgroundColor: p.surface,
     },
     title: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 24,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 2,
         textTransform: "uppercase",
     },
     body: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         textAlign: "center",
     },
@@ -65,9 +68,9 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     coinsText: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     actions: {
@@ -75,4 +78,4 @@ const styles = StyleSheet.create({
         gap: 10,
         marginTop: 8,
     },
-});
+}));

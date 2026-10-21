@@ -1,8 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { formatCoins } from "../market";
 import { BIN_TAX_PERCENT, quote, type SellDraft } from "../sell";
 import { SaleBadge } from "./MarketRows";
@@ -21,6 +24,8 @@ type SellConfirmProps = {
  * the number most likely to surprise them.
  */
 export default function SellConfirm({ item, draft, coins, onConfirm }: SellConfirmProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const result = quote(item, draft, coins);
     const isStack = item.quantity !== undefined;
     const isAuction = draft.type === "auction";
@@ -61,49 +66,43 @@ export default function SellConfirm({ item, draft, coins, onConfirm }: SellConfi
                 </View>
             </View>
 
-            <View
+            <Panel compact
                 style={[
                     styles.panel,
-                    { borderLeftColor: isAuction ? colors.listingAuction : colors.listingBuyNow },
+                    { borderLeftColor: isAuction ? palette.game.listingAuction : palette.game.listingBuyNow },
                 ]}
             >
                 {rows.map(([label, value, isCoins]) => (
                     <View key={label} style={styles.row}>
                         <Text style={styles.rowLabel}>{label}</Text>
                         <View style={styles.rowValue}>
-                            {isCoins && <Icon name="two-coins" size={13} color={colors.coins} />}
+                            {isCoins && <Icon name="two-coins" size={13} color={palette.reward} />}
                             <Text style={[styles.rowValueText, !isCoins && styles.rowValuePlain]}>
                                 {value}
                             </Text>
                         </View>
                     </View>
                 ))}
-            </View>
+            </Panel>
 
             <View style={styles.warning}>
-                <Icon name="info" size={16} color={colors.emberBright} />
+                <Icon name="info" size={16} color={palette.ember} />
                 <Text style={styles.warningText}>{warning}</Text>
             </View>
 
-            <Pressable
+            <Button
+                label={`Pay ${formatCoins(result.listingFee)} and list`}
+                variant="primary"
+                size="large"
                 onPress={onConfirm}
                 disabled={result.problem !== null}
-                style={({ pressed }) => [
-                    styles.primary,
-                    result.problem !== null && styles.primaryDisabled,
-                    pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-            >
-                <Text style={styles.primaryText}>
-                    {`Pay ${formatCoins(result.listingFee)} and list`}
-                </Text>
-            </Pressable>
+                stretch
+            />
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 16,
         paddingBottom: 12,
@@ -121,18 +120,14 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     itemName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     panel: {
         gap: 10,
         paddingHorizontal: 12,
         paddingVertical: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
     },
     row: {
@@ -141,7 +136,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     rowLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
     },
     rowValue: {
@@ -150,13 +145,13 @@ const styles = StyleSheet.create({
         gap: 5,
     },
     rowValueText: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     rowValuePlain: {
-        color: colors.textPrimary,
+        color: p.text,
     },
     warning: {
         flexDirection: "row",
@@ -164,29 +159,12 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     warningText: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
     },
-    primary: {
-        alignItems: "center",
-        paddingVertical: 12,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryDisabled: {
-        opacity: 0.4,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 15,
-        fontWeight: "800",
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-});
+}));

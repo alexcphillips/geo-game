@@ -10,7 +10,7 @@ export async function refreshAfterRunStart() {
     const before = usePlayerStore.getState().me?.wardrobe.activeSlot ?? null;
     await usePlayerStore.getState().refresh();
     const wardrobe = usePlayerStore.getState().me?.wardrobe;
-    if (!wardrobe?.autoSwap || wardrobe.activeSlot === null || wardrobe.activeSlot === before) return;
+    if (!wardrobe || wardrobe.activeSlot === null || wardrobe.activeSlot === before) return;
     const name = wardrobe.loadouts.find((loadout) => loadout.slot === wardrobe.activeSlot)?.name;
     if (name) showToast(`Auto-swap: wearing ${name}`, "info");
 }

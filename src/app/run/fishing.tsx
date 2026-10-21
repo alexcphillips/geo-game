@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import Modal from "@/components/Modal/Modal";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint } from "@/components/Text/Text";
 import CatchCard from "@/features/fishing/components/CatchCard";
 import FightMeters from "@/features/fishing/components/FightMeters";
 import FishIntents from "@/features/fishing/components/FishIntents";
@@ -34,7 +35,8 @@ import {
     type GeoFishingTier,
     type GeoItemView,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, MoodProvider } from "@/theme/theme";
 
 /** How long the bobber sits after a cast before the fish takes it. */
 const BITE_DELAY_MS = 1500;
@@ -64,6 +66,16 @@ const isFishingTier = (value: string | undefined): value is GeoFishingTier =>
  * screen for the combat screen: the server has already started that fight.
  */
 export default function FishingRunScreen() {
+    // Dusk for now: the fishing scene is painted at dusk. A daytime scene is its own art job.
+    return (
+        <MoodProvider mood="dusk">
+            <FishingRunScreenContent />
+        </MoodProvider>
+    );
+}
+
+function FishingRunScreenContent() {
+    const styles = useStyles();
     useReportActivity("skilling", "fishing");
     const params = useLocalSearchParams<{ name?: string; tier?: string; latitude?: string; longitude?: string }>();
     const tier: GeoFishingTier = isFishingTier(params.tier) ? params.tier : "pond";
@@ -273,7 +285,7 @@ function handItems(run: GeoFishingRunView, items: Record<string, GeoItemView>): 
 
 /**
  * The buttons for everything that isn't a card: casting, the bobber, a sea
- * creature, an outclassed fish. They sit where the fish's moves show during
+ * creature. They sit where the fish's moves show during
  * a fight, just above the hand, so every choice is under the thumb.
  */
 function PhaseActions({
@@ -302,8 +314,8 @@ function PhaseActions({
                 );
             }
             return (
-                <Actions hint={hasBait ? "One bait per cast." : "Pack some bait first: the Angler sells worms."}>
-                    <OutcomeButton label="Cast" onPress={() => void act({ type: "cast" })} primary={hasBait} />
+                <Actions hint={hasBait ? "One bait per cast." : "Bare hook: commons only. The Angler sells worms."}>
+                    <OutcomeButton label="Cast" onPress={() => void act({ type: "cast" })} primary />
                 </Actions>
             );
         case "waiting":
@@ -320,29 +332,24 @@ function PhaseActions({
                     <OutcomeButton label="Fight it" onPress={() => void act({ type: "fightCreature" })} primary />
                 </Actions>
             );
-        case "outclassed":
-            return (
-                <Actions hint="Quick land is instant but always a regular fish. Play it out for a chance at quality.">
-                    <OutcomeButton label="Quick land" onPress={() => void act({ type: "quickLand" })} primary />
-                    <OutcomeButton label="Play it out" onPress={() => void act({ type: "playOut" })} />
-                </Actions>
-            );
         case "fight":
             return null;
     }
 }
 
 function Actions({ hint, children }: { hint: string; children: ReactNode }) {
+    const styles = useStyles();
     return (
         <View style={styles.actions}>
             <View style={styles.actionRow}>{children}</View>
-            <Text style={styles.hint}>{hint}</Text>
+            <Hint>{hint}</Hint>
         </View>
     );
 }
 
 /** Before a fight: where you are and what you're fishing with. */
 function SpotInfo({ name, run }: { name: string | undefined; run: GeoFishingRunView }) {
+    const styles = useStyles();
     return (
         <View style={styles.spot}>
             <Text style={styles.spotName}>{name || "Fishing spot"}</Text>
@@ -364,11 +371,12 @@ function SpotInfo({ name, run }: { name: string | undefined; run: GeoFishingRunV
 
 /** ✦ on a card that raises quality odds, ▼ on one that lowers them. */
 function FinesseMark({ finesse }: { finesse: GeoItemView["finesse"] }) {
+    const styles = useStyles();
     if (!finesse) return null;
     return <Text style={finesse === "raises" ? styles.markUp : styles.markDown}>{finesse === "raises" ? "✦" : "▼"}</Text>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     screen: {
         flex: 1,
     },
@@ -387,16 +395,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     status: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         letterSpacing: 0.5,
         textAlign: "center",
         textShadowColor: "#000",
         textShadowRadius: 3,
     },
     turnLog: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         textAlign: "center",
         textShadowColor: "#000",
@@ -407,14 +415,14 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     spotName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         textShadowColor: "#000",
         textShadowRadius: 3,
     },
     spotGear: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         textShadowColor: "#000",
         textShadowRadius: 3,
@@ -427,17 +435,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 10,
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        textAlign: "center",
-    },
     markUp: {
-        color: colors.tierGold,
+        color: p.game.tierGold,
         fontSize: 10,
     },
     markDown: {
-        color: colors.tensionDanger,
+        color: p.game.tensionDanger,
         fontSize: 9,
     },
     missing: {
@@ -447,7 +450,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     missingText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 14,
         fontStyle: "italic",
         textAlign: "center",
@@ -458,4 +461,4 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         backgroundColor: "rgba(4, 3, 3, 0.6)",
     },
-});
+}));

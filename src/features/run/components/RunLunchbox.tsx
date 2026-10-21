@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
@@ -7,7 +7,8 @@ import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import LunchboxSlots from "@/features/lunchbox/components/LunchboxSlots";
 import type { PackedSlot } from "@/features/lunchbox/lunchbox";
 import { PACKS, type PackKind } from "@/features/lunchbox/packs";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, inked, useTheme } from "@/theme/theme";
 
 type RunLunchboxProps = {
     /** The lunchbox (food) in combat, or bait in a fishing Run. */
@@ -29,6 +30,8 @@ type RunLunchboxProps = {
  * and the battle log shows it. Bait sits in the same place in a fishing Run.
  */
 export default function RunLunchbox({ kind = "lunchbox", packed, unlocked, canUse, onUse }: RunLunchboxProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const pack = PACKS[kind];
     const [isOpen, setIsOpen] = useState(false);
     const [inspected, setInspected] = useState<InventoryItem | null>(null);
@@ -47,7 +50,7 @@ export default function RunLunchbox({ kind = "lunchbox", packed, unlocked, canUs
                 accessibilityRole="button"
                 accessibilityLabel={`${pack.title}, ${left} ${pack.noun} left`}
             >
-                <Icon name={pack.icon} size={18} color={left > 0 ? colors.emberBright : colors.textSecondary} />
+                <Icon name={pack.icon} size={18} color={left > 0 ? palette.ember : palette.textMuted} />
                 <Text style={styles.name}>{pack.tileLabel}</Text>
                 <Text style={styles.left}>{left}</Text>
             </Pressable>
@@ -90,9 +93,10 @@ export default function RunLunchbox({ kind = "lunchbox", packed, unlocked, canUs
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // A short pill on the row above the hand rather than a card-shaped slot,
-    // so the cards keep the full width; the ember border marks it as not a card.
+    // so the cards keep the full width; round and dusk-coloured, it never
+    // reads as a card.
     tile: {
         flexDirection: "row",
         alignItems: "center",
@@ -100,26 +104,25 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
+        ...inked(p),
     },
     tileEmpty: {
-        borderColor: colors.border,
         opacity: 0.6,
     },
     pressed: {
-        transform: [{ scale: 0.94 }],
+        transform: [{ translateY: 2 }],
+        boxShadow: `0px 1px 0px ${p.outline}`,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     left: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     sheet: {
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
     },
     hint: {
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
-});
+}));

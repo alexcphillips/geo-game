@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint } from "@/components/Text/Text";
 import { formatDateTime } from "@/features/market/market";
 import { usePlaceDraft } from "@/features/places/placeDraft";
 import { distanceMetres } from "@/features/location/distance";
@@ -15,7 +19,8 @@ import {
     type GeoAdminSuggestionsResponse,
     type GeoSuggestionStatus,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 const STATUSES: { id: GeoSuggestionStatus; label: string }[] = [
     { id: "open", label: "Open" },
@@ -48,6 +53,8 @@ type AdminSuggestionsPageProps = {
  * gets Create place.
  */
 export default function AdminSuggestionsPage({ onShowOnMap, onOpenPlaceEditor, onMovePin }: AdminSuggestionsPageProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const startFromSuggestion = usePlaceDraft((draft) => draft.startFromSuggestion);
     const [status, setStatus] = useState<GeoSuggestionStatus>("open");
     const [data, setData] = useState<GeoAdminSuggestionsResponse | null>(null);
@@ -90,23 +97,22 @@ export default function AdminSuggestionsPage({ onShowOnMap, onOpenPlaceEditor, o
                     const isSelected = option.id === status;
                     const count = data?.counts[option.id];
                     return (
-                        <Pressable
+                        <Panel
                             key={option.id}
                             onPress={() => setStatus(option.id)}
-                            style={({ pressed }) => [styles.filter, isSelected && styles.filterSelected, pressed && styles.pressed]}
+                            style={[styles.filter, isSelected && styles.filterSelected]}
                             accessibilityRole="tab"
-                            accessibilityState={{ selected: isSelected }}
                         >
                             <Text style={[styles.filterText, isSelected && styles.filterTextSelected]}>
                                 {option.label}
                                 {count === undefined ? "" : ` · ${count}`}
                             </Text>
-                        </Pressable>
+                        </Panel>
                     );
                 })}
             </View>
             {!data ? (
-                <ActivityIndicator color={colors.textSecondary} />
+                <ActivityIndicator color={palette.textMuted} />
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
                     {data.suggestions.map((suggestion) => (
@@ -145,6 +151,8 @@ function SuggestionCard({
     onCreatePlace: (name: string) => void;
     onReview: (request: GeoAdminReviewSuggestionRequest, success: string) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [reviewNote, setReviewNote] = useState("");
     const [isAdjusting, setIsAdjusting] = useState(false);
     const info = suggestionKindInfo(suggestion.kind);
@@ -156,7 +164,7 @@ function SuggestionCard({
     const note = reviewNote.trim() || undefined;
 
     return (
-        <View style={styles.card}>
+        <Panel compact style={styles.card}>
             <View style={styles.cardHeader}>
                 <Icon name={info.icon} size={20} color={info.color} />
                 <Text style={styles.kind}>{info.label}</Text>
@@ -180,7 +188,7 @@ function SuggestionCard({
                     m from where the player put it
                 </Text>
             )}
-            {suggestion.note ? <Text style={styles.note}>“{suggestion.note}”</Text> : null}
+            {suggestion.note ? <Hint>“{suggestion.note}”</Hint> : null}
             {suggestion.status !== "open" && (
                 <Text style={styles.muted}>
                     {suggestion.status === "accepted" ? "Accepted" : "Rejected"}
@@ -224,7 +232,7 @@ function SuggestionCard({
                                     accessibilityState={{ selected: isSelected }}
                                     accessibilityLabel={option.label}
                                 >
-                                    <Icon name={option.icon} size={14} color={isSelected ? option.color : colors.textSecondary} />
+                                    <Icon name={option.icon} size={14} color={isSelected ? option.color : palette.textMuted} />
                                     <Text style={[styles.kindChipText, isSelected && styles.kindChipTextSelected]}>{option.label}</Text>
                                 </Pressable>
                             );
@@ -246,12 +254,10 @@ function SuggestionCard({
 
             {suggestion.status === "open" ? (
                 <>
-                    <TextInput
+                    <TextField
                         value={reviewNote}
                         onChangeText={setReviewNote}
                         placeholder="Place name, or a note for a rejection"
-                        placeholderTextColor={colors.textSecondary}
-                        style={styles.input}
                         maxLength={280}
                     />
                     <View style={styles.row}>
@@ -262,23 +268,15 @@ function SuggestionCard({
             ) : (
                 <Action label="Reopen" onPress={() => onReview({ status: "open" }, "Reopened")} />
             )}
-        </View>
+        </Panel>
     );
 }
 
 export function Action({ label, onPress, danger = false }: { label: string; onPress: () => void; danger?: boolean }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => [styles.action, danger && styles.actionDanger, pressed && styles.pressed]}
-            accessibilityRole="button"
-        >
-            <Text style={[styles.actionText, danger && styles.actionTextDanger]}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} size="small" variant={danger ? "danger" : "secondary"} onPress={onPress} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         flex: 1,
         gap: 10,
@@ -288,24 +286,21 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     filter: {
+        gap: 0,
         flex: 1,
         alignItems: "center",
         paddingVertical: 8,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     filterSelected: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     filterText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     filterTextSelected: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     list: {
         gap: 10,
@@ -314,10 +309,6 @@ const styles = StyleSheet.create({
     card: {
         gap: 6,
         padding: 14,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     cardHeader: {
         flexDirection: "row",
@@ -326,22 +317,17 @@ const styles = StyleSheet.create({
     },
     kind: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     coords: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         fontVariant: ["tabular-nums"],
     },
-    note: {
-        color: colors.textPrimary,
-        fontSize: 14,
-        lineHeight: 19,
-    },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         lineHeight: 17,
     },
@@ -367,48 +353,17 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     kindChipText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     kindChipTextSelected: {
-        color: colors.textPrimary,
-    },
-    input: {
-        marginTop: 4,
-        color: colors.textPrimary,
-        fontSize: 14,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
-    },
-    action: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    actionDanger: {
-        borderColor: colors.blood,
-    },
-    actionText: {
-        color: colors.emberBright,
-        fontSize: 14,
-        fontWeight: "700",
-    },
-    actionTextDanger: {
-        color: colors.damage,
+        color: p.text,
     },
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

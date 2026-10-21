@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Animated, Easing, StyleSheet, Text } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, {
     Circle,
     Defs,
@@ -10,7 +10,9 @@ import Svg, {
     RadialGradient,
     Stop,
 } from "react-native-svg";
-import { colors } from "@/theme/colors";
+import Icon from "@/components/Icon/Icon";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { HIT_TIMING as T } from "./hitTiming";
 
 /**
@@ -30,7 +32,7 @@ export type HitEffect =
     | { id: number; kind: "slash"; target: Box; double?: boolean }
     | { id: number; kind: "burst"; target: Box; color: string }
     | { id: number; kind: "projectile"; from: Box; to: Box }
-    | { id: number; kind: "label"; target: Box; text: string; tone: LabelTone; color?: string };
+    | { id: number; kind: "label"; target: Box; text: string; tone: LabelTone; color?: string; defended?: number };
 
 /**
  * Damage taken (red), a critical hit (gold, bigger), a block (blue), health
@@ -102,6 +104,7 @@ export function HitEffectLayer({
                         text={effect.text}
                         tone={effect.tone}
                         color={effect.color}
+                        defended={effect.defended}
                         onDone={() => onDone(effect.id)}
                     />
                 ) : null,
@@ -325,6 +328,7 @@ function FloatingLabel({
     text,
     tone,
     color,
+    defended = 0,
     onDone,
 }: {
     target: Box;
@@ -332,8 +336,12 @@ function FloatingLabel({
     tone: LabelTone;
     /** Overrides the tone's colour, e.g. a status's own hue. */
     color?: string;
+    /** Stopped by the target's defense: a small shield and number under the damage. */
+    defended?: number;
     onDone: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const crit = tone === "crit";
     const [progress] = useState(() => new Animated.Value(0));
     const c = centre(target);
@@ -356,7 +364,8 @@ function FloatingLabel({
                 styles.damage,
                 {
                     left: c.x - 60,
-                    top: c.y - target.height * 0.35 - 20,
+                    // Centred where the old 40-high box was; the extra room is for the defense line.
+                    top: c.y - target.height * 0.35 - 28,
                     opacity: progress.interpolate({ inputRange: [0, 0.18, 1], outputRange: [0, 1, 0] }),
                     transform: [
                         {
@@ -388,46 +397,67 @@ function FloatingLabel({
             >
                 {text}
             </Text>
+            {defended > 0 && (
+                <View style={styles.defended}>
+                    <Icon name="shield" size={11} color={palette.textMuted} />
+                    <Text style={styles.defendedText}>{defended}</Text>
+                </View>
+            )}
         </Animated.View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // A fixed-width box centred on the target, so the number centres on it.
     damage: {
         position: "absolute",
         width: 120,
-        height: 40,
+        height: 56,
         alignItems: "center",
         justifyContent: "center",
     },
     damageText: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 20,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
         textShadowColor: "#000000",
         textShadowOffset: { width: 0, height: 2 },
         textShadowRadius: 3,
     },
     damageCrit: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 28,
     },
     guardText: {
-        color: "#9FD0FF",
+        color: p.game.guard,
         fontSize: 18,
     },
     barrierText: {
-        color: colors.barrierGradient[1],
+        color: p.game.barrierGradient[1],
         fontSize: 18,
     },
     healText: {
-        color: colors.toastSuccess,
+        color: p.heal,
+    },
+    defended: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+        marginTop: -2,
+    },
+    defendedText: {
+        color: p.textMuted,
+        fontSize: 12,
+        fontFamily: FONTS.bodyHeavy,
+        fontVariant: ["tabular-nums"],
+        textShadowColor: "#000000",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     statusText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-});
+}));

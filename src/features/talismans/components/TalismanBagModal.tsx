@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Pressable, Text, View, type LayoutChangeEvent } from "react-native";
 import SearchField from "@/components/SearchField/SearchField";
 import Modal from "@/components/Modal/Modal";
 import ItemEquipAction from "@/features/character/components/ItemEquipAction";
@@ -7,7 +7,8 @@ import ItemDetail from "@/features/inventory/components/ItemDetail";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import { RARITIES, rarityInfo, type Rarity } from "@/features/inventory/rarity";
 import { useInventory, useTalismanBag } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { magicPowerOf, TALISMAN_BAG_COLUMNS, TALISMAN_BAG_PAGE_SIZE } from "../talismans";
 
 const GRID_GAP = 6;
@@ -31,6 +32,8 @@ type TalismanBagModalProps = {
  * page, filter and search.
  */
 export default function TalismanBagModal({ onClose }: TalismanBagModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const inventory = useInventory();
     const { inventoryIds: bagIds, pages } = useTalismanBag();
     // Every talisman owned, in the bag or not.
@@ -119,7 +122,7 @@ export default function TalismanBagModal({ onClose }: TalismanBagModalProps) {
                     <View style={styles.rarities} accessibilityRole="tablist">
                         <RarityChip
                             label="All"
-                            color={colors.textPrimary}
+                            color={palette.text}
                             active={rarity === null}
                             onPress={() => filterRarity(null)}
                         />
@@ -204,6 +207,8 @@ function RarityChip({
     active: boolean;
     onPress: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <Pressable
             onPress={onPress}
@@ -211,7 +216,7 @@ function RarityChip({
                 styles.chip,
                 active && {
                     borderColor: color,
-                    backgroundColor: colors.surfaceRaised,
+                    backgroundColor: palette.surfaceAlt,
                 },
                 pressed && styles.pressed,
             ]}
@@ -220,7 +225,7 @@ function RarityChip({
             accessibilityLabel={`${label} talismans`}
         >
             <Text
-                style={[styles.chipLabel, { color: active ? color : colors.textSecondary }]}
+                style={[styles.chipLabel, { color: active ? color : palette.textMuted }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.8}
@@ -240,6 +245,7 @@ function PageButton({
     disabled: boolean;
     onPress: () => void;
 }) {
+    const styles = useStyles();
     return (
         <Pressable
             onPress={onPress}
@@ -259,7 +265,7 @@ function PageButton({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     body: {
         flex: 1,
         gap: 10,
@@ -271,13 +277,13 @@ const styles = StyleSheet.create({
         marginTop: -4,
     },
     summaryText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     magicPower: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     rarities: {
@@ -291,11 +297,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 2,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     chipLabel: {
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     pressed: {
         transform: [{ scale: 0.94 }],
@@ -320,7 +326,7 @@ const styles = StyleSheet.create({
     noResults: {
         paddingTop: 24,
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         fontStyle: "italic",
     },
@@ -337,24 +343,24 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: colors.ember,
-        backgroundColor: colors.surfaceRaised,
+        borderColor: p.ember,
+        backgroundColor: p.surfaceAlt,
     },
     pageButtonDisabled: {
-        borderColor: colors.border,
+        borderColor: p.outline,
         opacity: 0.4,
     },
     pageButtonIcon: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 22,
         lineHeight: 24,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     pageLabel: {
         minWidth: 92,
         textAlign: "center",
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

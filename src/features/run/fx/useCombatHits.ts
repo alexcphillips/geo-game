@@ -26,6 +26,8 @@ export type Move =
           blocked: number;
           /** Soaked by barrier. */
           absorbed: number;
+          /** Stopped by the target's defense. */
+          defended: number;
           crit: boolean;
           burstColor: string;
       }
@@ -36,6 +38,7 @@ export type Move =
           dealt: number;
           blocked: number;
           absorbed: number;
+          defended: number;
           color: string;
       }
     | { kind: "heal"; target: Side; amount: number }
@@ -54,7 +57,7 @@ export type Move =
     /** Just words over a combatant: a status taken or lost, a skipped turn. */
     | { kind: "label"; target: Side; text: string; tone: LabelTone; color?: string };
 
-const GUARD_COLOR = "#9FD0FF";
+const GUARD_COLOR = colors.guard;
 const BARRIER_COLOR = colors.barrierGradient[0];
 const HEAL_COLOR = colors.toastSuccess;
 
@@ -151,7 +154,7 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
 
     /** Damage landing on a side: guard and barrier spent, number popped, health drained. */
     const land = useCallback(
-        async (target: Side, dealt: number, blocked: number, absorbed: number, color: string, tone: LabelTone) => {
+        async (target: Side, dealt: number, blocked: number, absorbed: number, defended: number, color: string, tone: LabelTone) => {
             if (blocked > 0) setGuardFor(target, guardRef.current[target] - blocked);
             if (absorbed > 0) setBarrierFor(target, barrierRef.current[target] - absorbed);
             const box = await boxOf(target);
@@ -160,7 +163,13 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
                 const soak = blocked > 0 ? { color: GUARD_COLOR, text: "Blocked", tone: "guard" as const } : { color: BARRIER_COLOR, text: "Absorbed", tone: "barrier" as const };
                 const isSoaked = dealt === 0 && blocked + absorbed > 0;
                 add({ kind: "burst", target: box, color: isSoaked ? soak.color : color });
-                add({ kind: "label", target: box, text: isSoaked ? soak.text : `−${dealt}`, tone: isSoaked ? soak.tone : tone });
+                add({
+                    kind: "label",
+                    target: box,
+                    text: isSoaked ? soak.text : `−${dealt}`,
+                    tone: isSoaked ? soak.tone : tone,
+                    defended,
+                });
             }
             handle(target)?.react();
             setHealthFor(target, healthRef.current[target] - dealt);
@@ -208,7 +217,7 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
                     return;
                 }
                 case "hit":
-                    await land(move.target, move.dealt, move.blocked, move.absorbed, move.color, "damage");
+                    await land(move.target, move.dealt, move.blocked, move.absorbed, move.defended, move.color, "damage");
                     await wait(SHORT_SETTLE_MS);
                     return;
                 case "attack": {
@@ -235,6 +244,7 @@ export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumb
                         move.dealt,
                         move.blocked,
                         move.absorbed,
+                        move.defended,
                         move.burstColor,
                         move.crit ? "crit" : "damage",
                     );

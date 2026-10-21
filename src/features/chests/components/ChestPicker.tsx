@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint } from "@/components/Text/Text";
 import RewardGrid from "@/features/inventory/components/RewardGrid";
 import type { InventoryItem } from "@/features/inventory/inventoryItems";
 import { formatCoins } from "@/features/market/market";
@@ -10,7 +11,8 @@ import { useCoins } from "@/features/player/usePlayer";
 import OutcomeButton from "@/features/run/components/OutcomeButton";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoChestOffer, GeoChestSelection } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { pendingChestActions } from "@/features/inbox/inboxStore";
 import { chestsApi } from "../chestsApi";
 import { CHEST_TIER_COLORS } from "../chestTiers";
@@ -33,6 +35,8 @@ export default function ChestPicker({
     onOpened: (selection: GeoChestSelection) => void;
     onInspect?: (item: InventoryItem) => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const coins = useCoins();
     const refreshPlayer = usePlayerStore((state) => state.refresh);
     const [focused, setFocused] = useState<number | null>(null);
@@ -44,7 +48,7 @@ export default function ChestPicker({
             <View style={styles.result}>
                 {chest && <ChestHeading chest={chest} opened />}
                 <RewardGrid items={selection.opened.items} onInspect={onInspect} />
-                {onInspect && <Text style={styles.hint}>Hold a reward for details</Text>}
+                {onInspect && <Hint>Hold a reward for details</Hint>}
             </View>
         );
     }
@@ -75,11 +79,11 @@ export default function ChestPicker({
                         {shortBy > 0 ? ` · ${formatCoins(shortBy)} short` : ""}
                     </Text>
                 )}
-                <Text style={styles.hint}>Opening this one leaves the others behind.</Text>
+                <Hint>Opening this one leaves the others behind.</Hint>
                 <View style={styles.actions}>
                     <OutcomeButton label="Back" onPress={() => setFocused(null)} />
                     {isOpening ? (
-                        <ActivityIndicator color={colors.emberBright} style={styles.spinner} />
+                        <ActivityIndicator color={palette.ember} style={styles.spinner} />
                     ) : shortBy > 0 ? (
                         <Text style={styles.cantOpen}>Not enough coins</Text>
                     ) : (
@@ -108,6 +112,7 @@ export default function ChestPicker({
 }
 
 function ChestHeading({ chest, opened = false }: { chest: GeoChestOffer; opened?: boolean }) {
+    const styles = useStyles();
     const color = CHEST_TIER_COLORS[chest.tier];
     const icon = opened ? "open-treasure-chest" : chest.cost === 0 ? "chest" : "locked-chest";
     return (
@@ -118,15 +123,15 @@ function ChestHeading({ chest, opened = false }: { chest: GeoChestOffer; opened?
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     choose: {
         alignItems: "center",
         gap: 8,
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
@@ -146,17 +151,12 @@ const styles = StyleSheet.create({
     },
     headingName: {
         fontSize: 16,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
     },
     balance: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         fontVariant: ["tabular-nums"],
-    },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        textAlign: "center",
     },
     actions: {
         flexDirection: "row",
@@ -168,12 +168,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     cantOpen: {
-        color: colors.damage,
+        color: p.game.damage,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     result: {
         alignItems: "center",
         gap: 8,
     },
-});
+}));

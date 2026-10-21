@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
 import Modal from "@/components/Modal/Modal";
 import { showToast } from "@/components/Toast/toastStore";
+import { Hint } from "@/components/Text/Text";
 import BuildModal from "@/features/farming/components/BuildModal";
 import ContestsModal from "@/features/farming/components/ContestsModal";
 import FarmGrid from "@/features/farming/components/FarmGrid";
@@ -15,12 +16,12 @@ import { farmingApi } from "@/features/farming/farmingApi";
 import {
     cropIcon,
     cropLine,
+    footprintTiles,
     fortuneMultiplier,
+    GROUND_FACT,
     pestIcon,
     SHAPE_HINT,
-    SOIL_INFO,
     shapeTiles,
-    structureIcon,
     untilText,
     WEATHER_INFO,
 } from "@/features/farming/farmText";
@@ -36,22 +37,24 @@ import RunHand from "@/features/run/components/RunHand";
 import RunScreen from "@/features/run/components/RunScreen";
 import { toErrorMessage } from "@/lib/api";
 import {
-    GEO_FARM_MAX_FERTILITY,
-    GEO_FARM_MAX_MOISTURE,
+    GEO_HAND_SIZE,
     type GeoCropView,
     type GeoFarmAction,
     type GeoFarmHandCard,
+    type GeoFarmTile,
     type GeoFarmView,
     type GeoItemView,
     type GeoPestView,
     type GeoStructureView,
 } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, MoodProvider, useTheme, inked } from "@/theme/theme";
 
 /**
  * The farm: one grid on a real clock. Every 12h it takes a turn on its own
- * (crops grow, weather lands, pests move) and Labor refills for watering,
- * harvesting and farming cards. After a couple of turns unvisited it waits
+ * (crops grow, weather lands, pests move) and Labor refills for harvesting,
+ * pest control and farming cards. Nobody waters: the sky (and Ponds, Wells
+ * and Boggy soil) sets each tile's ground. After a couple of turns unvisited it waits
  * for you. The server plays the turns when the farm is next looked at.
  *
  * Opened as `/farm?place=…&latitude=…&longitude=…` from a farming place,
@@ -61,8 +64,19 @@ import { colors } from "@/theme/colors";
  * counts as being at a place. The server runs every rule.
  */
 export default function FarmScreen() {
+    // The farm is the cosiest place in the game: always day.
+    return (
+        <MoodProvider mood="day">
+            <FarmScreenContent />
+        </MoodProvider>
+    );
+}
+
+function FarmScreenContent() {
+    const styles = useStyles();
     const params = useLocalSearchParams<{ place?: string; latitude?: string; longitude?: string }>();
     const isFreeCamera = useAdminSettingsStore((state) => state.isFreeCamera);
+    const isAdmin = usePlayerStore((state) => state.me?.player.role === "admin");
     const atPlace = Boolean(params.place) || isFreeCamera;
     // Friends see real farming only, not an admin testing from anywhere.
     useReportActivity(params.place ? "skilling" : "exploring", params.place ? "farming" : null);
@@ -78,7 +92,10 @@ export default function FarmScreen() {
     const [aimAt, setAimAt] = useState<number | null>(null);
     const [planning, setPlanning] = useState<number | null>(null);
     const [isLabOpen, setIsLabOpen] = useState(false);
-    const [isBuildOpen, setIsBuildOpen] = useState(false);
+    /** The Build list: open for a tile, or for picking one after (null). */
+    const [buildFor, setBuildFor] = useState<{ tile: number | null } | null>(null);
+    /** A structure picked from the Build list, waiting for the tile to centre it on. */
+    const [building, setBuilding] = useState<string | null>(null);
     const [isOrdersOpen, setIsOrdersOpen] = useState(false);
     const [isContestsOpen, setIsContestsOpen] = useState(false);
     const [isPesthunterOpen, setIsPesthunterOpen] = useState(false);
@@ -153,6 +170,24 @@ export default function FarmScreen() {
         [busy, items, refreshPlayer],
     );
 
+    /** Playtesting: an admin's farm takes its next cycle now. */
+    const adminNext = useCallback(async () => {
+        if (busy) return;
+        setBusy(true);
+        try {
+            const next = await farmingApi.adminNextCycle();
+            setFarm(next);
+            const gains = next.gained.map((gain) => `+${gain.quantity} ${items[gain.itemId]?.name ?? gain.itemId}`);
+            if (next.xpGained > 0) gains.push(`+${next.xpGained} Farming XP`);
+            showToast(gains.length > 0 ? gains.join(" · ") : `Cycle ${next.turn}`, "success");
+            if (next.gained.length > 0) void refreshPlayer();
+        } catch (error) {
+            showToast(toErrorMessage(error), "error");
+        } finally {
+            setBusy(false);
+        }
+    }, [busy, items, refreshPlayer]);
+
     const research = useCallback(
         async (mutationId: string) => {
             if (busy) return;
@@ -178,10 +213,12 @@ export default function FarmScreen() {
     );
     const pestTypes = useMemo(() => Object.fromEntries((farm?.pestTypes ?? []).map((pest) => [pest.id, pest])), [farm?.pestTypes]);
     const hand = useMemo(() => (farm ? handItems(farm, items) : []), [farm, items]);
-    const preview = useMemo(
-        () => (aiming && aimAt !== null && farm ? shapeTiles(aiming.shape, aimAt, farm.size) : new Set<number>()),
-        [aiming, aimAt, farm],
-    );
+    const preview = useMemo(() => {
+        if (aimAt === null || !farm) return new Set<number>();
+        if (aiming) return shapeTiles(aiming.shape, aimAt, farm.size);
+        const structure = building ? structureTypes[building] : undefined;
+        return structure ? footprintTiles(structure.size, aimAt, farm.size) : new Set<number>();
+    }, [aiming, aimAt, building, farm, structureTypes]);
 
     if (!farm) {
         return (
@@ -201,6 +238,12 @@ export default function FarmScreen() {
     }
 
     const pressTile = (index: number) => {
+        if (building) {
+            setBuilding(null);
+            setAimAt(null);
+            void act({ type: "place", tile: index, structureId: building });
+            return;
+        }
         if (aiming) {
             setAiming(null);
             setAimAt(null);
@@ -245,7 +288,7 @@ export default function FarmScreen() {
                             selected={selected}
                             preview={preview}
                             onPress={pressTile}
-                            onPressIn={aiming ? setAimAt : undefined}
+                            onPressIn={aiming || building ? setAimAt : undefined}
                         />
                         <Text style={styles.log} numberOfLines={logOpen ? undefined : 3} onPress={() => setLogOpen((open) => !open)}>
                             {farm.log.length > 0
@@ -257,12 +300,23 @@ export default function FarmScreen() {
                     </ScrollView>
                 }
                 turnOrder={
-                    aiming ? (
-                        <Actions hint={`${SHAPE_HINT[aiming.shape]} for ${items[aiming.itemId]?.name ?? "the card"} · ${aiming.labor} Labor`}>
+                    building ? (
+                        <Actions hint={buildHint(structureTypes[building])}>
+                            <OutcomeButton
+                                label="Cancel"
+                                onPress={() => {
+                                    setBuilding(null);
+                                    setAimAt(null);
+                                }}
+                            />
+                        </Actions>
+                    ) : aiming ? (
+                        <Actions hint={`${SHAPE_HINT[aiming.shape]} for ${items[aiming.itemId]?.name ?? "the card"}`}>
                             <OutcomeButton label="Cancel" onPress={() => setAiming(null)} />
                         </Actions>
                     ) : tile ? (
                         <TilePanel
+                            key={selected}
                             farm={farm}
                             index={selected!}
                             crops={crops}
@@ -274,6 +328,7 @@ export default function FarmScreen() {
                             act={act}
                             onPlan={() => setPlanning(selected)}
                             onOpenShrine={() => setShrineTile(selected)}
+                            onBuildHere={() => setBuildFor({ tile: selected })}
                             onClose={() => setSelected(null)}
                         />
                     ) : (
@@ -282,10 +337,11 @@ export default function FarmScreen() {
                             atPlace={atPlace}
                             act={act}
                             onOpenLab={() => setIsLabOpen(true)}
-                            onOpenBuild={() => setIsBuildOpen(true)}
+                            onOpenBuild={() => setBuildFor({ tile: null })}
                             onOpenOrders={() => setIsOrdersOpen(true)}
                             onOpenContests={() => setIsContestsOpen(true)}
                             onOpenPesthunter={() => setIsPesthunterOpen(true)}
+                            onAdminNext={isAdmin ? () => void adminNext() : undefined}
                         />
                     )
                 }
@@ -295,7 +351,7 @@ export default function FarmScreen() {
                         disabled={!atPlace || busy}
                         onPlay={atPlace ? playCard : undefined}
                         onInspect={setInspected}
-                        cornerMark={(card) => <LaborMark labor={farm.hand.find((entry) => entry.inventoryId === card.id)?.labor} />}
+                        cornerMark={(card) => <PlayedMark played={farm.hand.find((entry) => entry.inventoryId === card.id)?.played} />}
                     />
                 }
             />
@@ -324,11 +380,25 @@ export default function FarmScreen() {
                 />
             )}
 
-            {isBuildOpen && (
+            {buildFor && (
                 <BuildModal
-                    held={Object.fromEntries(farm.structureKit.map((kit) => [kit.itemId, kit.quantity]))}
-                    onCrafted={() => void farmingApi.get().then(setFarm).catch(() => {})}
-                    onClose={() => setIsBuildOpen(false)}
+                    farm={farm}
+                    structureTypes={structureTypes}
+                    items={items}
+                    held={held}
+                    canBuild={atPlace && !busy}
+                    tile={buildFor.tile}
+                    onBuild={(structureId) => {
+                        setBuildFor(null);
+                        setSelected(null);
+                        if (buildFor.tile !== null) {
+                            void act({ type: "place", tile: buildFor.tile, structureId });
+                            return;
+                        }
+                        setAiming(null);
+                        setBuilding(structureId);
+                    }}
+                    onClose={() => setBuildFor(null)}
                 />
             )}
 
@@ -357,6 +427,24 @@ export default function FarmScreen() {
 }
 
 /** The farming hand, drawn like the inventory draws cards. */
+/** Mutation setups holding on an empty tile: each cycle kept together makes it likelier. */
+function setupText(tile: GeoFarmTile, crops: Record<string, GeoCropView>): string {
+    if (tile.setups.length === 0) return "";
+    const lines = tile.setups.map(
+        (setup) => `${crops[setup.mutationId]?.name ?? "A mutation"} setup held ${setup.cycles} cycle${setup.cycles === 1 ? "" : "s"}: likelier next cycle if it holds`,
+    );
+    return ` · ${lines.join(" · ")}`;
+}
+
+/** What to tap while placing a structure picked from the Build list. */
+function buildHint(structure: GeoStructureView | undefined): string {
+    if (!structure) return "Tap a tile to build on.";
+    const { width, height } = structure.size;
+    return width * height > 1
+        ? `Tap the middle tile for the ${structure.name} (${width}×${height}). Every tile under it must be yours and clear.`
+        : `Tap an empty tile for the ${structure.name}.`;
+}
+
 function handItems(farm: GeoFarmView, items: Record<string, GeoItemView>): InventoryItem[] {
     return farm.hand.flatMap((card) => {
         const def = items[card.itemId];
@@ -366,15 +454,17 @@ function handItems(farm: GeoFarmView, items: Record<string, GeoItemView>): Inven
     });
 }
 
-/** Cycle, Labor, the next cycle's countdown and the forecast, over the grid. */
+/** Cycle, card plays left, the next cycle's countdown and the forecast, over the grid. */
 function FarmStatus({ farm, now }: { farm: GeoFarmView; now: number }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.status}>
             <Text style={styles.statusText}>
-                Cycle {farm.turn} · Labor{" "}
-                <Text style={styles.labor}>
-                    {"●".repeat(farm.labor)}
-                    <Text style={styles.laborSpent}>{"○".repeat(Math.max(0, farm.laborPerTurn - farm.labor))}</Text>
+                Cycle {farm.turn} · Plays{" "}
+                <Text style={styles.plays}>
+                    {"●".repeat(farm.playsLeft)}
+                    <Text style={styles.playsSpent}>{"○".repeat(Math.max(0, GEO_HAND_SIZE - farm.playsLeft))}</Text>
                 </Text>{" "}
                 · Next cycle {untilText(farm.nextTurnAt, now)}
                 {farm.fortune > 0 && ` · Fortune ${farm.fortune} (×${fortuneMultiplier(farm.fortune)} crops)`}
@@ -383,7 +473,7 @@ function FarmStatus({ farm, now }: { farm: GeoFarmView; now: number }) {
                 <Text style={[styles.weatherText, styles.weatherLater]}>Weather:</Text>
                 {farm.forecast.map((weather, i) => (
                     <View key={i} style={styles.weather}>
-                        <Icon name={WEATHER_INFO[weather].icon} size={14} color={i === 0 ? colors.textPrimary : colors.textSecondary} />
+                        <Icon name={WEATHER_INFO[weather].icon} size={14} color={i === 0 ? palette.text : palette.textMuted} />
                         <Text style={[styles.weatherText, i > 0 && styles.weatherLater]}>{WEATHER_INFO[weather].label}</Text>
                     </View>
                 ))}
@@ -408,6 +498,8 @@ function EventBanner({
     canBuy: boolean;
     act: (action: GeoFarmAction) => Promise<void>;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { active, next } = farm.events;
     const global = farm.global;
     const blessings = farm.blessings;
@@ -416,7 +508,7 @@ function EventBanner({
         <View style={styles.events}>
             {blessings.map((blessing) => (
                 <View key={blessing.id} style={styles.event}>
-                    <Icon name="stone-tablet" size={18} color={blessing.curse ? colors.pest : colors.cropMutant} />
+                    <Icon name="stone-tablet" size={18} color={blessing.curse ? palette.game.pest : palette.game.cropMutant} />
                     <Text style={[styles.eventText, styles.hint]}>
                         <Text style={styles.eventName}>{blessing.name}</Text> · {blessing.turnsLeft} cycle{blessing.turnsLeft === 1 ? "" : "s"} left.{" "}
                         {blessing.description}
@@ -425,7 +517,7 @@ function EventBanner({
             ))}
             {global && (
                 <View style={styles.event}>
-                    <Icon name={eventIcon(global.event.icon)} size={18} color={global.active ? colors.cropMutant : colors.textSecondary} />
+                    <Icon name={eventIcon(global.event.icon)} size={18} color={global.active ? palette.game.cropMutant : palette.textMuted} />
                     <Text style={[styles.eventText, styles.hint]}>
                         <Text style={styles.eventName}>{global.event.name}</Text>
                         {global.active ? " everywhere now, until " : " everywhere, from "}
@@ -436,10 +528,10 @@ function EventBanner({
             )}
             {active && (
                 <View style={styles.event}>
-                    <Icon name={eventIcon(active.icon)} size={18} color={colors.cropRipe} />
+                    <Icon name={eventIcon(active.icon)} size={18} color={palette.game.cropRipe} />
                     <View style={styles.eventText}>
                         <Text style={styles.eventName}>
-                            {active.name} <Text style={styles.hint}>{active.description}</Text>
+                            {active.name} <Hint>{active.description}</Hint>
                         </Text>
                         {active.offers.length > 0 && (
                             <View style={styles.chips}>
@@ -460,7 +552,7 @@ function EventBanner({
             )}
             {next && (
                 <View style={styles.event}>
-                    <Icon name={eventIcon(next.icon)} size={18} color={colors.textSecondary} />
+                    <Icon name={eventIcon(next.icon)} size={18} color={palette.textMuted} />
                     <Text style={[styles.eventText, styles.hint]}>
                         Next cycle: <Text style={styles.eventName}>{next.name}</Text>. {next.description}
                     </Text>
@@ -485,6 +577,7 @@ function TurnActions({
     onOpenOrders,
     onOpenContests,
     onOpenPesthunter,
+    onAdminNext,
 }: {
     farm: GeoFarmView;
     atPlace: boolean;
@@ -494,6 +587,8 @@ function TurnActions({
     onOpenOrders: () => void;
     onOpenContests: () => void;
     onOpenPesthunter: () => void;
+    /** Admins only, for playtesting. */
+    onAdminNext?: () => void;
 }) {
     const next = farm.forecast[0];
     const ready = farm.lab.ready.length;
@@ -505,19 +600,24 @@ function TurnActions({
             <OutcomeButton label="Orders" onPress={onOpenOrders} />
             <OutcomeButton label="Contests" onPress={onOpenContests} />
             <OutcomeButton label={caged > 0 ? `Pesthunter (${caged})` : "Pesthunter"} onPress={onOpenPesthunter} />
+            {onAdminNext && <OutcomeButton label="admin: Next" onPress={onAdminNext} />}
         </>
     );
     if (!atPlace) return <Actions hint="Work your farm at any farming place.">{lab}</Actions>;
+    const ripe = farm.tiles.filter((tile) => tile.crop?.ripe).length;
     const hint = [
         next ? `Next: ${WEATHER_INFO[next].label}. ${WEATHER_INFO[next].effect}` : "",
-        farm.labor > 0 ? `${farm.labor} Labor left; it refills next cycle, so spend it.` : "",
+        farm.playsLeft > 0 ? `${farm.playsLeft} card play${farm.playsLeft === 1 ? "" : "s"} left; each card plays once a cycle, and the hand is ready again next cycle.` : "",
         farm.pests.length > 0 ? `${farm.pests.length} pest${farm.pests.length === 1 ? "" : "s"} on the farm: red rims show what they'll hit.` : "",
         `The farm moves on its own, and waits for you after ${farm.maxTurnsAway} cycles away.`,
     ]
         .filter(Boolean)
         .join(" ");
     return (
-        <Actions hint={hint}>{lab}</Actions>
+        <Actions hint={hint}>
+            {ripe > 0 && <OutcomeButton label={`Harvest all (${ripe})`} onPress={() => void act({ type: "harvest-all" })} />}
+            {lab}
+        </Actions>
     );
 }
 
@@ -533,63 +633,80 @@ type TilePanelProps = {
     act: (action: GeoFarmAction) => Promise<void>;
     onPlan: () => void;
     onOpenShrine: () => void;
+    /** Opens the Build list for this tile. */
+    onBuildHere: () => void;
     onClose: () => void;
 };
 
 /** A picked tile: what's on it, and every plain action it allows. */
-function TilePanel({ farm, index, crops, pestTypes, structureTypes, held, items, atPlace, act, onPlan, onOpenShrine, onClose }: TilePanelProps) {
+function TilePanel({ farm, index, crops, pestTypes, structureTypes, held, items, atPlace, act, onPlan, onOpenShrine, onBuildHere, onClose }: TilePanelProps) {
+    const styles = useStyles();
     const tile = farm.tiles[index]!;
+    // Demolishing gives nothing back, so it takes a second tap.
+    const [confirming, setConfirming] = useState(false);
+    const demolish = (name: string) =>
+        confirming ? (
+            <Chip key="demolish" label={`Tear down the ${name}: nothing back`} primary onPress={() => void act({ type: "demolish", tile: index })} />
+        ) : (
+            <Chip key="demolish" label="Demolish" onPress={() => setConfirming(true)} />
+        );
+    // A tile covered by a multi-tile structure acts as the tile it stands on (the server resolves it too).
+    const standing = (tile.partOf !== null ? farm.tiles[tile.partOf]?.structure : tile.structure) ?? null;
+    const roofName = tile.roof ? (structureTypes[tile.roof.structureId]?.name ?? "Greenhouse") : null;
     const where = `Tile ${tile.x + 1}, ${tile.y + 1}`;
     const plan = tile.blueprint ? crops[tile.blueprint]?.name : null;
     const buttons: ReactNode[] = [];
 
     if (!tile.owned) {
         if (atPlace && tile.unlockable && farm.unlockCost !== null) {
-            buttons.push(<Chip key="buy" label={`Buy · ${farm.unlockCost} coins`} onPress={() => void act({ type: "unlock", tile: index })} />);
+            const { coins, compost } = farm.unlockCost;
+            const compostName = items[farm.compostItemId]?.name ?? "Compost";
+            buttons.push(
+                <Chip
+                    key="buy"
+                    label={`Buy · ${coins} coins${compost > 0 ? ` + ${compost} ${compostName} (${held[farm.compostItemId] ?? 0})` : ""}`}
+                    onPress={() => void act({ type: "unlock", tile: index })}
+                />,
+            );
         }
-    } else if (atPlace && tile.structure) {
-        const kind = structureTypes[tile.structure.structureId]?.kind;
+    } else if (atPlace && standing) {
+        const kind = structureTypes[standing.structureId]?.kind;
         if (kind === "jukebox") {
             for (const pest of Object.values(pestTypes)) {
                 buttons.push(
                     <Chip
                         key={`tune-${pest.id}`}
                         label={`♪ ${pest.name}`}
-                        primary={tile.structure.tune === pest.id}
+                        primary={standing.tune === pest.id}
                         onPress={() => void act({ type: "tune", tile: index, pestId: pest.id })}
                     />,
                 );
             }
-            if (tile.structure.tune) buttons.push(<Chip key="tune-off" label="Quiet" onPress={() => void act({ type: "tune", tile: index, pestId: null })} />);
+            if (standing.tune) buttons.push(<Chip key="tune-off" label="Quiet" onPress={() => void act({ type: "tune", tile: index, pestId: null })} />);
         }
         if (kind === "shrine") buttons.push(<Chip key="offer" label="Make an offering" icon="stone-tablet" primary onPress={onOpenShrine} />);
         if (kind === "portal") {
             buttons.push(
                 <Text key="portal" style={styles.hint}>
-                    {tile.structure.open ? "Torn open: elite pests come through on the next cycle." : "Shut. A Tear the Veil card opens it."}
+                    {standing.open ? "Torn open: elite pests come through on the next cycle." : "Shut. A Tear the Veil card opens it."}
                 </Text>,
             );
         }
-        if (kind === "cage" && tile.structure.caged) {
+        if (kind === "cage" && standing.caged) {
             buttons.push(<Chip key="release" label="Let out" onPress={() => void act({ type: "release", tile: index })} />);
         }
-        buttons.push(<Chip key="pickup" label="Pick up" onPress={() => void act({ type: "pickup", tile: index })} />);
+        buttons.push(demolish(structureTypes[standing.structureId]?.name ?? "structure"));
     } else if (atPlace && tile.waste) {
-        buttons.push(<Chip key="scrub" label="Scrub · 3" icon="gas-mask" primary onPress={() => void act({ type: "scrub", tile: index })} />);
+        buttons.push(
+            <Text key="waste" style={styles.hint}>
+                A Hazmat Scrub card cleans it.
+            </Text>,
+        );
     } else if (atPlace) {
+        // Nothing is built under a roof; a roof (a Greenhouse) can go over a crop.
+        const buildable = farm.buildList.some((id) => !tile.crop || structureTypes[id]?.kind === "greenhouse");
+        if (!tile.roof && buildable) buttons.push(<Chip key="build" label="Build here…" icon="spanner" onPress={onBuildHere} />);
         if (!tile.crop) {
-            for (const kit of farm.structureKit) {
-                const structure = structureTypes[kit.structureId];
-                if (!structure) continue;
-                buttons.push(
-                    <Chip
-                        key={`build-${kit.structureId}`}
-                        label={`Build ${structure.name} (${kit.quantity})`}
-                        icon={structureIcon(structure.icon)}
-                        onPress={() => void act({ type: "place", tile: index, itemId: kit.itemId })}
-                    />,
-                );
-            }
             // Seeds plant straight from the inventory.
             const plantable = Object.values(crops).filter((crop) => crop.seedItemId && (held[crop.seedItemId] ?? 0) > 0);
             for (const crop of plantable) {
@@ -606,41 +723,19 @@ function TilePanel({ farm, index, crops, pestTypes, structureTypes, held, items,
             }
             if (plantable.length === 0) buttons.push(<Text key="noseeds" style={styles.hint}>No seeds to plant. The Farmer sells them.</Text>);
         }
-        if (tile.crop?.ripe) buttons.push(<Chip key="harvest" label="Harvest · 1" primary onPress={() => void act({ type: "harvest", tile: index })} />);
-        if (tile.moisture < GEO_FARM_MAX_MOISTURE) {
-            const fromWell = farm.tiles.some((entry) => (entry.structure?.water ?? 0) > 0);
-            buttons.push(
-                <Chip key="water" label={fromWell ? "Water · Well" : "Water · 1"} icon="watering-can" onPress={() => void act({ type: "water", tile: index })} />,
-            );
-        }
-        if (tile.crop) buttons.push(<Chip key="clear" label="Clear · 1" onPress={() => void act({ type: "clear", tile: index })} />);
-        for (const amendment of farm.amendments) {
-            const have = held[amendment.itemId] ?? 0;
-            if (have === 0 || tile.soil === amendment.soil) continue;
-            buttons.push(
-                <Chip
-                    key={`amend-${amendment.itemId}`}
-                    label={`${items[amendment.itemId]?.name ?? amendment.itemId} (${have})`}
-                    onPress={() => void act({ type: "amend", tile: index, itemId: amendment.itemId })}
-                />,
-            );
-        }
+        if (tile.crop?.ripe) buttons.push(<Chip key="harvest" label="Harvest" primary onPress={() => void act({ type: "harvest", tile: index })} />);
+        if (tile.crop) buttons.push(<Chip key="clear" label="Clear" onPress={() => void act({ type: "clear", tile: index })} />);
+        if (roofName) buttons.push(demolish(roofName));
     }
     if (atPlace && tile.owned && farm.pests.some((pest) => pest.tile === index)) {
         if (hasEmptyCageBy(farm, index, structureTypes)) {
-            buttons.unshift(<Chip key="cage" label="Cage · 2" icon="cage" onPress={() => void act({ type: "cage", tile: index })} />);
+            buttons.unshift(<Chip key="cage" label="Cage" icon="cage" onPress={() => void act({ type: "cage", tile: index })} />);
         }
-        buttons.unshift(<Chip key="swat" label="Swat · 2" icon="bug-net" primary onPress={() => void act({ type: "swat", tile: index })} />);
     }
     buttons.push(<Chip key="plan" label={plan ? `Plan: ${plan}` : "Plan…"} onPress={onPlan} />);
 
-    const soil = tile.soilOverlay
-        ? ` · ${SOIL_INFO[tile.soilOverlay.soil].label} for ${tile.soilOverlay.turnsLeft} cycle${tile.soilOverlay.turnsLeft === 1 ? "" : "s"}`
-        : tile.soil !== "normal"
-          ? ` · ${SOIL_INFO[tile.soil].label} soil`
-          : "";
     const facts = tile.owned
-        ? `water ${tile.moisture}/${GEO_FARM_MAX_MOISTURE} · fertility ${tile.fertility}/${GEO_FARM_MAX_FERTILITY}${tile.soakTurns > 0 ? ` · soaked ${tile.soakTurns}` : ""}${soil}`
+        ? `${GROUND_FACT[tile.ground]}${roofName ? " · under glass" : ""}`
         : tile.unlockable
           ? "Locked · can be bought"
           : "Locked · buy a tile next to it first";
@@ -659,14 +754,14 @@ function TilePanel({ farm, index, crops, pestTypes, structureTypes, held, items,
                 <Text style={styles.cropLine}>
                     {tile.waste
                         ? "Nuclear waste: nothing grows here, and it may spread. Mutations stir beside it."
-                        : tile.structure
-                        ? structureLine(tile.structure, structureTypes, pestTypes)
-                        : cropLine(tile, tile.crop ? (crops[tile.crop.cropId]?.name ?? "crop") : "")}
+                        : standing
+                        ? structureLine(standing, structureTypes, pestTypes)
+                        : `${cropLine(tile, tile.crop ? (crops[tile.crop.cropId]?.name ?? "crop") : "")}${roofName ? ` · under the ${roofName}: no weather, pests or mutations` : ""}${setupText(tile, crops)}`}
                 </Text>
             )}
             <PestLines farm={farm} index={index} pestTypes={pestTypes} />
             <View style={styles.chips}>{buttons}</View>
-            {atPlace && tile.owned && <Text style={styles.hint}>Numbers are Labor. Planting is free.</Text>}
+            {atPlace && tile.owned && <Hint>Planting, harvesting and clearing are free; cards play from your hand.</Hint>}
         </View>
     );
 }
@@ -686,9 +781,7 @@ function structureLine(
         case "cage":
             return `${name} · ${structure.caged ? `holds a ${pestName(structure.caged)}` : "empty"}`;
         case "compost":
-            return `${name} · ${structure.compost} compost`;
-        case "well":
-            return `${name} · ${structure.water} water stored`;
+            return `${name} · ${structure.compost}/${type.capacity ?? "?"} harvests and clears toward the next Compost`;
         default:
             return type ? `${name} · ${type.description}` : name;
     }
@@ -710,6 +803,8 @@ function hasEmptyCageBy(farm: GeoFarmView, index: number, structureTypes: Record
 
 /** The pests on a tile and what each will do, then any pest elsewhere coming for it. */
 function PestLines({ farm, index, pestTypes }: { farm: GeoFarmView; index: number; pestTypes: Record<string, GeoPestView> }) {
+    const palette = useTheme();
+    const styles = useStyles();
     const here = farm.pests.filter((pest) => pest.tile === index);
     const coming = farm.pests.filter((pest) => pest.tile !== index && pest.intent.tile === index && pest.intent.kind !== "move");
     const trap = farm.tiles[index]?.trap;
@@ -719,7 +814,7 @@ function PestLines({ farm, index, pestTypes }: { farm: GeoFarmView; index: numbe
         <View style={styles.pestLines}>
             {here.map((pest) => (
                 <View key={pest.id} style={styles.pestLine}>
-                    <Icon name={pestIcon(pestTypes[pest.pestId]?.icon ?? "")} size={14} color={colors.pest} />
+                    <Icon name={pestIcon(pestTypes[pest.pestId]?.icon ?? "")} size={14} color={palette.game.pest} />
                     <Text style={styles.pestText}>
                         <Text style={styles.pestName}>{pestTypes[pest.pestId]?.name ?? "Pest"}</Text>: {pest.intentText}.
                     </Text>
@@ -730,8 +825,8 @@ function PestLines({ farm, index, pestTypes }: { farm: GeoFarmView; index: numbe
                     ⚠ The {pestTypes[pest.pestId]?.name ?? "pest"} at {at(pest.tile)} is coming for this tile.
                 </Text>
             ))}
-            {trap && <Text style={styles.hint}>A Snap Trap is set here for the next cycle.</Text>}
-            {farm.tiles[index]?.pollinated && <Text style={styles.hint}>Hand pollinated: better odds of a mutation here on the next cycle.</Text>}
+            {trap && <Hint>A Snap Trap is set here for the next cycle.</Hint>}
+            {farm.tiles[index]?.pollinated && <Hint>Hand pollinated: better odds of a mutation here on the next cycle.</Hint>}
         </View>
     );
 }
@@ -754,6 +849,8 @@ function ResearchLabModal({
     onResearch: (mutationId: string) => void;
     onClose: () => void;
 }) {
+    const palette = useTheme();
+    const styles = useStyles();
     const { found, total, ready } = farm.lab;
     return (
         <Modal title="Research Lab" size="fill" showBack onClose={onClose}>
@@ -765,26 +862,26 @@ function ResearchLabModal({
                 {ready.map((entry) => (
                     <View key={entry.mutationId} style={styles.labReady}>
                         <Text style={styles.labName}>{items[entry.itemId]?.name ?? "A mutation"}</Text>
-                        <Text style={styles.hint}>
+                        <Hint>
                             New to the Lab. Turn it in for {entry.coins} coins and {entry.xp} Farming XP, and its recipe goes in the journal.
-                        </Text>
+                        </Hint>
                         <Chip label={busy ? "…" : "Turn in"} icon="microscope" primary onPress={() => onResearch(entry.mutationId)} />
                     </View>
                 ))}
                 {found.map((entry) => (
                     <View key={entry.mutationId} style={styles.labEntry}>
-                        <Icon name={cropIcon(entry.icon)} size={28} color={colors.cropMutant} />
+                        <Icon name={cropIcon(entry.icon)} size={28} color={palette.game.cropMutant} />
                         <View style={styles.labText}>
                             <Text style={styles.labName}>{entry.name}</Text>
                             <Text style={styles.pestText}>{entry.recipe}.</Text>
-                            <Text style={styles.hint}>{entry.description}</Text>
+                            <Hint>{entry.description}</Hint>
                         </View>
                     </View>
                 ))}
                 {Array.from({ length: total - found.length }, (_, i) => (
                     <View key={`unknown-${i}`} style={styles.labEntry}>
                         <Text style={styles.labUnknown}>?</Text>
-                        <Text style={styles.hint}>Not yet found.</Text>
+                        <Hint>Not yet found.</Hint>
                     </View>
                 ))}
             </ScrollView>
@@ -804,6 +901,7 @@ function PlanModal({
     onPick: (cropId: string | null) => void;
     onClose: () => void;
 }) {
+    const styles = useStyles();
     return (
         <Modal title="Plan this tile" size="medium" onClose={onClose}>
             <Text style={styles.planHint}>A faded ghost of the crop, so you remember the layout when you&apos;re back.</Text>
@@ -818,34 +916,39 @@ function PlanModal({
 }
 
 function Chip({ label, icon, primary = false, onPress }: { label: string; icon?: Parameters<typeof Icon>[0]["name"]; primary?: boolean; onPress: () => void }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <Pressable
             onPress={onPress}
             style={({ pressed }) => [styles.chip, primary && styles.chipPrimary, pressed && styles.pressed]}
             accessibilityRole="button"
         >
-            {icon && <Icon name={icon} size={14} color={primary ? colors.textOnEmber : colors.textPrimary} />}
+            {icon && <Icon name={icon} size={14} color={primary ? palette.onPrimary : palette.text} />}
             <Text style={[styles.chipText, primary && styles.chipTextPrimary]}>{label}</Text>
         </Pressable>
     );
 }
 
 function Actions({ hint, children }: { hint: string; children?: ReactNode }) {
+    const styles = useStyles();
     return (
         <View style={styles.actions}>
             {children && <View style={styles.actionRow}>{children}</View>}
-            <Text style={styles.hint}>{hint}</Text>
+            <Hint>{hint}</Hint>
         </View>
     );
 }
 
 /** A card's Labor cost, in its corner. */
-function LaborMark({ labor }: { labor: number | undefined }) {
-    if (labor === undefined) return null;
-    return <Text style={styles.laborMark}>{labor}</Text>;
+/** A card played this cycle: ready again next cycle. */
+function PlayedMark({ played }: { played: boolean | undefined }) {
+    const styles = useStyles();
+    if (!played) return null;
+    return <Text style={styles.playedMark}>✓</Text>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     lab: {
         gap: 12,
         paddingBottom: 16,
@@ -855,7 +958,7 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: colors.cropMutant,
+        borderColor: p.game.cropMutant,
     },
     labEntry: {
         flexDirection: "row",
@@ -867,16 +970,16 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     labName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     labUnknown: {
         width: 28,
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 20,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
     },
     pestLines: {
         gap: 3,
@@ -888,12 +991,12 @@ const styles = StyleSheet.create({
     },
     pestText: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
     },
     pestName: {
-        color: colors.pest,
-        fontWeight: "700",
+        color: p.game.pest,
+        fontFamily: FONTS.bodyHeavy,
     },
     screen: {
         flex: 1,
@@ -909,16 +1012,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
     },
     statusText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
-    labor: {
-        color: colors.emberBright,
+    plays: {
+        color: p.ember,
         letterSpacing: 1,
     },
-    laborSpent: {
-        color: colors.textSecondary,
+    playsSpent: {
+        color: p.textMuted,
     },
     forecast: {
         flexDirection: "row",
@@ -930,14 +1033,14 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     weatherText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 11,
     },
     weatherLater: {
-        color: colors.textSecondary,
+        color: p.textMuted,
     },
     log: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         textAlign: "center",
         paddingHorizontal: 16,
@@ -948,8 +1051,8 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
+        borderColor: p.outline,
+        backgroundColor: p.surface,
     },
     panelHeader: {
         flexDirection: "row",
@@ -959,21 +1062,21 @@ const styles = StyleSheet.create({
     },
     panelTitle: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     panelFacts: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "400",
+        fontFamily: FONTS.body,
     },
     close: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 14,
     },
     cropLine: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
     },
     chips: {
@@ -988,21 +1091,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 7,
         borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
+        ...inked(p),
+        backgroundColor: p.surfaceAlt,
     },
     chipPrimary: {
-        borderColor: colors.emberBright,
-        backgroundColor: colors.emberBright,
+        borderColor: p.ember,
+        backgroundColor: p.ember,
     },
     chipText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     chipTextPrimary: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
     },
     pressed: {
         opacity: 0.6,
@@ -1029,22 +1131,22 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     eventName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     hint: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         textAlign: "center",
     },
-    laborMark: {
-        color: colors.emberBright,
+    playedMark: {
+        color: p.ember,
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     planHint: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         marginBottom: 10,
     },
@@ -1060,9 +1162,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     missingText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 14,
         fontStyle: "italic",
         textAlign: "center",
     },
-});
+}));

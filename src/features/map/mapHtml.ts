@@ -2,7 +2,6 @@ import { GAME_ICON_VIEWBOX, GAME_ICONS } from "@/components/Icon/gameIcons.gener
 import { PLACE_REACH_METRES, PLACE_TYPES } from "@/features/places/places";
 import { SPRITE_SCALES, SPRITES } from "@/features/spawns/sprites";
 import { GEO_WORLD_HABITAT_METRES, type GeoWorldHabitat, type GeoWorldWaterKind } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
 import {
     COMPASS_TOP_OFFSET,
     TOP_BUTTON_DIAMETER,
@@ -11,6 +10,7 @@ import {
 import {
     BASEMAP_OVERRIDES,
     BASEMAP_STYLE_URL,
+    MAP_COLORS,
     FISHING_WATER_LAYER_ID,
     GAME_LAYERS,
     LANDMARK_MARKER_LAYER_IDS,
@@ -21,6 +21,44 @@ import {
     ZOOM,
     type Skill,
 } from "@/theme/mapStyle";
+import { PALETTES, type Mood } from "@/theme/palette";
+
+/**
+ * Everything on the page that changes with the mood, as CSS custom properties
+ * on `body.mood-day` / `body.mood-dusk`. Markers are inked like the rest of
+ * the UI: a hard outline, white icons on a coloured disc, parchment labels.
+ */
+function moodCss(mood: Mood): string {
+    const p = PALETTES[mood];
+    const day = mood === "day";
+    return [
+        `--land: ${MAP_COLORS[mood].land}`,
+        `--panel: ${p.surface}`,
+        `--text: ${p.text}`,
+        `--outline: ${p.outline}`,
+        `--ember: ${p.ember}`,
+        `--you-glow: ${day ? "rgba(201, 97, 42, 0.18)" : "rgba(232, 169, 58, 0.18)"}`,
+        // Spawns: a ring rippling out, and a pool under the sprite so it
+        // separates from the ground.
+        `--pulse: ${day ? "rgba(58, 48, 36, 0.75)" : "rgba(255, 255, 255, 0.95)"}`,
+        `--pool-strong: ${day ? "rgba(58, 48, 36, 0.16)" : "rgba(255, 255, 255, 0.22)"}`,
+        `--pool-soft: ${day ? "rgba(58, 48, 36, 0.05)" : "rgba(255, 255, 255, 0.08)"}`,
+        // By day the cartoon outlines read on their own; at night a faint
+        // light rim keeps dark art from sinking into the ground.
+        `--sprite-filter: ${
+            day
+                ? "drop-shadow(0 3px 0 rgba(58, 48, 36, 0.3))"
+                : "drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.5)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7))"
+        }`,
+        `--attrib-bg: ${day ? "rgba(251, 243, 226, 0.8)" : "rgba(23, 21, 31, 0.8)"}`,
+    ].join("; ");
+}
+
+/** Map-layer colours that change with the mood: the spawn and camp rings. */
+const RING_COLORS: Record<Mood, { spawnLine: string; spawnFill: string; camp: string }> = {
+    day: { spawnLine: PALETTES.day.outline, spawnFill: PALETTES.day.outline, camp: PALETTES.day.ember },
+    dusk: { spawnLine: "#ffffff", spawnFill: "#ffffff", camp: PALETTES.dusk.ember },
+};
 
 /** On-map width of an enemy sprite; height follows the art's proportions. */
 const SPAWN_SPRITE_WIDTH_PX = 56;
@@ -181,7 +219,7 @@ export type MapWater = {
  * Both sides are small and explicit on purpose; the bridge is the easiest place
  * in this architecture to accumulate mess.
  */
-export function buildMapHtml(): string {
+export function buildMapHtml(initialMood: Mood): string {
     // Serialised rather than hand-written into the template so the single
     // source of truth stays `theme/mapStyle.ts`.
     const config = JSON.stringify({
@@ -189,6 +227,8 @@ export function buildMapHtml(): string {
         sourceId: OSM_SOURCE_ID,
         zoom: ZOOM,
         overrides: BASEMAP_OVERRIDES,
+        ringColors: RING_COLORS,
+        initialMood,
         gameLayers: GAME_LAYERS,
         landmarkLayers: LANDMARK_MARKER_LAYER_IDS,
         fishingWaterLayer: FISHING_WATER_LAYER_ID,
@@ -211,31 +251,35 @@ export function buildMapHtml(): string {
   <link href="${MAPLIBRE_CSS}" rel="stylesheet" />
   <script src="${MAPLIBRE_JS}"></script>
   <style>
+    body.mood-day { ${moodCss("day")}; }
+    body.mood-dusk { ${moodCss("dusk")}; }
     html, body, #map {
       margin: 0;
       padding: 0;
       height: 100%;
       width: 100%;
       overflow: hidden;
-      background: ${colors.void};
+      background: var(--land);
     }
     /* The player marker. Drawn in the DOM rather than as a map layer so it can
        later carry game state (hollowed, embered, in combat) with plain CSS. */
     .player {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
+      box-sizing: border-box;
       border-radius: 50%;
-      background: rgba(201, 100, 30, 0.25);
-      border: 1px solid ${colors.ember};
+      background: var(--ember);
+      border: 3px solid var(--outline);
+      box-shadow: 0 0 0 3px var(--panel), 0 0 0 16px var(--you-glow);
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .player-core {
-      width: 12px;
-      height: 12px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: ${colors.emberBright};
+      background: var(--panel);
     }
     /* Place markers: an optional name label above a badge — a disc in the
        type's colour with its icon. Anchored at the bottom, offset so the
@@ -258,28 +302,27 @@ export function buildMapHtml(): string {
       align-items: center;
       justify-content: center;
       border-radius: 50%;
-      border: 2px solid ${colors.void};
-      color: ${colors.void};
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+      border: 2.5px solid var(--outline);
+      color: #ffffff;
+      box-shadow: 0 2px 0 var(--outline);
     }
     .landmark-badge svg {
       display: block;
       fill: currentColor;
     }
+    /* A parchment pill, so names stay readable over any terrain. */
     .landmark-label {
-      margin-bottom: 3px;
+      margin-bottom: 4px;
       max-width: 110px;
+      padding: 1px 7px;
+      border-radius: 9px;
+      border: 2px solid var(--outline);
+      background: var(--panel);
       text-align: center;
       font-family: -apple-system, Roboto, sans-serif;
       font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      color: ${colors.emberBright};
-      /* Halo via text-shadow so names stay readable over any terrain. */
-      text-shadow:
-        0 0 3px ${colors.void},
-        0 0 3px ${colors.void},
-        0 1px 2px ${colors.void};
+      font-weight: 800;
+      color: var(--text);
     }
     /* The player's camp: an ember disc with the campfire, drawn above the
        place markers. Taps are found by distance, like places, so it never
@@ -296,10 +339,10 @@ export function buildMapHtml(): string {
       align-items: center;
       justify-content: center;
       border-radius: 50%;
-      background: ${colors.ember};
-      border: 2px solid ${colors.void};
-      color: ${colors.void};
-      box-shadow: 0 0 0 2px rgba(232, 135, 60, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
+      background: var(--panel);
+      border: 2.5px solid var(--outline);
+      color: var(--ember);
+      box-shadow: 0 2px 0 var(--outline);
     }
     .camp-badge svg {
       display: block;
@@ -354,9 +397,9 @@ export function buildMapHtml(): string {
       border-radius: 50%;
       background: radial-gradient(
         circle,
-        rgba(255, 255, 255, 0.22) 0%,
-        rgba(255, 255, 255, 0.08) 45%,
-        rgba(255, 255, 255, 0) 70%
+        var(--pool-strong) 0%,
+        var(--pool-soft) 45%,
+        transparent 70%
       );
     }
     .spawn-pulse {
@@ -366,7 +409,7 @@ export function buildMapHtml(): string {
       width: 76px;
       height: 76px;
       box-sizing: border-box;
-      border: 2.5px solid rgba(255, 255, 255, 0.95);
+      border: 2.5px solid var(--pulse);
       border-radius: 50%;
       /* Centred and unseen outside the animation, so a ring that isn't
          running never shows at its unshifted spot, down-right of the sprite. */
@@ -391,12 +434,8 @@ export function buildMapHtml(): string {
     .spawn-sprite {
       position: relative;
       width: ${SPAWN_SPRITE_WIDTH_PX}px;
-      /* The art is dark grey on a dark map: a faint light rim keeps its
-         silhouette readable, and a drop shadow lifts it off the ground. */
-      filter:
-        drop-shadow(0 0 1px rgba(255, 255, 255, 0.95))
-        drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.5))
-        drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+      /* Per mood: see moodCss. */
+      filter: var(--sprite-filter);
     }
     /* Location-suggestion pin. Colour is set inline from the chosen category.
        Anchored at its bottom tip, so the point is exactly where it was tapped. */
@@ -420,17 +459,17 @@ export function buildMapHtml(): string {
       box-sizing: border-box;
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
-      border: 3px solid ${colors.void};
-      box-shadow: 0 0 0 2px rgba(232, 135, 60, 0.6);
+      border: 3px solid var(--outline);
+      box-shadow: 0 2px 0 var(--outline);
       pointer-events: none;
     }
     /* Attribution is required by OpenStreetMap's licence. Restyled to fit the
        palette, never removed. */
     .maplibregl-ctrl-attrib {
-      background: rgba(11, 9, 8, 0.7) !important;
+      background: var(--attrib-bg) !important;
       font-size: 9px;
     }
-    .maplibregl-ctrl-attrib a { color: ${colors.ember}; }
+    .maplibregl-ctrl-attrib a { color: var(--ember); }
 
     /* MapLibre's controls live inside this page, so they can't read the React
        Native safe-area insets. The CSS env(safe-area-inset-*) values are the
@@ -452,11 +491,12 @@ export function buildMapHtml(): string {
     }
   </style>
 </head>
-<body>
+<body class="mood-${initialMood}">
   <div id="map"></div>
   <script>
     (function () {
       var CONFIG = ${config};
+      var mood = CONFIG.initialMood;
       var MARKER_BADGE_PX = ${MARKER_BADGE_PX};
       var PLACE_TAP_RADIUS_PX = ${PLACE_TAP_RADIUS_PX};
 
@@ -656,6 +696,15 @@ export function buildMapHtml(): string {
       var ADMIN_ZOOM = { min: 0, max: 22 };
 
       window.gameMap = {
+        /** Day or dusk: repaints the basemap, the rings and the markers' CSS. */
+        setMood: function (next) {
+          if (next === mood) return;
+          mood = next;
+          document.body.className = "mood-" + mood;
+          applyOverrides();
+          paintRings();
+        },
+
         setAdminMode: function (enabled) {
           isAdminMode = !!enabled;
 
@@ -796,14 +845,14 @@ export function buildMapHtml(): string {
             id: SOURCE_ID + "-fill",
             type: "fill",
             source: SOURCE_ID,
-            paint: { "fill-color": "#ffffff", "fill-opacity": 0.04 },
+            paint: { "fill-color": CONFIG.ringColors[mood].spawnFill, "fill-opacity": 0.04 },
           });
           map.addLayer({
             id: SOURCE_ID + "-line",
             type: "line",
             source: SOURCE_ID,
             paint: {
-              "line-color": "#ffffff",
+              "line-color": CONFIG.ringColors[mood].spawnLine,
               "line-opacity": 0.55,
               "line-width": 1.5,
               "line-dasharray": [3, 2],
@@ -1018,14 +1067,14 @@ export function buildMapHtml(): string {
             id: SOURCE_ID + "-fill",
             type: "fill",
             source: SOURCE_ID,
-            paint: { "fill-color": ${JSON.stringify(colors.ember)}, "fill-opacity": 0.08 },
+            paint: { "fill-color": CONFIG.ringColors[mood].camp, "fill-opacity": 0.08 },
           });
           map.addLayer({
             id: SOURCE_ID + "-line",
             type: "line",
             source: SOURCE_ID,
             paint: {
-              "line-color": ${JSON.stringify(colors.emberBright)},
+              "line-color": CONFIG.ringColors[mood].camp,
               "line-opacity": 0.6,
               "line-width": 1.5,
             },
@@ -1127,7 +1176,7 @@ export function buildMapHtml(): string {
        * basemap that renames a layer should degrade, not go blank.
        */
       function applyOverrides() {
-        CONFIG.overrides.forEach(function (override) {
+        CONFIG.overrides[mood].forEach(function (override) {
           if (!map.getLayer(override.layer)) return;
 
           applyProperties(override.layer, override.paint, map.setPaintProperty);
@@ -1148,6 +1197,19 @@ export function buildMapHtml(): string {
             }
           });
         }
+      }
+
+      /** The rings are drawn lazily; recolour whichever exist now. */
+      function paintRings() {
+        var colours = CONFIG.ringColors[mood];
+        [
+          ["spawn-radius-fill", "fill-color", colours.spawnFill],
+          ["spawn-radius-line", "line-color", colours.spawnLine],
+          ["camp-radius-fill", "fill-color", colours.camp],
+          ["camp-radius-line", "line-color", colours.camp],
+        ].forEach(function (entry) {
+          if (map.getLayer(entry[0])) map.setPaintProperty(entry[0], entry[1], entry[2]);
+        });
       }
 
       function addGameLayers() {
@@ -1571,7 +1633,6 @@ export function buildMapHtml(): string {
           var label = document.createElement("div");
           label.className = "landmark-label";
           label.textContent = name;
-          label.style.color = badge.color;
           wrapper.appendChild(label);
         }
 
@@ -1848,8 +1909,9 @@ export function buildMapHtml(): string {
       map.once("mousedown", collapseAttribution);
 
       map.on("load", function () {
-        applyOverrides();
         addGameLayers();
+        // After our layers, so the mood's colours reach our water too.
+        applyOverrides();
         refreshLandmarks();
         send({ type: "ready" });
       });

@@ -1,9 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import { GAME_ICONS } from "@/components/Icon/gameIcons.generated";
+import { Hint } from "@/components/Text/Text";
 import type { GeoFarmAction, GeoItemView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type ShrineModalProps = {
     tile: number;
@@ -21,6 +24,8 @@ type ShrineModalProps = {
  * certain, and a failed roll can be a curse. What it said shows in the log.
  */
 export default function ShrineModal({ tile, items, held, busy, act, onClose }: ShrineModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const offerable = Object.entries(held)
         .flatMap(([itemId, quantity]) => {
             const item = items[itemId];
@@ -36,43 +41,33 @@ export default function ShrineModal({ tile, items, held, busy, act, onClose }: S
     return (
         <Modal title="Mysterious Shrine" size="fill" showBack onClose={onClose}>
             <ScrollView contentContainerStyle={styles.list}>
-                <Text style={styles.hint}>
+                <Hint>
                     Lay something on the stone. The more it&apos;s worth, the likelier a blessing. It never promises, and sometimes it answers with a curse.
-                </Text>
+                </Hint>
                 {offerable.map(({ item, quantity }) => (
                     <View key={item.id} style={styles.row}>
-                        <Icon name={item.icon in GAME_ICONS ? (item.icon as keyof typeof GAME_ICONS) : "chest"} size={24} color={colors.textPrimary} />
+                        <Icon name={item.icon in GAME_ICONS ? (item.icon as keyof typeof GAME_ICONS) : "chest"} size={24} color={palette.text} />
                         <View style={styles.text}>
                             <Text style={styles.name}>{item.name}</Text>
-                            <Text style={styles.hint}>
+                            <Hint>
                                 Worth {item.sellValue} each · you have {quantity}
-                            </Text>
+                            </Hint>
                         </View>
                         <OfferButton label="1" disabled={busy} onPress={() => offer(item.id, 1)} />
                         {quantity > 1 && <OfferButton label={`All ${quantity}`} disabled={busy} onPress={() => offer(item.id, quantity)} />}
                     </View>
                 ))}
-                {offerable.length === 0 && <Text style={styles.hint}>You have nothing the Shrine wants.</Text>}
+                {offerable.length === 0 && <Hint>You have nothing the Shrine wants.</Hint>}
             </ScrollView>
         </Modal>
     );
 }
 
 function OfferButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            disabled={disabled}
-            style={({ pressed }) => [styles.button, disabled && styles.buttonDisabled, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Offer ${label}`}
-        >
-            <Text style={styles.buttonText}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} size="small" variant="primary" onPress={onPress} disabled={disabled} accessibilityLabel={`Offer ${label}`} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 12,
         paddingBottom: 16,
@@ -86,29 +81,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-    },
-    button: {
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 6,
-        backgroundColor: colors.cropMutant,
-    },
-    buttonDisabled: {
-        opacity: 0.5,
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontWeight: "700",
-        fontSize: 12,
-    },
-    pressed: {
-        opacity: 0.75,
-    },
-});
+}));

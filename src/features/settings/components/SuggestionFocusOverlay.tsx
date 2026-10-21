@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import Button from "@/components/Button/Button";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 import { HOME_INDICATOR_CLEARANCE } from "@/theme/layout";
 
 /**
@@ -8,6 +10,7 @@ import { HOME_INDICATOR_CLEARANCE } from "@/theme/layout";
  * like the pin drop, so the only way out is back to the review list.
  */
 export default function SuggestionFocusOverlay({ onBack }: { onBack: () => void }) {
+    const styles = useStyles();
     const insets = useSafeAreaInsets();
 
     return (
@@ -20,19 +23,13 @@ export default function SuggestionFocusOverlay({ onBack }: { onBack: () => void 
                 style={[styles.actions, { paddingBottom: insets.bottom + HOME_INDICATOR_CLEARANCE }]}
                 pointerEvents="box-none"
             >
-                <Pressable
-                    onPress={onBack}
-                    style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                >
-                    <Text style={styles.buttonText}>Back to suggestions</Text>
-                </Pressable>
+                <Button label="Back to suggestions" variant="primary" onPress={onBack} />
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     banner: {
         position: "absolute",
         left: 16,
@@ -42,17 +39,17 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderRadius: 14,
-        backgroundColor: "rgba(20, 16, 15, 0.92)",
+        backgroundColor: p.surface,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     bannerTitle: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     bannerHint: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     actions: {
@@ -63,18 +60,4 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingHorizontal: 20,
     },
-    button: {
-        paddingVertical: 13,
-        paddingHorizontal: 28,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontSize: 14,
-        fontWeight: "600",
-    },
-    pressed: {
-        transform: [{ scale: 0.96 }],
-    },
-});
+}));

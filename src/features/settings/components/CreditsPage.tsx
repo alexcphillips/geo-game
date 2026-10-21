@@ -1,5 +1,6 @@
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { Linking, Pressable, ScrollView, Text, View } from "react-native";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 
 type Credit = {
     title: string;
@@ -45,6 +46,7 @@ const CREDITS: Credit[] = [
 ];
 
 export default function CreditsPage() {
+    const styles = useStyles();
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
             {CREDITS.map((credit) => (
@@ -68,7 +70,7 @@ export default function CreditsPage() {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 18,
     },
@@ -76,22 +78,22 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     title: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
     body: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 19,
     },
     link: {
-        color: colors.ember,
+        color: p.ember,
         fontSize: 13,
     },
     linkPressed: {
-        color: colors.emberBright,
+        color: p.ember,
     },
-});
+}));

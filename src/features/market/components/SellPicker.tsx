@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Icon from "@/components/Icon/Icon";
+import { ScrollView, Text, View } from "react-native";
+import EmptyState from "@/components/EmptyState/EmptyState";
+import Tabs from "@/components/Tabs/Tabs";
+import { Hint } from "@/components/Text/Text";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import type { InventoryItem, InventoryTabId } from "@/features/inventory/inventoryItems";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 import { MARKET_TABS } from "../marketFilters";
 
 const GRID_COLUMNS = 3;
@@ -21,6 +24,7 @@ type SellPickerProps = {
  * and why, so a worn sword doesn't just seem lost.
  */
 export default function SellPicker({ items, onPick }: SellPickerProps) {
+    const styles = useStyles();
     // Open on the first tab with something to sell.
     const [tabId, setTabId] = useState<InventoryTabId>(
         () => MARKET_TABS.find((tab) => items.some((item) => item.tab === tab.id))?.id ?? "weapons",
@@ -29,34 +33,12 @@ export default function SellPicker({ items, onPick }: SellPickerProps) {
 
     return (
         <>
-            <View style={styles.tabs} accessibilityRole="tablist">
-                {MARKET_TABS.map((tab) => {
-                    const isActive = tab.id === tabId;
-                    const hasAny = items.some((item) => item.tab === tab.id);
-                    return (
-                        <Pressable
-                            key={tab.id}
-                            onPress={() => setTabId(tab.id)}
-                            style={({ pressed }) => [
-                                styles.tab,
-                                isActive && styles.tabActive,
-                                pressed && styles.tabPressed,
-                            ]}
-                            accessibilityRole="tab"
-                            accessibilityState={{ selected: isActive }}
-                            accessibilityLabel={tab.label}
-                        >
-                            <Icon
-                                name={tab.icon}
-                                size={22}
-                                color={
-                                    isActive ? colors.emberBright : hasAny ? colors.textSecondary : colors.border
-                                }
-                            />
-                        </Pressable>
-                    );
-                })}
-            </View>
+            <Tabs
+                tabs={MARKET_TABS.map((tab) => ({ ...tab, dim: !items.some((item) => item.tab === tab.id) }))}
+                value={tabId}
+                onChange={setTabId}
+                style={styles.tabs}
+            />
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -70,41 +52,20 @@ export default function SellPicker({ items, onPick }: SellPickerProps) {
                         <ItemTile item={item} onPress={onPick} />
                     </View>
                 ))}
-                {shown.length === 0 && <Text style={styles.empty}>Nothing here to sell.</Text>}
-                <Text style={styles.note}>
+                {shown.length === 0 && <EmptyState title="Nothing here to sell." />}
+                <Hint>
                     Worn gear, talismans in your bag, cards in a hand and cards that have been played
                     can&apos;t be sold.
-                </Text>
+                </Hint>
             </ScrollView>
         </>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // Same strip as the Market's.
     tabs: {
-        flexDirection: "row",
-        gap: 4,
-        marginHorizontal: -10,
-        marginTop: -8,
-        paddingBottom: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 9,
-        borderRadius: 8,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        backgroundColor: colors.surfaceRaised,
-        borderBottomColor: colors.ember,
-    },
-    tabPressed: {
-        transform: [{ scale: 0.94 }],
+        marginBottom: 12,
     },
     grid: {
         flexDirection: "row",
@@ -116,9 +77,9 @@ const styles = StyleSheet.create({
         width: "100%",
         paddingHorizontal: GRID_GAP / 2,
         paddingBottom: 6,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
@@ -126,20 +87,4 @@ const styles = StyleSheet.create({
         width: `${100 / GRID_COLUMNS}%`,
         padding: GRID_GAP / 2,
     },
-    empty: {
-        width: "100%",
-        paddingTop: 24,
-        textAlign: "center",
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-    },
-    note: {
-        width: "100%",
-        paddingTop: 16,
-        paddingHorizontal: GRID_GAP / 2,
-        textAlign: "center",
-        color: colors.textSecondary,
-        fontSize: 11,
-    },
-});
+}));

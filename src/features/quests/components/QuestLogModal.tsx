@@ -1,32 +1,43 @@
-import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Pill from "@/components/Pill/Pill";
+import EmptyState from "@/components/EmptyState/EmptyState";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
 import { showToast } from "@/components/Toast/toastStore";
+import { toErrorMessage } from "@/lib/api";
 import type { GeoQuestView } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
-import { sortQuests } from "../quests";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
+import { nextTierNote, sortQuests } from "../quests";
 import { useQuestStore } from "../questStore";
 import ObjectiveLine from "./ObjectiveLine";
 
 /**
  * Every quest in full, in the tracker's order, with each objective's label
  * written out rather than cut short. Track picks the quest the HUD follows;
- * Claim turns in a ready one.
- *
- * Claiming and progress run on dev samples until the server serves quests:
- * Claim only drops the quest, and dev builds get a +1 button per quest to try
- * out the tracker's updates.
+ * Claim turns in a ready one, from anywhere. Above them, what the next enemy
+ * tier still needs (its combat level, its Trial).
  */
 export default function QuestLogModal({ onClose }: { onClose: () => void }) {
+    const styles = useStyles();
     const quests = useQuestStore((state) => state.quests);
+    const combatTier = useQuestStore((state) => state.combatTier);
     const sorted = useMemo(() => sortQuests(quests), [quests]);
+    const tierNote = combatTier && nextTierNote(combatTier);
+
+    useEffect(() => {
+        void useQuestStore.getState().refresh();
+    }, []);
 
     return (
         <Modal title="Quests" size="fill" showBack closePlacement="footer" onClose={onClose}>
             <View style={styles.body}>
+                {tierNote && <Text style={styles.tierNote}>{tierNote}</Text>}
                 {sorted.length === 0 ? (
-                    <Text style={styles.empty}>No quests yet.</Text>
+                    <EmptyState title="No quests yet." />
                 ) : (
                     sorted.map((quest) => <QuestCard key={quest.id} quest={quest} />)
                 )}
@@ -36,18 +47,34 @@ export default function QuestLogModal({ onClose }: { onClose: () => void }) {
 }
 
 function QuestCard({ quest }: { quest: GeoQuestView }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const track = useQuestStore((state) => state.track);
-    const devAdvance = useQuestStore((state) => state.devAdvance);
-    const devClaim = useQuestStore((state) => state.devClaim);
+    const claim = useQuestStore((state) => state.claim);
+    const [isBusy, setIsBusy] = useState(false);
     const isReady = quest.status === "ready";
 
+    const act = async (action: () => Promise<void>, done?: string) => {
+        if (isBusy) return;
+        setIsBusy(true);
+        try {
+            await action();
+            if (done) showToast(done, "success");
+        } catch (error) {
+            showToast(toErrorMessage(error), "error");
+        } finally {
+            setIsBusy(false);
+        }
+    };
+
     return (
-        <View style={[styles.card, quest.tracked && styles.cardTracked]}>
+        <Panel compact style={[styles.card, quest.tracked && styles.cardTracked]}>
             <View style={styles.titleRow}>
-                {isReady && <Icon name="check-mark" size={16} color={colors.toastSuccess} />}
+                {isReady && <Icon name="check-mark" size={16} color={palette.heal} />}
                 <Text style={[styles.title, isReady && styles.titleReady]}>{quest.title}</Text>
-                {quest.tracked && <Text style={styles.trackedTag}>Tracked</Text>}
+                {quest.tracked && <Pill label="Tracked" icon="scroll-unfurled" color={palette.ember} />}
             </View>
+            {quest.unlocksTier !== null && <Text style={styles.trial}>Trial · opens tier {quest.unlocksTier} enemies</Text>}
             {quest.giver && <Text style={styles.giver}>From {quest.giver}</Text>}
 
             <View style={styles.objectives}>
@@ -61,52 +88,30 @@ function QuestCard({ quest }: { quest: GeoQuestView }) {
                     <ActionButton
                         label="Claim"
                         isPrimary
-                        onPress={() => {
-                            devClaim(quest.id);
-                            showToast(`Claimed ${quest.title}`, "success");
-                        }}
+                        onPress={() => void act(() => claim(quest.id), `Claimed ${quest.title}`)}
                     />
                 )}
-                {!quest.tracked && <ActionButton label="Track" onPress={() => track(quest.id)} />}
-                {__DEV__ && !isReady && <ActionButton label="+1 (dev)" onPress={() => devAdvance(quest.id)} />}
+                {!quest.tracked && <ActionButton label="Track" onPress={() => void act(() => track(quest.id))} />}
             </View>
-        </View>
+        </Panel>
     );
 }
 
 function ActionButton({ label, onPress, isPrimary = false }: { label: string; onPress: () => void; isPrimary?: boolean }) {
-    return (
-        <Pressable
-            style={({ pressed }) => [styles.button, isPrimary && styles.buttonPrimary, pressed && styles.buttonPressed]}
-            onPress={onPress}
-            accessibilityRole="button"
-        >
-            <Text style={[styles.buttonLabel, isPrimary && styles.buttonLabelPrimary]}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} size="small" variant={isPrimary ? "primary" : "secondary"} onPress={onPress} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     body: {
         gap: 10,
         paddingBottom: 12,
     },
-    empty: {
-        color: colors.textSecondary,
-        fontSize: 14,
-        textAlign: "center",
-        marginTop: 24,
-    },
     card: {
         gap: 6,
         padding: 12,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     cardTracked: {
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     titleRow: {
         flexDirection: "row",
@@ -115,24 +120,26 @@ const styles = StyleSheet.create({
     },
     title: {
         flexShrink: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     titleReady: {
-        color: colors.toastSuccess,
-    },
-    trackedTag: {
-        marginLeft: "auto",
-        color: colors.emberBright,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
+        color: p.heal,
     },
     giver: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
+    },
+    trial: {
+        color: p.ember,
+        fontSize: 12,
+        fontFamily: FONTS.bodyBold,
+    },
+    tierNote: {
+        color: p.textMuted,
+        fontSize: 13,
+        textAlign: "center",
     },
     objectives: {
         gap: 2,
@@ -142,25 +149,4 @@ const styles = StyleSheet.create({
         gap: 8,
         marginTop: 4,
     },
-    button: {
-        paddingHorizontal: 14,
-        paddingVertical: 7,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.ember,
-    },
-    buttonPrimary: {
-        backgroundColor: colors.ember,
-    },
-    buttonPressed: {
-        opacity: 0.7,
-    },
-    buttonLabel: {
-        color: colors.emberBright,
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    buttonLabelPrimary: {
-        color: colors.textOnEmber,
-    },
-});
+}));

@@ -4,13 +4,18 @@ import {
     Image,
     Pressable,
     ScrollView,
-    StyleSheet,
     Text,
     View,
 } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Divider from "@/components/Divider/Divider";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
+import Tabs from "@/components/Tabs/Tabs";
 import Modal from "@/components/Modal/Modal";
-import { colors } from "@/theme/colors";
+import { Hint } from "@/components/Text/Text";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import type { Mayor, MayorPerk } from "../mayors";
 import { useMayor, type MayorState } from "../useMayor";
 import { formatCountdown, useTermCountdown } from "../useTermCountdown";
@@ -45,6 +50,8 @@ export default function CommunityCenterModal({
     onClose,
     initialTab = "mayor",
 }: CommunityCenterModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [tabId, setTabId] = useState<CommunityCenterTab>(initialTab);
     const state = useMayor();
     const remainingMs = useTermCountdown(state.election?.endsAt ?? null, state.clockOffsetMs);
@@ -57,35 +64,14 @@ export default function CommunityCenterModal({
             closePlacement="footer"
             onClose={onClose}
         >
-            <View style={styles.tabs} accessibilityRole="tablist">
-                {TABS.map((tab) => {
-                    const isActive = tab.id === tabId;
-                    return (
-                        <Pressable
-                            key={tab.id}
-                            onPress={() => setTabId(tab.id)}
-                            style={({ pressed }) => [
-                                styles.tab,
-                                isActive && styles.tabActive,
-                                pressed && styles.tabPressed,
-                            ]}
-                            accessibilityRole="tab"
-                            accessibilityState={{ selected: isActive }}
-                        >
-                            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                                {tab.label}
-                            </Text>
-                        </Pressable>
-                    );
-                })}
-            </View>
+            <Tabs tabs={TABS} value={tabId} onChange={setTabId} style={styles.tabs} />
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.body} contentContainerStyle={styles.bodyContent}>
                 {!state.mayor || !state.election ? (
                     state.error ? (
-                        <Text style={styles.note}>{state.error}</Text>
+                        <Hint>{state.error}</Hint>
                     ) : (
-                        <ActivityIndicator color={colors.textSecondary} />
+                        <ActivityIndicator color={palette.textMuted} />
                     )
                 ) : tabId === "mayor" ? (
                     <MayorTab mayor={state.mayor} remainingMs={remainingMs} />
@@ -98,18 +84,21 @@ export default function CommunityCenterModal({
 }
 
 function MayorTab({ mayor, remainingMs }: { mayor: Mayor; remainingMs: number }) {
+    const styles = useStyles();
     return (
         <>
             <Countdown label="Term ends in" remainingMs={remainingMs} />
             <Text style={styles.mayorName}>{mayor.name}</Text>
             <Portrait mayor={mayor} />
-            <View style={styles.divider} />
+            <Divider />
             <PerkList perks={mayor.perks} />
         </>
     );
 }
 
 function ElectionTab({ state, remainingMs }: { state: MayorState; remainingMs: number }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const election = state.election;
     const candidates = election?.candidates ?? [];
     const yourVote = election?.yourVote ?? null;
@@ -117,7 +106,7 @@ function ElectionTab({ state, remainingMs }: { state: MayorState; remainingMs: n
     const [isConfirming, setIsConfirming] = useState(false);
     const [isBusy, setIsBusy] = useState(false);
     const selected = candidates.find((candidate) => candidate.id === selectedId) ?? candidates[0];
-    if (!election || !selected) return <Text style={styles.note}>No election is running.</Text>;
+    if (!election || !selected) return <Hint>No election is running.</Hint>;
 
     const votedFor = candidates.find((candidate) => candidate.id === yourVote?.candidateId);
     const isClosed = remainingMs <= 0;
@@ -171,7 +160,7 @@ function ElectionTab({ state, remainingMs }: { state: MayorState; remainingMs: n
             {/* One vote per election, and it's final. */}
             {votedFor ? (
                 <View style={[styles.voteButton, styles.voteButtonDone]} accessibilityLabel={`You voted for ${votedFor.name}`}>
-                    <Icon name="check-mark" size={14} color={colors.emberBright} />
+                    <Icon name="check-mark" size={14} color={palette.ember} />
                     <Text style={[styles.voteButtonText, styles.voteButtonTextDone]}>
                         {votedFor.id === selected.id ? "Your vote" : `You voted for ${votedFor.name}`}
                     </Text>
@@ -182,40 +171,22 @@ function ElectionTab({ state, remainingMs }: { state: MayorState; remainingMs: n
                         {`Vote for ${selected.name}? Your vote${weight > 1 ? ` counts ${weight} times and` : ""} can't be changed.`}
                     </Text>
                     <View style={styles.confirmButtons}>
-                        <Pressable
-                            onPress={() => setIsConfirming(false)}
-                            style={({ pressed }) => [styles.secondary, pressed && styles.voteButtonPressed]}
-                            accessibilityRole="button"
-                        >
-                            <Text style={styles.secondaryText}>Back</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => void vote()}
-                            disabled={isBusy}
-                            style={({ pressed }) => [styles.voteButton, styles.grow, pressed && styles.voteButtonPressed]}
-                            accessibilityRole="button"
-                        >
-                            <Text style={styles.voteButtonText}>Vote</Text>
-                        </Pressable>
+                        <Button label="Back" onPress={() => setIsConfirming(false)} />
+                        <Button label="Vote" variant="primary" onPress={() => void vote()} busy={isBusy} style={styles.grow} />
                     </View>
                 </View>
             ) : (
-                <Pressable
+                <Button
+                    label="Vote"
+                    variant="primary"
+                    icon="crown"
                     onPress={() => setIsConfirming(true)}
                     disabled={isClosed}
-                    style={({ pressed }) => [
-                        styles.voteButton,
-                        isClosed && styles.voteButtonDisabled,
-                        pressed && styles.voteButtonPressed,
-                    ]}
-                    accessibilityRole="button"
+                    stretch
                     accessibilityLabel={`Vote for ${selected.name}`}
-                    accessibilityState={{ disabled: isClosed }}
-                >
-                    <Text style={styles.voteButtonText}>{isClosed ? "Voting closed" : "Vote"}</Text>
-                </Pressable>
+                />
             )}
-            {weight > 1 && !votedFor && <Text style={styles.note}>Your vote counts {weight} times.</Text>}
+            {weight > 1 && !votedFor && <Hint>Your vote counts {weight} times.</Hint>}
 
             <PerkList perks={selected.perks} />
         </>
@@ -223,18 +194,21 @@ function ElectionTab({ state, remainingMs }: { state: MayorState; remainingMs: n
 }
 
 function Countdown({ label, remainingMs }: { label: string; remainingMs: number }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
-        <View style={styles.countdown}>
-            <Icon name="hourglass" size={18} color={colors.emberBright} />
+        <Panel compact style={styles.countdown}>
+            <Icon name="hourglass" size={18} color={palette.ember} />
             <View>
                 <Text style={styles.countdownLabel}>{label}</Text>
                 <Text style={styles.countdownTime}>{formatCountdown(remainingMs)}</Text>
             </View>
-        </View>
+        </Panel>
     );
 }
 
 function Portrait({ mayor, borderColor }: { mayor: Mayor; borderColor?: string }) {
+    const styles = useStyles();
     return (
         <View style={[styles.portraitFrame, borderColor && { borderColor }]}>
             <Image
@@ -250,57 +224,35 @@ function Portrait({ mayor, borderColor }: { mayor: Mayor; borderColor?: string }
 }
 
 function PerkList({ perks }: { perks: MayorPerk[] }) {
+    const palette = useTheme();
+    const styles = useStyles();
     return (
         <View style={styles.perks}>
             <Text style={styles.perksHeading}>Perks · for every player while in office</Text>
             {perks.map((perk) => (
-                <View key={perk.id} style={styles.perkRow}>
+                <Panel compact key={perk.id} style={styles.perkRow}>
                     <View style={styles.perkIcon}>
-                        <Icon name={perk.icon} size={20} color={colors.effect} />
+                        <Icon name={perk.icon} size={20} color={palette.game.effect} />
                     </View>
                     <View style={styles.perkText}>
                         <Text style={styles.perkName}>{perk.name}</Text>
                         <Text style={styles.perkDescription}>{perk.description}</Text>
                     </View>
-                </View>
+                </Panel>
             ))}
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     tabs: {
-        flexDirection: "row",
-        gap: 4,
-        marginHorizontal: -10,
-        marginTop: -8,
-        paddingBottom: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 9,
-        borderRadius: 8,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        backgroundColor: colors.surfaceRaised,
-        borderBottomColor: colors.ember,
+        marginBottom: 12,
     },
     tabPressed: {
         transform: [{ scale: 0.94 }],
     },
-    tabText: {
-        color: colors.textSecondary,
-        fontSize: 14,
-        fontWeight: "600",
-        letterSpacing: 0.5,
-    },
     tabTextActive: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     body: {
         flex: 1,
@@ -316,44 +268,35 @@ const styles = StyleSheet.create({
         gap: 10,
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     countdownLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         letterSpacing: 0.5,
         textTransform: "uppercase",
     },
     countdownTime: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     mayorName: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 22,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
     },
     portraitFrame: {
         padding: 6,
         borderRadius: 14,
         borderWidth: 1.5,
-        borderColor: colors.border,
-        backgroundColor: colors.void,
+        borderColor: p.outline,
+        backgroundColor: p.background,
     },
     portrait: {
         height: PORTRAIT_HEIGHT,
         width: PORTRAIT_HEIGHT * PORTRAIT_ASPECT,
-    },
-    divider: {
-        alignSelf: "stretch",
-        height: 1,
-        backgroundColor: colors.border,
     },
     candidateTabs: {
         alignSelf: "stretch",
@@ -367,21 +310,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
         borderRadius: 10,
         borderWidth: 1.5,
-        backgroundColor: colors.surface,
+        backgroundColor: p.surface,
         opacity: 0.7,
     },
     candidateTabActive: {
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
         borderWidth: 2.5,
         opacity: 1,
     },
     candidateName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     candidateVotes: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
         fontVariant: ["tabular-nums"],
     },
@@ -392,27 +335,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 36,
         paddingVertical: 11,
         borderRadius: 999,
-        backgroundColor: colors.ember,
+        backgroundColor: p.ember,
     },
     voteButtonDone: {
         backgroundColor: "transparent",
         borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    voteButtonPressed: {
-        transform: [{ scale: 0.96 }],
+        borderColor: p.ember,
     },
     voteButtonText: {
-        color: colors.textOnEmber,
+        color: p.onPrimary,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
     },
     voteButtonTextDone: {
-        color: colors.emberBright,
-    },
-    voteButtonDisabled: {
-        opacity: 0.4,
+        color: p.ember,
     },
     grow: {
         flex: 1,
@@ -425,10 +362,10 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     confirmText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
         textAlign: "center",
@@ -437,31 +374,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 8,
     },
-    secondary: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    secondaryText: {
-        color: colors.emberBright,
-        fontSize: 14,
-        fontWeight: "700",
-    },
-    note: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        textAlign: "center",
-    },
     perks: {
         alignSelf: "stretch",
         gap: 8,
     },
     perksHeading: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
         letterSpacing: 0.5,
         textTransform: "uppercase",
@@ -471,10 +389,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 12,
         padding: 10,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     perkIcon: {
         width: 34,
@@ -482,19 +396,19 @@ const styles = StyleSheet.create({
         borderRadius: 17,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     perkText: {
         flex: 1,
         gap: 2,
     },
     perkName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     perkDescription: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 13,
     },
-});
+}));

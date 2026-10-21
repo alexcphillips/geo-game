@@ -1,20 +1,21 @@
 import { useState } from "react";
 import {
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     Pressable,
     ScrollView,
-    StyleSheet,
     Text,
     TextInput,
     View,
 } from "react-native";
+import Button from "@/components/Button/Button";
+import TextField from "@/components/TextField/TextField";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@/components/Icon/Icon";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { toErrorMessage } from "@/lib/api";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 type Mode = "signIn" | "register";
 
@@ -22,6 +23,7 @@ type Mode = "signIn" | "register";
  * Sign in, or make an account. Shown instead of the whole app until signed in.
  */
 export default function SignInScreen() {
+    const styles = useStyles();
     const insets = useSafeAreaInsets();
     const signIn = usePlayerStore((state) => state.signIn);
     const register = usePlayerStore((state) => state.register);
@@ -88,18 +90,16 @@ export default function SignInScreen() {
                     </Text>
                 )}
 
-                <Pressable
+                <Button
+                    label={isRegister ? "Make account" : "Sign in"}
+                    variant="primary"
+                    size="large"
                     onPress={() => void submit()}
                     disabled={!canSubmit}
-                    style={({ pressed }) => [styles.button, !canSubmit && styles.buttonDisabled, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                >
-                    {isBusy ? (
-                        <ActivityIndicator color={colors.textOnEmber} />
-                    ) : (
-                        <Text style={styles.buttonText}>{isRegister ? "Make account" : "Sign in"}</Text>
-                    )}
-                </Pressable>
+                    busy={isBusy}
+                    stretch
+                    style={styles.submit}
+                />
 
                 <Pressable
                     onPress={() => {
@@ -120,23 +120,13 @@ export default function SignInScreen() {
 }
 
 function Field({ label, ...input }: { label: string } & React.ComponentProps<typeof TextInput>) {
-    return (
-        <View style={styles.field}>
-            <Text style={styles.label}>{label}</Text>
-            <TextInput
-                {...input}
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholderTextColor={colors.textSecondary}
-                style={styles.input}
-                accessibilityLabel={label}
-            />
-        </View>
-    );
+    return <TextField {...input} label={label} autoCapitalize="none" autoCorrect={false} accessibilityLabel={label} />;
 }
 
 /** A Field with an eye toggle, to check what was typed before submitting. */
 function PasswordField({ label, ...input }: { label: string } & React.ComponentProps<typeof TextInput>) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [isVisible, setIsVisible] = useState(false);
 
     return (
@@ -148,7 +138,7 @@ function PasswordField({ label, ...input }: { label: string } & React.ComponentP
                     secureTextEntry={!isVisible}
                     autoCapitalize="none"
                     autoCorrect={false}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={palette.textMuted}
                     style={[styles.input, styles.passwordInput]}
                     accessibilityLabel={label}
                 />
@@ -159,47 +149,52 @@ function PasswordField({ label, ...input }: { label: string } & React.ComponentP
                     accessibilityLabel={isVisible ? "Hide password" : "Show password"}
                     hitSlop={8}
                 >
-                    <Icon name={isVisible ? "semi-closed-eye" : "eyeball"} size={22} color={colors.textSecondary} />
+                    <Icon name={isVisible ? "semi-closed-eye" : "eyeball"} size={22} color={palette.textMuted} />
                 </Pressable>
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     screen: {
         flex: 1,
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
     content: {
         paddingHorizontal: 24,
         gap: 16,
     },
     title: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 28,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         marginBottom: 8,
     },
     field: {
         gap: 6,
     },
     label: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
         textTransform: "uppercase",
         letterSpacing: 0.8,
     },
+    // Matches TextField; the password field draws its own for the eye toggle.
     input: {
-        color: colors.textPrimary,
+        color: p.text,
+        fontFamily: FONTS.bodyBold,
         fontSize: 16,
         paddingVertical: 12,
         paddingHorizontal: 14,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
+        borderRadius: 14,
+        borderWidth: 2.5,
+        borderColor: p.outline,
+        backgroundColor: p.background,
+    },
+    submit: {
+        marginTop: 8,
     },
     passwordRow: {
         justifyContent: "center",
@@ -212,34 +207,15 @@ const styles = StyleSheet.create({
         right: 12,
     },
     error: {
-        color: colors.toastError,
+        color: p.danger,
         fontSize: 14,
-    },
-    button: {
-        marginTop: 8,
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 48,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    buttonDisabled: {
-        opacity: 0.5,
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontSize: 16,
-        fontWeight: "700",
-    },
-    pressed: {
-        transform: [{ scale: 0.97 }],
     },
     switch: {
         alignSelf: "center",
         paddingVertical: 8,
     },
     switchText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 14,
     },
-});
+}));

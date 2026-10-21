@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import DeathCard from "@/features/death/components/DeathCard";
 import { usePlayerStore } from "@/features/player/playerStore";
 import OutcomeButton from "@/features/run/components/OutcomeButton";
 import type { GeoDeathCause } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { createStyles, MoodProvider } from "@/theme/theme";
 
 /** Why you died, for each way to die outside a fight. */
 const DEATH_TEXT: Record<GeoDeathCause, string> = {
@@ -18,6 +18,16 @@ const DEATH_TEXT: Record<GeoDeathCause, string> = {
  * this only says so, and refreshes the purse.
  */
 export default function DeathScreen() {
+    // Death is a dusk moment.
+    return (
+        <MoodProvider mood="dusk">
+            <DeathScreenContent />
+        </MoodProvider>
+    );
+}
+
+function DeathScreenContent() {
+    const styles = useStyles();
     const params = useLocalSearchParams<{ cause?: string; coinsLost?: string }>();
     const cause = params.cause && params.cause in DEATH_TEXT ? (params.cause as GeoDeathCause) : null;
     const coins = Number(params.coinsLost);
@@ -38,11 +48,11 @@ export default function DeathScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     screen: {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.void,
+        backgroundColor: p.background,
     },
-});
+}));

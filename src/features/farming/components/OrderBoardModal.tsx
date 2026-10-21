@@ -1,8 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
+import { Hint } from "@/components/Text/Text";
 import type { GeoFarmAction, GeoFarmOrder, GeoItemView, GeoOrderBoard } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { cropIcon, untilText } from "../farmText";
 
 type OrderBoardModalProps = {
@@ -22,22 +25,25 @@ type OrderBoardModalProps = {
  * An order still unfinished when the week ends loses its deposit.
  */
 export default function OrderBoardModal({ board, items, held, busy, now, act, onClose }: OrderBoardModalProps) {
+    const styles = useStyles();
     return (
         <Modal title="Order Board" size="fill" showBack onClose={onClose}>
             <ScrollView contentContainerStyle={styles.list}>
-                <Text style={styles.hint}>
+                <Hint>
                     New orders every Monday. These end {untilText(board.endsAt, now)}; an order taken on and not finished by then loses its deposit.
-                </Text>
+                </Hint>
                 {board.orders.map((order) => (
                     <OrderRow key={order.id} order={order} item={items[order.itemId]} have={held[order.itemId] ?? 0} busy={busy} act={act} />
                 ))}
-                {board.orders.length === 0 && <Text style={styles.hint}>No orders this week.</Text>}
+                {board.orders.length === 0 && <Hint>No orders this week.</Hint>}
             </ScrollView>
         </Modal>
     );
 }
 
 function OrderRow({ order, item, have, busy, act }: { order: GeoFarmOrder; item: GeoItemView | undefined; have: number; busy: boolean; act: OrderBoardModalProps["act"] }) {
+    const palette = useTheme();
+    const styles = useStyles();
     const name = item?.name ?? order.itemId;
     const left = order.quantity - order.delivered;
     const button =
@@ -49,33 +55,25 @@ function OrderRow({ order, item, have, busy, act }: { order: GeoFarmOrder; item:
     const enabled = Boolean(button?.enabled) && !busy;
     return (
         <View style={[styles.row, order.status === "done" && styles.done]}>
-            <Icon name={cropIcon(item?.icon ?? "")} size={28} color={colors.cropLeaf} />
+            <Icon name={cropIcon(item?.icon ?? "")} size={28} color={palette.game.cropLeaf} />
             <View style={styles.text}>
                 <Text style={styles.name}>
                     {order.quantity} {name}
                 </Text>
-                <Text style={styles.hint}>
+                <Hint>
                     Pays {order.reward} coins
                     {order.status === "accepted" ? ` · ${order.delivered}/${order.quantity} handed in · you have ${have}` : ""}
                     {order.status === "done" ? " · done" : ""}
-                </Text>
+                </Hint>
             </View>
             {button && (
-                <Pressable
-                    onPress={() => void act(button.action)}
-                    disabled={!enabled}
-                    style={({ pressed }) => [styles.button, !enabled && styles.buttonDisabled, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: !enabled }}
-                >
-                    <Text style={[styles.buttonText, !enabled && styles.buttonTextDisabled]}>{button.label}</Text>
-                </Pressable>
+                <Button label={button.label} size="small" variant="primary" onPress={() => void act(button.action)} disabled={!enabled} />
             )}
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 14,
         paddingBottom: 16,
@@ -93,34 +91,8 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-    },
-    button: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 6,
-        backgroundColor: colors.ember,
-        maxWidth: 140,
-    },
-    buttonDisabled: {
-        backgroundColor: colors.tileLocked,
-    },
-    buttonText: {
-        color: colors.textOnEmber,
-        fontWeight: "700",
-        fontSize: 12,
-        textAlign: "center",
-    },
-    buttonTextDisabled: {
-        color: colors.textSecondary,
-    },
-    pressed: {
-        opacity: 0.75,
-    },
-});
+}));

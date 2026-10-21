@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Divider from "@/components/Divider/Divider";
+import EmptyState from "@/components/EmptyState/EmptyState";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
+import { Hint, SectionTitle } from "@/components/Text/Text";
 import ItemTile from "@/features/inventory/components/ItemTile";
 import { rarityInfo } from "@/features/inventory/rarity";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import {
     ENDING_SOON_MS,
     formatCoins,
@@ -37,6 +43,7 @@ export function OwnListingsPage({
     onOpen: (listing: OwnListing) => void;
     onCollect: (listings: OwnListing[]) => void;
 }) {
+    const styles = useStyles();
     const sold = listings
         .filter((listing) => !listing.isLive)
         .sort((a, b) => (b.sale?.soldAt ?? "").localeCompare(a.sale?.soldAt ?? ""));
@@ -49,7 +56,7 @@ export function OwnListingsPage({
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} alwaysBounceHorizontal={false}>
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Sold</Text>
+                <SectionTitle>Sold</SectionTitle>
                 {waiting.length > 0 && (
                     <CollectButton
                         label={`Collect all · ${formatCoins(waitingCoins)}`}
@@ -60,29 +67,31 @@ export function OwnListingsPage({
             {sold.map((listing) => (
                 <SoldRow key={listing.id} listing={listing} now={now} onPress={() => onOpen(listing)} />
             ))}
-            {sold.length === 0 && <Text style={styles.empty}>Nothing sold yet.</Text>}
+            {sold.length === 0 && <EmptyState title="Nothing sold yet." />}
 
-            <View style={styles.divider} />
+            <Divider />
 
-            <Text style={styles.sectionTitle}>Listed</Text>
+            <SectionTitle>Listed</SectionTitle>
             {live.map((listing) => (
                 <ListingRow key={listing.id} listing={listing} now={now} onPress={() => onOpen(listing)} />
             ))}
-            {live.length === 0 && <Text style={styles.empty}>Nothing for sale. Tap Sell to list something.</Text>}
+            {live.length === 0 && <EmptyState title="Nothing for sale. Tap Sell to list something." />}
         </ScrollView>
     );
 }
 
 /** A sold listing: what it went for, to whom, and when. */
 function SoldRow({ listing, now, onPress }: { listing: OwnListing; now: number; onPress: () => void }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const { item, sale } = listing;
     const rarity = rarityInfo(item.rarity);
     if (!sale) return null;
 
     return (
-        <Pressable
+        <Panel compact
             onPress={onPress}
-            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            style={styles.row}
             accessibilityRole="button"
             accessibilityLabel={`${item.name}, sold to ${sale.buyer} for ${formatCoins(sale.buyerPaid)} coins${sale.collected ? "" : ", coins to collect"}`}
         >
@@ -103,27 +112,17 @@ function SoldRow({ listing, now, onPress }: { listing: OwnListing; now: number; 
                     {sale.collected ? "Sold" : "To collect"}
                 </Text>
                 <View style={styles.priceLine}>
-                    <Icon name="two-coins" size={14} color={colors.coins} />
+                    <Icon name="two-coins" size={14} color={palette.reward} />
                     <Text style={styles.priceText}>{formatCoins(sale.collected ? sale.buyerPaid : sale.sellerGot)}</Text>
                 </View>
             </View>
-        </Pressable>
+        </Panel>
     );
 }
 
 /** A small pill for taking coins from sold listings. */
 function CollectButton({ label, onPress }: { label: string; onPress: () => void }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => [styles.collect, pressed && styles.pressed]}
-            accessibilityRole="button"
-            hitSlop={8}
-        >
-            <Icon name="two-coins" size={13} color={colors.coins} />
-            <Text style={styles.collectText}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} size="small" variant="primary" icon="two-coins" onPress={onPress} />;
 }
 
 /**
@@ -144,6 +143,8 @@ export function OwnListingPanel({
     onCancel: () => void;
     onCollect: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [isConfirming, setIsConfirming] = useState(false);
     const { sale } = listing;
     const isAuction = listing.type === "auction";
@@ -188,10 +189,10 @@ export function OwnListingPanel({
 
     return (
         <View style={styles.panelWrap}>
-            <View
+            <Panel compact
                 style={[
                     styles.panel,
-                    { borderLeftColor: isAuction ? colors.listingAuction : colors.listingBuyNow },
+                    { borderLeftColor: isAuction ? palette.game.listingAuction : palette.game.listingBuyNow },
                 ]}
             >
                 <View style={styles.panelTop}>
@@ -203,7 +204,7 @@ export function OwnListingPanel({
                             <Icon
                                 name="hourglass"
                                 size={13}
-                                color={left < ENDING_SOON_MS ? colors.toastError : colors.listingAuction}
+                                color={left < ENDING_SOON_MS ? palette.danger : palette.game.listingAuction}
                             />
                             <Text style={[styles.timer, left < ENDING_SOON_MS && styles.timerUrgent]}>
                                 {formatTimeLeft(left)}
@@ -217,32 +218,25 @@ export function OwnListingPanel({
                     <View key={label} style={styles.panelRow}>
                         <Text style={styles.panelLabel}>{label}</Text>
                         <View style={styles.priceLine}>
-                            {isCoins && <Icon name="two-coins" size={13} color={colors.coins} />}
+                            {isCoins && <Icon name="two-coins" size={13} color={palette.reward} />}
                             <Text style={isCoins ? styles.panelCoins : styles.panelValue}>{value}</Text>
                         </View>
                     </View>
                 ))}
-            </View>
+            </Panel>
 
             {listing.uncollected > 0 ? (
-                <Pressable
-                    onPress={onCollect}
-                    style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                >
-                    <Icon name="two-coins" size={15} color={colors.coins} />
-                    <Text style={styles.primaryText}>Collect {formatCoins(listing.uncollected)} coins</Text>
-                </Pressable>
+                <Button label={`Collect ${formatCoins(listing.uncollected)} coins`} variant="primary" size="large" icon="two-coins" onPress={onCollect} stretch />
             ) : (
-                sale && <Text style={styles.note}>Coins collected.</Text>
+                sale && <Hint>Coins collected.</Hint>
             )}
 
             {listing.bidHistory.length > 0 && <BidHistory listing={listing} />}
 
             {listing.isLive && hasBids && (
-                <Text style={styles.note}>
+                <Hint>
                     {`${listing.bids === 1 ? "Someone has bid" : `${listing.bids} bids are in`}, so this auction can't be cancelled. It sells to the highest bidder when the timer runs out.`}
-                </Text>
+                </Hint>
             )}
 
             {listing.isLive &&
@@ -251,32 +245,12 @@ export function OwnListingPanel({
                     <View style={styles.confirm}>
                         <Text style={styles.confirmText}>{cancelWarning}</Text>
                         <View style={styles.confirmButtons}>
-                            <Pressable
-                                onPress={() => setIsConfirming(false)}
-                                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                                accessibilityRole="button"
-                            >
-                                <Text style={styles.secondaryText}>Keep listing</Text>
-                            </Pressable>
-                            <Pressable
-                                onPress={onCancel}
-                                style={({ pressed }) => [styles.danger, pressed && styles.pressed]}
-                                accessibilityRole="button"
-                            >
-                                <Text style={styles.dangerText}>Cancel listing</Text>
-                            </Pressable>
+                            <Button label="Keep listing" onPress={() => setIsConfirming(false)} />
+                            <Button label="Cancel listing" variant="danger" onPress={onCancel} />
                         </View>
                     </View>
                 ) : (
-                    <Pressable
-                        onPress={() => setIsConfirming(true)}
-                        style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.secondaryText}>
-                            {isAuction && left <= 0 ? "Take back" : "Cancel listing"}
-                        </Text>
-                    </Pressable>
+                    <Button label={isAuction && left <= 0 ? "Take back" : "Cancel listing"} onPress={() => setIsConfirming(true)} stretch />
                 ))}
         </View>
     );
@@ -291,6 +265,8 @@ const BIDS_SHOWN = 3;
  * "Won" once sold, "Leading" while the auction runs.
  */
 function BidHistory({ listing }: { listing: OwnListing }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const [isAllOpen, setIsAllOpen] = useState(false);
     const bids = [...listing.bidHistory].sort((a, b) => b.at.localeCompare(a.at));
     const top = topBid(listing);
@@ -299,7 +275,7 @@ function BidHistory({ listing }: { listing: OwnListing }) {
 
     return (
         <View style={styles.bids}>
-            <Text style={styles.sectionTitle}>Bid history</Text>
+            <SectionTitle>Bid history</SectionTitle>
             {bids.slice(0, BIDS_SHOWN).map((bid) => (
                 <BidRow key={`${bid.bidder}-${bid.at}`} bid={bid} topLabel={bid === top ? topLabel : null} />
             ))}
@@ -313,7 +289,7 @@ function BidHistory({ listing }: { listing: OwnListing }) {
                     <Text style={styles.moreText}>
                         {hidden} more {hidden === 1 ? "bid" : "bids"}
                     </Text>
-                    <Icon name="scroll-unfurled" size={13} color={colors.emberBright} />
+                    <Icon name="scroll-unfurled" size={13} color={palette.ember} />
                 </Pressable>
             )}
 
@@ -336,6 +312,8 @@ function BidHistory({ listing }: { listing: OwnListing }) {
 
 /** One bid: who, when and how much; `topLabel` marks the highest. */
 function BidRow({ bid, topLabel }: { bid: Bid; topLabel: string | null }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const isTop = topLabel !== null;
     return (
         <View style={[styles.bidRow, isTop && styles.bidRowTop]}>
@@ -347,30 +325,17 @@ function BidRow({ bid, topLabel }: { bid: Bid; topLabel: string | null }) {
                 <Text style={styles.meta}>{formatDateTime(bid.at)}</Text>
             </View>
             <View style={styles.priceLine}>
-                <Icon name="two-coins" size={13} color={colors.coins} />
+                <Icon name="two-coins" size={13} color={palette.reward} />
                 <Text style={styles.panelCoins}>{formatCoins(bid.amount)}</Text>
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     list: {
         gap: 8,
         paddingBottom: 8,
-    },
-    sectionTitle: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
-    empty: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontStyle: "italic",
-        paddingVertical: 8,
     },
     sectionHeader: {
         flexDirection: "row",
@@ -378,70 +343,20 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         gap: 8,
     },
-    collect: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: colors.coins,
-    },
-    collectText: {
-        color: colors.coins,
-        fontSize: 12,
-        fontWeight: "700",
-        fontVariant: ["tabular-nums"],
-    },
     collectLabel: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 11,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
         textTransform: "uppercase",
-    },
-    note: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        lineHeight: 18,
-        textAlign: "center",
-    },
-    primary: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: 10,
-        borderRadius: 999,
-        backgroundColor: colors.ember,
-    },
-    primaryText: {
-        color: colors.textOnEmber,
-        fontSize: 14,
-        fontWeight: "700",
-        fontVariant: ["tabular-nums"],
-    },
-    divider: {
-        height: 1,
-        marginVertical: 8,
-        backgroundColor: colors.border,
     },
     row: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
         padding: 8,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
-        borderLeftColor: colors.toastSuccess,
-    },
-    rowPressed: {
-        borderColor: colors.ember,
-        transform: [{ scale: 0.98 }],
+        borderLeftColor: p.heal,
     },
     rowTile: {
         width: 66,
@@ -452,22 +367,22 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     rowName: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     rowRarity: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     rowPrice: {
         alignItems: "flex-end",
         gap: 2,
     },
     soldLabel: {
-        color: colors.toastSuccess,
+        color: p.heal,
         fontSize: 11,
-        fontWeight: "800",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 0.5,
         textTransform: "uppercase",
     },
@@ -477,13 +392,13 @@ const styles = StyleSheet.create({
         gap: 5,
     },
     priceText: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     meta: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     panelWrap: {
@@ -494,10 +409,6 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
         borderLeftWidth: 3,
     },
     panelTop: {
@@ -512,29 +423,29 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     panelLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
     },
     panelValue: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         flexShrink: 1,
         textAlign: "right",
     },
     panelCoins: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     timer: {
-        color: colors.listingAuction,
+        color: p.game.listingAuction,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     timerUrgent: {
-        color: colors.toastError,
+        color: p.danger,
     },
     bids: {
         gap: 6,
@@ -547,11 +458,11 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     bidRowTop: {
-        borderColor: colors.listingAuction,
-        backgroundColor: colors.surfaceRaised,
+        borderColor: p.game.listingAuction,
+        backgroundColor: p.surfaceAlt,
     },
     moreRow: {
         justifyContent: "center",
@@ -559,31 +470,31 @@ const styles = StyleSheet.create({
         borderStyle: "dashed",
     },
     moreText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     bidText: {
         gap: 1,
     },
     bidder: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     bidderTop: {
-        color: colors.listingAuction,
-        fontWeight: "800",
+        color: p.game.listingAuction,
+        fontFamily: FONTS.bodyHeavy,
     },
     confirm: {
         gap: 10,
         padding: 10,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: colors.toastError,
+        borderColor: p.danger,
     },
     confirmText: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
         lineHeight: 18,
     },
@@ -591,32 +502,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 8,
     },
-    secondary: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    secondaryText: {
-        color: colors.emberBright,
-        fontSize: 14,
-        fontWeight: "700",
-    },
-    danger: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 10,
-        borderRadius: 999,
-        backgroundColor: colors.blood,
-    },
-    dangerText: {
-        color: colors.textPrimary,
-        fontSize: 14,
-        fontWeight: "700",
-    },
     pressed: {
         transform: [{ scale: 0.97 }],
     },
-});
+}));

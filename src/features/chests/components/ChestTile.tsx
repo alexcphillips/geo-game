@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import type { GeoChestOffer } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { CHEST_TIER_COLORS, chestCostLabel } from "../chestTiers";
 
 /**
@@ -18,6 +19,7 @@ export default function ChestTile({
     affordable: boolean;
     onPress: () => void;
 }) {
+    const styles = useStyles();
     const color = CHEST_TIER_COLORS[chest.tier];
     return (
         <Pressable
@@ -37,15 +39,17 @@ export default function ChestTile({
 
 /** "Free", or the coin icon and the cost, red when it can't be paid. */
 export function ChestCost({ cost, affordable = true }: { cost: number; affordable?: boolean }) {
+    const styles = useStyles();
+    const palette = useTheme();
     return (
         <View style={styles.cost}>
-            {cost > 0 && <Icon name="two-coins" size={13} color={affordable ? colors.coins : colors.damage} />}
+            {cost > 0 && <Icon name="two-coins" size={13} color={affordable ? palette.reward : palette.game.damage} />}
             <Text style={[styles.costText, !affordable && styles.unaffordable]}>{chestCostLabel(cost)}</Text>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     tile: {
         width: 92,
         alignItems: "center",
@@ -54,15 +58,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
         borderRadius: 12,
         borderWidth: 1.5,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     pressed: {
         transform: [{ scale: 0.95 }],
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         textAlign: "center",
     },
     cost: {
@@ -71,12 +75,12 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     costText: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     unaffordable: {
-        color: colors.damage,
+        color: p.game.damage,
     },
-});
+}));

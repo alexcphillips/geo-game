@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Button from "@/components/Button/Button";
 import Icon from "@/components/Icon/Icon";
+import TextField from "@/components/TextField/TextField";
 import SearchField from "@/components/SearchField/SearchField";
 import { showToast } from "@/components/Toast/toastStore";
 import { formatCoins, formatDateTime } from "@/features/market/market";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { api, toErrorMessage } from "@/lib/api";
 import { GEO_API_PATHS, type GeoAdminPlayer, type GeoAdminPlayerDetail } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 const fill = (path: string, playerId: string) => path.replace(":playerId", encodeURIComponent(playerId));
 
@@ -17,6 +21,8 @@ const fill = (path: string, playerId: string) => path.replace(":playerId", encod
  * admin role on every call and audits every change.
  */
 export default function AdminPlayersPage() {
+    const styles = useStyles();
+    const palette = useTheme();
     const [search, setSearch] = useState("");
     const [players, setPlayers] = useState<GeoAdminPlayer[] | null>(null);
     const [openId, setOpenId] = useState<string | null>(null);
@@ -40,14 +46,14 @@ export default function AdminPlayersPage() {
         <View style={styles.page}>
             <SearchField value={search} onChange={setSearch} placeholder="Name or email" />
             {!players ? (
-                <ActivityIndicator color={colors.textSecondary} />
+                <ActivityIndicator color={palette.textMuted} />
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
                     {players.map((player) => (
-                        <Pressable
+                        <Panel compact
                             key={player.id}
                             onPress={() => setOpenId(player.id)}
-                            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                            style={styles.row}
                             accessibilityRole="button"
                         >
                             <View style={styles.rowText}>
@@ -58,9 +64,9 @@ export default function AdminPlayersPage() {
                                 </Text>
                                 <Text style={styles.muted}>{player.email}</Text>
                             </View>
-                            <Icon name="two-coins" size={13} color={colors.coins} />
+                            <Icon name="two-coins" size={13} color={palette.reward} />
                             <Text style={styles.coins}>{formatCoins(player.coins)}</Text>
-                        </Pressable>
+                        </Panel>
                     ))}
                     {players.length === 0 && <Text style={styles.muted}>Nobody matches.</Text>}
                 </ScrollView>
@@ -70,6 +76,8 @@ export default function AdminPlayersPage() {
 }
 
 function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => void }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const myId = usePlayerStore((state) => state.me?.player.id);
     const refreshMe = usePlayerStore((state) => state.refresh);
     const [player, setPlayer] = useState<GeoAdminPlayerDetail | null>(null);
@@ -97,7 +105,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
         }
     };
 
-    if (!player) return <ActivityIndicator color={colors.textSecondary} />;
+    if (!player) return <ActivityIndicator color={palette.textMuted} />;
     const isMe = player.id === myId;
     const coins = Number(amount) || 0;
 
@@ -111,16 +119,16 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                 {player.email} · joined {formatDateTime(player.createdAt)}
             </Text>
             <View style={styles.coinLine}>
-                <Icon name="two-coins" size={16} color={colors.coins} />
+                <Icon name="two-coins" size={16} color={palette.reward} />
                 <Text style={styles.coinsLarge}>{formatCoins(player.coins)}</Text>
             </View>
 
             <View style={styles.grantRow}>
-                <TextInput
+                <TextField
                     value={amount}
                     onChangeText={(text) => setAmount(text.replace(/[^0-9]/g, ""))}
                     keyboardType="number-pad"
-                    style={styles.amount}
+                    containerStyle={styles.grow}
                     accessibilityLabel="Coins"
                 />
                 <Action
@@ -199,24 +207,13 @@ function Action({
     disabled?: boolean;
     danger?: boolean;
 }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            disabled={disabled}
-            style={({ pressed }) => [
-                styles.action,
-                danger && styles.actionDanger,
-                disabled && styles.disabled,
-                pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-        >
-            <Text style={[styles.actionText, danger && styles.actionTextDanger]}>{label}</Text>
-        </Pressable>
-    );
+    return <Button label={label} size="small" variant={danger ? "danger" : "secondary"} onPress={onPress} disabled={disabled} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
+    grow: {
+        flex: 1,
+    },
     page: {
         flexGrow: 1,
         gap: 10,
@@ -230,41 +227,37 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 6,
         padding: 12,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     rowText: {
         flex: 1,
         gap: 2,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     muted: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     coins: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     back: {
         alignSelf: "flex-start",
     },
     link: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 14,
     },
     title: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     coinLine: {
         flexDirection: "row",
@@ -272,54 +265,20 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     coinsLarge: {
-        color: colors.coins,
+        color: p.reward,
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     grantRow: {
         flexDirection: "row",
         gap: 8,
     },
-    amount: {
-        flex: 1,
-        color: colors.textPrimary,
-        fontSize: 15,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
-    },
-    action: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: colors.ember,
-    },
-    actionDanger: {
-        borderColor: colors.blood,
-    },
-    actionText: {
-        color: colors.emberBright,
-        fontSize: 14,
-        fontWeight: "700",
-    },
-    actionTextDanger: {
-        color: colors.damage,
-    },
-    disabled: {
-        opacity: 0.4,
-    },
     heading: {
         marginTop: 8,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
     },
@@ -330,21 +289,18 @@ const styles = StyleSheet.create({
     },
     ledgerReason: {
         flex: 1,
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
     },
     ledgerDelta: {
         minWidth: 64,
         textAlign: "right",
-        color: colors.toastSuccess,
+        color: p.heal,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     negative: {
-        color: colors.toastError,
+        color: p.danger,
     },
-    pressed: {
-        transform: [{ scale: 0.97 }],
-    },
-});
+}));

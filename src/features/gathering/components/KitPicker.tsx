@@ -1,10 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import { HAND_SIZE } from "@/features/cards/cardSkills";
 import type { MockCardBase } from "@/features/gathering/mockCards";
 import { rarityInfo } from "@/features/inventory/rarity";
 import OutcomeButton from "@/features/run/components/OutcomeButton";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 
 /**
  * PLACEHOLDER pre-Run hand picker for the gathering mocks: tick 6 of the
@@ -27,6 +28,8 @@ export default function KitPicker<C extends MockCardBase>({
     onChange: (kit: string[]) => void;
     onStart: () => void;
 }) {
+    const styles = useStyles();
+    const palette = useTheme();
     const toggle = (id: string) => {
         if (kit.includes(id)) onChange(kit.filter((k) => k !== id));
         else if (kit.length < HAND_SIZE) onChange([...kit, id]);
@@ -50,7 +53,7 @@ export default function KitPicker<C extends MockCardBase>({
                             accessibilityState={{ checked: on }}
                         >
                             <View style={[styles.icon, { borderColor: rarityInfo(card.rarity).color }]}>
-                                <Icon name={card.icon} size={20} color={colors.emberBright} />
+                                <Icon name={card.icon} size={20} color={palette.ember} />
                             </View>
                             <View style={styles.rowText}>
                                 <Text style={styles.name}>
@@ -70,25 +73,25 @@ export default function KitPicker<C extends MockCardBase>({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     panel: {
         flex: 1,
         paddingHorizontal: 14,
         gap: 4,
     },
     title: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     blurb: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     count: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
         marginTop: 4,
@@ -107,12 +110,12 @@ const styles = StyleSheet.create({
         padding: 8,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
+        borderColor: p.outline,
+        backgroundColor: p.surface,
     },
     rowOn: {
-        borderColor: colors.ember,
-        backgroundColor: colors.surfaceRaised,
+        borderColor: p.ember,
+        backgroundColor: p.surfaceAlt,
     },
     pressed: {
         opacity: 0.7,
@@ -124,37 +127,37 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 7,
         borderWidth: 1.5,
-        backgroundColor: colors.surfaceRaised,
+        backgroundColor: p.surfaceAlt,
     },
     rowText: {
         flex: 1,
         gap: 2,
     },
     name: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     role: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "400",
+        fontFamily: FONTS.body,
     },
     text: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
     },
     tick: {
         width: 18,
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 16,
         textAlign: "center",
     },
     tickOn: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     start: {
         alignItems: "center",
         paddingVertical: 8,
     },
-});
+}));

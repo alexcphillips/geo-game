@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
+import Tabs from "@/components/Tabs/Tabs";
 import SearchField from "@/components/SearchField/SearchField";
 import Modal from "@/components/Modal/Modal";
 import ItemDetail from "@/features/inventory/components/ItemDetail";
@@ -11,7 +12,8 @@ import {
     useInventory,
     useTalismanBag,
 } from "@/features/player/usePlayer";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import {
     isStackTab,
     listingPrice,
@@ -92,6 +94,8 @@ type MarketModalProps = {
  * the Market again after each trade and every 15 seconds.
  */
 export default function MarketModal({ onClose }: MarketModalProps) {
+    const styles = useStyles();
+    const palette = useTheme();
     useReportActivity("trading");
     const market = useMarketData();
     const { listings, products, own: ownListings } = market;
@@ -255,7 +259,7 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                             accessibilityLabel="Your listings"
                             hitSlop={8}
                         >
-                            <Icon name="scroll-unfurled" size={14} color={colors.emberBright} />
+                            <Icon name="scroll-unfurled" size={14} color={palette.ember} />
                             <Text style={styles.sellButtonText}>Listings</Text>
                         </Pressable>
                         <Pressable
@@ -265,7 +269,7 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                             accessibilityLabel="Sell an item"
                             hitSlop={8}
                         >
-                            <Icon name="two-coins" size={14} color={colors.emberBright} />
+                            <Icon name="two-coins" size={14} color={palette.ember} />
                             <Text style={styles.sellButtonText}>Sell</Text>
                         </Pressable>
                     </View>
@@ -379,31 +383,7 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                 </View>
             ) : (
                 <>
-                    <View style={styles.tabs} accessibilityRole="tablist">
-                        {BROWSE_TABS.map((candidate) => {
-                            const isActive = candidate.id === tabId;
-                            return (
-                                <Pressable
-                                    key={candidate.id}
-                                    onPress={() => selectTab(candidate.id)}
-                                    style={({ pressed }) => [
-                                        styles.tab,
-                                        isActive && styles.tabActive,
-                                        pressed && styles.tabPressed,
-                                    ]}
-                                    accessibilityRole="tab"
-                                    accessibilityState={{ selected: isActive }}
-                                    accessibilityLabel={candidate.label}
-                                >
-                                    <Icon
-                                        name={candidate.icon}
-                                        size={22}
-                                        color={isActive ? colors.emberBright : colors.textSecondary}
-                                    />
-                                </Pressable>
-                            );
-                        })}
-                    </View>
+                    <Tabs tabs={BROWSE_TABS} value={tabId} onChange={selectTab} style={styles.tabs} />
 
                     <View style={styles.body}>
                         <SearchField value={query} onChange={setQuery} placeholder={isAll ? "Search the Market" : `Search ${tab?.label.toLowerCase() ?? "the Market"}`} />
@@ -416,14 +396,14 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                                         {groupIndex > 0 && <View style={styles.groupDivider} />}
                                         {group.options.map((option) => {
                                             const isOn = active.has(option.id);
-                                            const tint = option.color ?? colors.ember;
+                                            const tint = option.color ?? palette.ember;
                                             return (
                                                 <Pressable
                                                     key={option.id}
                                                     onPress={() => toggle(option.id)}
                                                     style={[
                                                         styles.chip,
-                                                        isOn && { borderColor: tint, backgroundColor: colors.surfaceRaised },
+                                                        isOn && { borderColor: tint, backgroundColor: palette.surfaceAlt },
                                                     ]}
                                                     accessibilityRole="checkbox"
                                                     accessibilityState={{ checked: isOn }}
@@ -432,7 +412,7 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                                                         <Icon
                                                             name={option.icon}
                                                             size={12}
-                                                            color={isOn ? tint : colors.textSecondary}
+                                                            color={isOn ? tint : palette.textMuted}
                                                         />
                                                     )}
                                                     <Text style={[styles.chipText, isOn && styles.chipTextOn]}>
@@ -522,7 +502,7 @@ export default function MarketModal({ onClose }: MarketModalProps) {
                                             accessibilityRole="button"
                                             accessibilityLabel={`${count} in ${other.label}`}
                                         >
-                                            <Icon name={other.icon} size={12} color={colors.emberBright} />
+                                            <Icon name={other.icon} size={12} color={palette.ember} />
                                             <Text style={styles.chipText}>
                                                 {other.label} ({count})
                                             </Text>
@@ -553,31 +533,10 @@ function compareListings(a: MarketListing, b: MarketListing, sort: ListingSort, 
     return newest;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     // Same strip as the inventory's.
     tabs: {
-        flexDirection: "row",
-        gap: 4,
-        marginHorizontal: -10,
-        marginTop: -8,
-        paddingBottom: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    tab: {
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 9,
-        borderRadius: 8,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    tabActive: {
-        backgroundColor: colors.surfaceRaised,
-        borderBottomColor: colors.ember,
-    },
-    tabPressed: {
-        transform: [{ scale: 0.94 }],
+        marginBottom: 12,
     },
     body: {
         flex: 1,
@@ -591,9 +550,9 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     chipsLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         letterSpacing: 1,
         textTransform: "uppercase",
         marginRight: 2,
@@ -607,7 +566,7 @@ const styles = StyleSheet.create({
     groupDivider: {
         width: 1,
         height: 16,
-        backgroundColor: colors.border,
+        backgroundColor: p.outline,
     },
     chip: {
         flexDirection: "row",
@@ -617,22 +576,22 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: p.outline,
     },
     chipText: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     chipTextOn: {
-        color: colors.textPrimary,
+        color: p.text,
     },
     chipSortOn: {
-        borderColor: colors.ember,
-        backgroundColor: "rgba(201, 100, 30, 0.18)",
+        borderColor: p.ember,
+        backgroundColor: p.track,
     },
     chipTextSortOn: {
-        color: colors.emberBright,
+        color: p.ember,
     },
     list: {
         gap: 8,
@@ -641,7 +600,7 @@ const styles = StyleSheet.create({
     noResults: {
         paddingTop: 24,
         textAlign: "center",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 13,
         fontStyle: "italic",
     },
@@ -654,7 +613,7 @@ const styles = StyleSheet.create({
         paddingTop: 8,
     },
     elsewhereLabel: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     detail: {
@@ -673,15 +632,15 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: colors.ember,
+        borderColor: p.ember,
     },
     sellButtonPressed: {
         transform: [{ scale: 0.95 }],
-        backgroundColor: "rgba(201, 100, 30, 0.25)",
+        backgroundColor: p.track,
     },
     sellButtonText: {
-        color: colors.emberBright,
+        color: p.ember,
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-});
+}));

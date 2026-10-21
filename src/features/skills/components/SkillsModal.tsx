@@ -1,7 +1,11 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Meter from "@/components/Meter/Meter";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
-import { colors } from "@/theme/colors";
+import { SectionTitle } from "@/components/Text/Text";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 import { useSkillXp } from "@/features/player/usePlayer";
 import { combatDamageBonus, skillProgress, SKILLS, type SkillInfo } from "../skills";
 
@@ -20,6 +24,7 @@ type SkillsModalProps = {
  * once there is something to show.
  */
 export default function SkillsModal({ onClose }: SkillsModalProps) {
+    const styles = useStyles();
     return (
         <Modal title="Skills" size="fill" showBack closePlacement="footer" onClose={onClose}>
             <View style={styles.body}>
@@ -31,11 +36,12 @@ export default function SkillsModal({ onClose }: SkillsModalProps) {
 }
 
 function Section({ title, skills }: { title: string; skills: SkillInfo[] }) {
+    const styles = useStyles();
     const xp = useSkillXp();
 
     return (
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{title}</Text>
+            <SectionTitle>{title}</SectionTitle>
             <View style={styles.grid}>
                 {skills.map((skill) => {
                     const { level, progress, isMax } = skillProgress(xp[skill.id] ?? 0);
@@ -43,9 +49,8 @@ function Section({ title, skills }: { title: string; skills: SkillInfo[] }) {
                     const bonus = skill.id === "combat" ? `+${combatDamageBonus(level)}% damage` : null;
                     return (
                         <View key={skill.id} style={styles.cell}>
-                            <View
+                            <Panel compact
                                 style={styles.tile}
-                                accessible
                                 accessibilityLabel={[
                                     `${skill.label}, level ${level}`,
                                     isMax ? "max level" : `${percent}% to level ${level + 1}`,
@@ -61,20 +66,10 @@ function Section({ title, skills }: { title: string; skills: SkillInfo[] }) {
                                 <Text style={styles.level}>Lv {level}</Text>
                                 {bonus && <Text style={styles.bonus}>{bonus}</Text>}
                                 <View style={styles.meter}>
-                                    <View style={styles.track}>
-                                        <View
-                                            style={[
-                                                styles.fill,
-                                                {
-                                                    width: `${percent}%`,
-                                                    backgroundColor: skill.color,
-                                                },
-                                            ]}
-                                        />
-                                    </View>
+                                    <Meter value={percent / 100} color={skill.color} style={styles.track} />
                                     <Text style={styles.percent}>{isMax ? "Max" : `${percent}%`}</Text>
                                 </View>
-                            </View>
+                            </Panel>
                         </View>
                     );
                 })}
@@ -83,19 +78,12 @@ function Section({ title, skills }: { title: string; skills: SkillInfo[] }) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     body: {
         gap: 18,
     },
     section: {
         gap: 8,
-    },
-    sectionTitle: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
     },
     // Negative margin cancels the cells' outer padding, so tiles line up with
     // the section titles.
@@ -113,27 +101,23 @@ const styles = StyleSheet.create({
         gap: 4,
         paddingVertical: 12,
         paddingHorizontal: 6,
-        borderRadius: 12,
-        backgroundColor: colors.surfaceRaised,
-        borderWidth: 1,
-        borderColor: colors.border,
     },
     label: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     level: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
         fontVariant: ["tabular-nums"],
     },
     // Combat's damage bonus from its level, in effect-yellow like other bonuses.
     bonus: {
-        color: colors.effect,
+        color: p.game.effect,
         fontSize: 9,
-        fontWeight: "600",
+        fontFamily: FONTS.bodyBold,
     },
     meter: {
         alignSelf: "stretch",
@@ -144,21 +128,13 @@ const styles = StyleSheet.create({
     },
     track: {
         flex: 1,
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: colors.void,
-        overflow: "hidden",
-    },
-    fill: {
-        height: "100%",
-        borderRadius: 3,
     },
     // Fixed width so every tile's bar is the same length, 0% to 100%.
     percent: {
         width: 28,
         textAlign: "right",
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 10,
         fontVariant: ["tabular-nums"],
     },
-});
+}));

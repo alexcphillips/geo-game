@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import Panel from "@/components/Panel/Panel";
+import Divider from "@/components/Divider/Divider";
+import EmptyState from "@/components/EmptyState/EmptyState";
 import Icon from "@/components/Icon/Icon";
+import { SectionTitle } from "@/components/Text/Text";
 import RewardGrid from "@/features/inventory/components/RewardGrid";
 import { formatListedAgo } from "@/features/market/market";
 import { toErrorMessage } from "@/lib/api";
 import type { GeoChestSelection, GeoChestsResponse } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles, useTheme } from "@/theme/theme";
 import { useInboxStore } from "@/features/inbox/inboxStore";
 import { chestsApi } from "../chestsApi";
 import { CHEST_TIER_COLORS } from "../chestTiers";
@@ -18,6 +23,8 @@ import { ChestCost } from "./ChestTile";
  * held in place, and moves down to the history the next time the page opens.
  */
 export default function ChestsPage() {
+    const styles = useStyles();
+    const palette = useTheme();
     const [chests, setChests] = useState<GeoChestsResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +42,7 @@ export default function ChestsPage() {
     if (!chests) {
         return (
             <View style={styles.loading}>
-                {error ? <Text style={styles.empty}>{error}</Text> : <ActivityIndicator color={colors.emberBright} />}
+                {error ? <EmptyState title={error} /> : <ActivityIndicator color={palette.ember} />}
             </View>
         );
     }
@@ -50,19 +57,19 @@ export default function ChestsPage() {
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.page}>
-            <Text style={styles.sectionTitle}>Pending</Text>
-            {chests.pending.length === 0 && <Text style={styles.empty}>No chests waiting.</Text>}
+            <SectionTitle>Pending</SectionTitle>
+            {chests.pending.length === 0 && <EmptyState title="No chests waiting." />}
             {chests.pending.map((selection) => (
-                <View key={selection.id} style={styles.card}>
+                <Panel compact key={selection.id} style={styles.card}>
                     <Source selection={selection} />
                     <ChestPicker selection={selection} onOpened={replacePending} />
-                </View>
+                </Panel>
             ))}
 
-            <View style={styles.divider} />
+            <Divider />
 
-            <Text style={styles.sectionTitle}>History</Text>
-            {chests.history.length === 0 && <Text style={styles.empty}>Nothing opened yet.</Text>}
+            <SectionTitle>History</SectionTitle>
+            {chests.history.length === 0 && <EmptyState title="Nothing opened yet." />}
             {chests.history.map((selection) => (
                 <HistoryRow key={selection.id} selection={selection} />
             ))}
@@ -72,6 +79,7 @@ export default function ChestsPage() {
 
 /** "From Test Hoarder · 2h ago". */
 function Source({ selection, when = selection.createdAt }: { selection: GeoChestSelection; when?: string }) {
+    const styles = useStyles();
     return (
         <Text style={styles.source}>
             From {selection.source.name} · {formatListedAgo(when)}
@@ -81,12 +89,13 @@ function Source({ selection, when = selection.createdAt }: { selection: GeoChest
 
 /** An opened selection: which chest, what it cost, what was in it. */
 function HistoryRow({ selection }: { selection: GeoChestSelection }) {
+    const styles = useStyles();
     const opened = selection.opened;
     const chest = opened ? selection.chests[opened.index] : undefined;
     if (!opened || !chest) return null;
     const color = CHEST_TIER_COLORS[chest.tier];
     return (
-        <View style={styles.card}>
+        <Panel compact style={styles.card}>
             <View style={styles.historyHeader}>
                 <Icon name="open-treasure-chest" size={22} color={color} />
                 <Text style={[styles.chestName, { color }]}>{chest.name}</Text>
@@ -94,11 +103,11 @@ function HistoryRow({ selection }: { selection: GeoChestSelection }) {
             </View>
             <Source selection={selection} when={opened.openedAt} />
             <RewardGrid items={opened.items} compact />
-        </View>
+        </Panel>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 12,
         paddingBottom: 12,
@@ -107,34 +116,13 @@ const styles = StyleSheet.create({
         paddingVertical: 32,
         alignItems: "center",
     },
-    sectionTitle: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-    },
-    empty: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        textAlign: "center",
-    },
     card: {
         gap: 10,
         padding: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surfaceRaised,
     },
     source: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
-    },
-    divider: {
-        height: 1,
-        marginVertical: 4,
-        backgroundColor: colors.border,
     },
     historyHeader: {
         flexDirection: "row",
@@ -144,6 +132,6 @@ const styles = StyleSheet.create({
     chestName: {
         flex: 1,
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
-});
+}));

@@ -1,8 +1,10 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import Icon from "@/components/Icon/Icon";
 import Modal from "@/components/Modal/Modal";
+import { Hint } from "@/components/Text/Text";
 import type { GeoAnnouncement } from "@/lib/geo/contracts";
-import { colors } from "@/theme/colors";
+import { FONTS } from "@/theme/palette";
+import { createStyles } from "@/theme/theme";
 import { ANNOUNCEMENT_KINDS } from "../mail";
 
 type WhatsNewModalProps = {
@@ -12,6 +14,7 @@ type WhatsNewModalProps = {
 
 /** Shown once after an update: the changelog for it. It stays in the inbox too. */
 export default function WhatsNewModal({ changelog, onClose }: WhatsNewModalProps) {
+    const styles = useStyles();
     const info = ANNOUNCEMENT_KINDS.changelog;
 
     return (
@@ -25,13 +28,13 @@ export default function WhatsNewModal({ changelog, onClose }: WhatsNewModalProps
                     </View>
                 </View>
                 {changelog.body ? <Text style={styles.body}>{changelog.body}</Text> : null}
-                <Text style={styles.hint}>You can read this again in your inbox.</Text>
+                <Hint>You can read this again in your inbox.</Hint>
             </ScrollView>
         </Modal>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((p) => ({
     page: {
         gap: 14,
         paddingBottom: 12,
@@ -46,21 +49,17 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     title: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bodyHeavy,
     },
     version: {
-        color: colors.textSecondary,
+        color: p.textMuted,
         fontSize: 12,
     },
     body: {
-        color: colors.textPrimary,
+        color: p.text,
         fontSize: 15,
         lineHeight: 22,
     },
-    hint: {
-        color: colors.textSecondary,
-        fontSize: 12,
-    },
-});
+}));

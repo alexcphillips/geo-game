@@ -35,6 +35,10 @@ export function statusColor(id: string): string | undefined {
         case "poison":
         case "poisoned":
             return colors.statusPoison;
+        case "paralyzed":
+            return colors.statusParalyzed;
+        case "shelled":
+            return colors.statusShelled;
         default:
             return undefined;
     }
@@ -55,6 +59,8 @@ export type LogPlayback = {
     setActor: (combatantId: string) => void;
     /** A status's stacks on a combatant as the log reaches it, or null once it ends. */
     setStatus: (combatantId: string, statusId: string, stacks: number | null) => void;
+    /** An enemy makes its move: the moment its intent badge fires. */
+    onEnemyMove?: (combatantId: string) => void;
 };
 
 /** A beat before an enemy acts, so its turn reads as a turn and not a reflex. */
@@ -117,6 +123,7 @@ export async function playBattleLog(log: GeoLogEntry[], playback: LogPlayback): 
 
             case "enemyMove":
                 narrate(`${nameOf(entry.actor)} · ${displayName(entry.moveId)}`);
+                playback.onEnemyMove?.(entry.actor);
                 break;
 
             case "damage": {
@@ -134,6 +141,7 @@ export async function playBattleLog(log: GeoLogEntry[], playback: LogPlayback): 
                         dealt: entry.amount,
                         blocked: entry.blocked,
                         absorbed: entry.absorbed,
+                        defended: entry.defended ?? 0,
                         crit: entry.crit,
                         burstColor: color,
                     });
@@ -144,6 +152,7 @@ export async function playBattleLog(log: GeoLogEntry[], playback: LogPlayback): 
                         dealt: entry.amount,
                         blocked: entry.blocked,
                         absorbed: entry.absorbed,
+                        defended: entry.defended ?? 0,
                         color,
                     });
                 }
