@@ -8,10 +8,11 @@ import { GEO_API_PATHS, type GeoSpawn, type GeoWorldResponse } from "@/lib/geo/c
 
 /**
  * Walk this far from the last fetch and the spawns are fetched again. Kept
- * well inside the 50 m reach: the server drops spawns that fall out of reach,
- * so the map keeps up with it as you walk.
+ * inside the 50 m reach: the server drops spawns that fall out of reach, so
+ * the map keeps up with it as you walk. 25 m, not less: walking is most of
+ * the game's requests, and the Worker's free plan caps them a day.
  */
-const REFETCH_AFTER_METRES = 15;
+const REFETCH_AFTER_METRES = 25;
 /** Spawns reroll on the server every 15 minutes; check well inside that. */
 const REFETCH_EVERY_MS = 60_000;
 /** Until the server says otherwise. Matches its 50 m reach, which the ring shows. */
