@@ -45,7 +45,7 @@ These shape the technical choices below, so they come first.
 | Build | **Expo Go** — no custom native modules, deliberately | in place |
 | Client state | Zustand; player state is a cache of the server's (`features/player/`) | in place |
 | Backend | geo-game-server: a Cloudflare Worker + one Durable Object with SQLite (free plan) | in place |
-| Landmark data | OpenStreetMap, imported into Postgres | **not started** |
+| Landmark data | OpenStreetMap through the map tiles on the phone; hand-made places in the Worker's SQLite (`places`) | in place |
 
 ---
 
@@ -104,6 +104,11 @@ game wants: `tourism=artwork` + `artwork_type=mural`, `amenity=fountain`,
 areas — and tagging is inconsistent. A normalisation layer mapping raw OSM tags
 to spawn tiers is required, and that mapping table is a real piece of game design,
 not a chore.
+
+**Update 2026-10-22:** the server-side import was never built and is shelved.
+Places come from the OSM vector tiles the map already draws (read on the phone),
+plus the hand-made places admins add, which live in the Worker's SQLite `places`
+table. A bulk import would also fight the free plan's 100k row writes a day.
 
 ### 3. ~~Map rendering with `react-native-maps`~~ — SUPERSEDED by 3b
 
