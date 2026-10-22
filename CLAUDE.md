@@ -9,7 +9,7 @@
 
 ## Server and contracts
 
-- The backend is `../geo-game-server`: `server/src/` (see its README.md) and the API contracts in `shared/src/`.
+- The backend is `../geo-game-server`: a Cloudflare Worker (`worker/`), the game's rules and content (`game/src/`, see its README.md) and the API contracts in `shared/src/`.
 - `src/lib/geo/contracts/` is a copy. Change a contract in geo-game-server, then `npm run sync:contracts` here. Never edit the copy.
 
 ## Calling the API
@@ -29,7 +29,7 @@
 
 ## Generated files (don't edit)
 
-- `src/features/spawns/sprites.generated.ts`: `npm run sprites` (also writes geo-game-server's `world/app-sprites.generated.ts`).
+- `src/features/spawns/sprites.generated.ts`: `npm run sprites` (also writes geo-game-server's `game/src/world/app-sprites.generated.ts`).
 - `src/components/Icon/gameIcons.generated.ts`: `npm run icons`.
 
 ## Shell

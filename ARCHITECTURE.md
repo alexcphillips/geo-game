@@ -44,7 +44,7 @@ These shape the technical choices below, so they come first.
 | Notifications | `expo-notifications`, local only (works in Expo Go) — scaffold | in place |
 | Build | **Expo Go** — no custom native modules, deliberately | in place |
 | Client state | Zustand; player state is a cache of the server's (`features/player/`) | in place |
-| Backend | geo-game-server: Express + Postgres (`geo` schema); a Cloudflare move is planned | in place |
+| Backend | geo-game-server: a Cloudflare Worker + one Durable Object with SQLite (free plan) | in place |
 | Landmark data | OpenStreetMap, imported into Postgres | **not started** |
 
 ---
@@ -70,6 +70,9 @@ git submodule.
 **Update 2026-10-21:** the server moved out of cozy-app into its own repo,
 `geo-game-server` (`server/` + `shared/`, the contracts now `@geo/shared`),
 ahead of a move to Cloudflare. The sync copies from `geo-game-server/shared/src/`.
+
+**Update 2026-10-22:** the backend is now only the Worker (`worker/`) and the
+game's rules and content (`game/`); the Express server and Postgres are gone.
 
 **Server is the source of truth.** Inventory, equipment, the Talisman Bag,
 hands, XP, coins, spawns, vendors, the Market, elections and every combat turn

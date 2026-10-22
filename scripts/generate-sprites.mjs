@@ -35,7 +35,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const assetsDir = join(root, "src/features/spawns/assets");
 const outFile = join(root, "src/features/spawns/sprites.generated.ts");
 const serverDir = resolve(root, process.env.GEO_SERVER_DIR ?? "../geo-game-server");
-const serverFile = join(serverDir, "server/src/world/app-sprites.generated.ts");
+const serverFile = join(serverDir, "game/src/world/app-sprites.generated.ts");
 
 /** Alpha at or below this counts as empty when cropping. */
 const ALPHA_THRESHOLD = 16;
