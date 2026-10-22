@@ -1,8 +1,8 @@
-// Copied from cozy-app/shared/src/geo/index.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/index.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
- * geo-game's half of the contract — imported as `@cozy/shared/geo`, never
- * re-exported from the package root, so cozy-app and geo-game types never mix.
+ * geo-game's API contract, imported as `@geo/shared`. The app copies these
+ * files with `npm run sync:contracts`.
  */
 export * from "./admin.contract";
 export * from "./auth.contract";
@@ -28,3 +28,4 @@ export * from "./mayor.contract";
 export * from "./pet.contract";
 export * from "./quest.contract";
 export * from "./wardrobe.contract";
+export * from "./realtime.contract";

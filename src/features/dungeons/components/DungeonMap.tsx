@@ -28,12 +28,17 @@ type DungeonMapProps = {
 /** Never drawn bigger than this, so a small map doesn't turn into blobs. */
 const MAX_SCALE = 1.6;
 
+/** Map units between the tokens of people in the same room. */
+const TOKEN_GAP = 20;
+
 /**
  * A dungeon map, top-down: the rooms the server lets you see, their walls
  * drawn from their room styles, corridors between them, and an icon per room.
  * Rooms you haven't been in have faint dashed walls and a dimmed icon; done rooms get a
- * green wall and a check. Every room is a button laid over the drawing, so
- * taps and screen readers work on rooms, not pixels.
+ * green wall and a check. You're the ember token; the rest of the party are
+ * tokens with their initial, in a row beside yours when you share a room.
+ * Every room is a button laid over the drawing, so taps and screen readers
+ * work on rooms, not pixels.
  */
 export default function DungeonMap({ view, onPressRoom, disabled }: DungeonMapProps) {
     const styles = useStyles();
@@ -167,6 +172,33 @@ export default function DungeonMap({ view, onPressRoom, disabled }: DungeonMapPr
                             <View pointerEvents="none" style={[styles.token, { left: at(tx) - 9, top: at(ty) - 9 }]} />
                         );
                     })()}
+
+                    {(() => {
+                        // Teammates in rooms you can see; yours is the first spot in your room.
+                        const placed = new Map<number, number>(here ? [[here.id, 1]] : []);
+                        return view.party.flatMap((member) => {
+                            const room = member.isYou || member.roomId === null ? undefined : byId.get(member.roomId);
+                            if (!room) return [];
+                            const slot = placed.get(room.id) ?? 0;
+                            placed.set(room.id, slot + 1);
+                            const [tx, ty] = roomFoot(room, styleOf(room));
+                            return [
+                                <View
+                                    key={`p${member.displayName}`}
+                                    pointerEvents="none"
+                                    accessible
+                                    accessibilityLabel={`${member.displayName}${member.isFighting ? ", fighting" : ""}`}
+                                    style={[
+                                        styles.mate,
+                                        member.isFighting && styles.mateFighting,
+                                        { left: at(tx + slot * TOKEN_GAP) - 8, top: at(ty) - 8 },
+                                    ]}
+                                >
+                                    <Text style={styles.mateInitial}>{member.displayName.slice(0, 1).toUpperCase()}</Text>
+                                </View>,
+                            ];
+                        });
+                    })()}
                 </View>
             )}
         </View>
@@ -194,6 +226,25 @@ const useStyles = createStyles((p) => ({
         height: 16,
         alignItems: "center",
         justifyContent: "center",
+    },
+    mate: {
+        position: "absolute",
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: p.surface,
+        borderWidth: 2,
+        borderColor: p.text,
+    },
+    mateFighting: {
+        borderColor: p.game.health,
+    },
+    mateInitial: {
+        fontSize: 9,
+        fontWeight: "800",
+        color: p.text,
     },
     token: {
         position: "absolute",

@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/farming.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/farming.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoHandCard } from "./run.contract";
 

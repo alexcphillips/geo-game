@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/inbox.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/inbox.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
  * The inbox, and the feedback that feeds part of it.

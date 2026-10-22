@@ -91,7 +91,7 @@ type MarketModalProps = {
  *
  * Everything comes from the server and every trade goes to it: an item
  * listed leaves the inventory, a bid's coins are held, and the screen reads
- * the Market again after each trade and every 15 seconds.
+ * the Market again after each trade and whenever anyone else changes it.
  */
 export default function MarketModal({ onClose }: MarketModalProps) {
     const styles = useStyles();

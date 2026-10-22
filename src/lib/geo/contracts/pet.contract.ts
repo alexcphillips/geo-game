@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/pet.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/pet.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoItemStat, GeoRarity } from "./content.contract";
 

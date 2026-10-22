@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { create } from "zustand";
 import { showToast } from "@/components/Toast/toastStore";
 import { api, apiPath, toErrorMessage } from "@/lib/api";
+import { onGeoSocket, useGeoSocketStore } from "@/lib/realtime/geoSocket";
 import { latestOnly, usePolling } from "@/lib/usePolling";
 import {
     GEO_API_PATHS,
@@ -37,7 +38,8 @@ type DungeonState = {
 /**
  * The dungeon menu: dungeons, open lobbies, and the player's own lobby. Every
  * action replies with the whole menu, so it shows at once. Actions throw
- * ApiError with the server's reason.
+ * ApiError with the server's reason. The player's own lobby also arrives
+ * over the geo socket whenever someone joins, leaves or starts it.
  */
 export const useDungeonStore = create<DungeonState>()((set, get) => {
     // A poll sent before a join or leave can land after its answer; it's dropped.
@@ -46,6 +48,16 @@ export const useDungeonStore = create<DungeonState>()((set, get) => {
         reads.start();
         set({ data, error: null });
     };
+
+    // Pushed: the lobby as it is now, or null once it's gone (left, closed, started).
+    onGeoSocket((message) => {
+        if (message.type !== "lobby") return;
+        const data = get().data;
+        // Before the first read, or nothing to change.
+        if (!data || (data.myLobby === null && message.lobby === null)) return;
+        reads.start();
+        set({ data: { ...data, myLobby: message.lobby } });
+    });
 
     return {
         data: null,
@@ -84,18 +96,20 @@ const LOBBY_POLL_MS = 5_000;
 
 /**
  * Keeps the dungeon menu fresh: read once on mount, then polled quickly while
- * the menu is open, a little slower while the player waits in a lobby, and
- * not at all otherwise.
+ * the menu is open (for other people's lobbies). Waiting in a lobby with the
+ * menu shut, the socket brings changes to it; polling stands in only while
+ * the socket is down.
  */
 export function useDungeonPolling(isMenuOpen: boolean, isEnabled = true) {
     const refresh = useDungeonStore((state) => state.refresh);
     const isInLobby = useDungeonStore((state) => state.data?.myLobby != null);
+    const isConnected = useGeoSocketStore((state) => state.isConnected);
 
     useEffect(() => {
         if (isEnabled) void refresh();
     }, [isEnabled, refresh]);
 
-    usePolling(refresh, isMenuOpen ? OPEN_POLL_MS : LOBBY_POLL_MS, isEnabled && (isMenuOpen || isInLobby));
+    usePolling(refresh, isMenuOpen ? OPEN_POLL_MS : LOBBY_POLL_MS, isEnabled && (isMenuOpen || (isInLobby && !isConnected)));
 }
 
 /**

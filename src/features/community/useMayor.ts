@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { showToast } from "@/components/Toast/toastStore";
 import { api, apiPath, toErrorMessage } from "@/lib/api";
-import { latestOnly, usePolling } from "@/lib/usePolling";
+import { useLiveRead } from "@/lib/realtime/useLiveRead";
+import { latestOnly } from "@/lib/usePolling";
 import { GEO_API_PATHS, type GeoMayorResponse } from "@/lib/geo/contracts";
 import { toCandidate, toMayor, type Candidate, type Mayor } from "./mayors";
 
-/** Vote counts are live: read again this often while the screen is open. */
-const POLL_MS = 30_000;
+/** While the screen is open and the geo socket is down, read again this often. */
+const FALLBACK_POLL_MS = 30_000;
 
 export type MayorState = {
     mayor: Mayor | null;
@@ -42,8 +43,8 @@ async function fetchMayor(): Promise<Reading | { error: string }> {
 
 /**
  * The mayor in office and the running election, from the server: read on
- * open, every 30 seconds, just after the countdown ends (to show the new
- * mayor), and after voting.
+ * open, whenever the server says it changed (anyone's vote, a new mayor),
+ * just after the countdown ends, and after voting.
  */
 export function useMayor(): MayorState {
     const [reading, setReading] = useState<Reading | null>(null);
@@ -67,14 +68,14 @@ export function useMayor(): MayorState {
         if (reads.isCurrent(ticket)) adopt(result);
     }, [adopt, reads]);
 
-    usePolling(refresh, POLL_MS);
+    useLiveRead(refresh, "mayor", FALLBACK_POLL_MS);
 
     // When the election ends, read again a moment after, for the new mayor.
     const endsAt = response ? new Date(response.election.endsAt).getTime() : null;
     useEffect(() => {
         if (endsAt === null) return;
         const wait = Math.max(0, endsAt - (Date.now() + clockOffsetMs)) + 3_000;
-        // Past a day the 30-second poll is enough (and setTimeout tops out at ~24 days).
+        // Past a day the push (or fallback poll) is enough (and setTimeout tops out at ~24 days).
         if (wait > 86_400_000) return;
         const timer = setTimeout(() => void refresh(), wait);
         return () => clearTimeout(timer);

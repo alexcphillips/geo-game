@@ -4,13 +4,13 @@
 
 ## Checking work
 
-- `npm run check`: contracts match cozy-app, then `tsc --noEmit`, then `expo lint`. Run it before calling anything done.
+- `npm run check`: contracts match geo-game-server, then `tsc --noEmit`, then `expo lint`. Run it before calling anything done.
 - Never run or test in the simulator; the device is tested by hand. Stop at `npm run check`.
 
 ## Server and contracts
 
-- The backend is in `../cozy-app`: `server/src/geo/` (see its README.md) and the API contracts in `shared/src/geo/`.
-- `src/lib/geo/contracts/` is a copy. Change a contract in cozy-app, then `npm run sync:contracts` here. Never edit the copy.
+- The backend is `../geo-game-server`: `server/src/` (see its README.md) and the API contracts in `shared/src/`.
+- `src/lib/geo/contracts/` is a copy. Change a contract in geo-game-server, then `npm run sync:contracts` here. Never edit the copy.
 
 ## Calling the API
 
@@ -29,7 +29,7 @@
 
 ## Generated files (don't edit)
 
-- `src/features/spawns/sprites.generated.ts`: `npm run sprites` (also writes cozy-app's `world/app-sprites.generated.ts`).
+- `src/features/spawns/sprites.generated.ts`: `npm run sprites` (also writes geo-game-server's `world/app-sprites.generated.ts`).
 - `src/components/Icon/gameIcons.generated.ts`: `npm run icons`.
 
 ## Shell

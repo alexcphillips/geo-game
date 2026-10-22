@@ -3,26 +3,26 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Copies geo-game's API contracts out of cozy-app, where the server lives.
+ * Copies geo-game's API contracts out of geo-game-server, where the server lives.
  *
- * This repo can't import `@cozy/shared/geo` across repos, so the contract
+ * This repo can't import `@geo/shared` across repos, so the contract
  * files are copied into `src/lib/geo/contracts/` as-is, each stamped "do not
- * edit". Change a contract in cozy-app (`shared/src/geo/`), then run
+ * edit". Change a contract in geo-game-server (`shared/src/`), then run
  * `npm run sync:contracts` here; a type error in the app is the sync working.
  *
- * Expects cozy-app next to this repo; set COZY_APP_DIR to point elsewhere.
+ * Expects geo-game-server next to this repo; set GEO_SERVER_DIR to point elsewhere.
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const source = join(resolve(root, process.env.COZY_APP_DIR ?? "../cozy-app"), "shared/src/geo");
+const source = join(resolve(root, process.env.GEO_SERVER_DIR ?? "../geo-game-server"), "shared/src");
 const target = join(root, "src/lib/geo/contracts");
 
 const files = readdirSync(source).filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"));
 if (files.length === 0) throw new Error(`No contract files in ${source}`);
 
 const stamped = (name) =>
-    `// Copied from cozy-app/shared/src/geo/${name} by scripts/sync-geo-contracts.mjs — do not edit.\n\n${readFileSync(join(source, name), "utf8")}`;
+    `// Copied from geo-game-server/shared/src/${name} by scripts/sync-geo-contracts.mjs — do not edit.\n\n${readFileSync(join(source, name), "utf8")}`;
 
-// `--check`: say whether the copies match cozy-app, changing nothing (for `npm run check`).
+// `--check`: say whether the copies match geo-game-server, changing nothing (for `npm run check`).
 if (process.argv.includes("--check")) {
     const copied = existsSync(target) ? readdirSync(target).filter((name) => name.endsWith(".ts")) : [];
     const stale = [
@@ -33,7 +33,7 @@ if (process.argv.includes("--check")) {
         console.error(`Contracts out of date (${stale.join(", ")}). Run \`npm run sync:contracts\`.`);
         process.exit(1);
     }
-    console.log(`Contracts match cozy-app (${files.length} files).`);
+    console.log(`Contracts match geo-game-server (${files.length} files).`);
     process.exit(0);
 }
 

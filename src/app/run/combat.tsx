@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { router, useLocalSearchParams } from "expo-router";
-import { Animated, Text, View } from "react-native";
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import { Alert, Animated, BackHandler, Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Meter from "@/components/Meter/Meter";
 import Combatant from "@/features/run/components/Combatant";
 import EnemyIntent, { IntentSpacer } from "@/features/run/components/EnemyIntent";
+import FightParty from "@/features/run/components/FightParty";
 import PreviewParts, { describeParts } from "@/features/run/components/PreviewParts";
 import StatusChips from "@/features/run/components/StatusChips";
 import RunHand from "@/features/run/components/RunHand";
@@ -25,7 +26,6 @@ import { showToast } from "@/components/Toast/toastStore";
 import ItemDetail from "@/features/items/components/ItemDetail";
 import RewardGrid from "@/features/items/components/RewardGrid";
 import ChestPicker from "@/features/chests/components/ChestPicker";
-import { pendingChestActions } from "@/features/inbox/inboxStore";
 import { refreshAfterRunStart } from "@/features/wardrobe/autoSwap";
 import type { InventoryItem } from "@/features/items/inventoryItems";
 import { usePlayerStore } from "@/features/player/playerStore";
@@ -33,6 +33,8 @@ import { toInventoryItem } from "@/features/player/toInventoryItem";
 import { SPRITES, spriteScale, type SpriteName } from "@/features/spawns/sprites";
 import { combatDamageBonus, skillLabel, skillProgress, type SkillProgress } from "@/features/skills/skills";
 import { toErrorMessage } from "@/lib/api";
+import { useGeoSocketListener } from "@/lib/realtime/geoSocket";
+import { useTermCountdown } from "@/features/community/useTermCountdown";
 import type {
     GeoChestSelection,
     GeoCombatantView,
@@ -78,7 +80,9 @@ function startRequest(params: CombatParams): GeoStartRunRequest | null {
  * Opened as `/run/combat?spawn=…&latitude=…&longitude=…` from a map tap, or
  * bare to resume. The server runs the fight: a Run in progress is always
  * resumed first (there is only ever one), every card played is sent to it,
- * and its battle log is played back as the animation. Leaving the screen any
+ * and its battle log is played back as the animation. In a shared fight (a
+ * dungeon's boss, with the party) the others' turns arrive over the geo
+ * socket and play the same way; each turn has a clock. Leaving the screen any
  * way (Flee, Back, a swipe) flees the Run. Only a Run cut off without leaving
  * (the app closed, the connection lost) is left open to resume.
  */
@@ -193,7 +197,10 @@ function fleeOnLeave(runId: string) {
         .catch(() => undefined);
 }
 
-const playerOf = (run: GeoRunView) => run.combatants.find((c) => c.side === "player");
+/** You: your own combatant, also in a shared fight. */
+const playerOf = (run: GeoRunView) => run.combatants.find((c) => c.id === run.you);
+/** The rest of the party in a shared fight; none solo. */
+const teammatesOf = (run: GeoRunView) => run.combatants.filter((c) => c.side === "player" && c.id !== run.you);
 /** The arena draws one enemy; the first is the one shown. */
 const enemyOf = (run: GeoRunView) => run.combatants.find((c) => c.side === "enemy");
 
@@ -277,6 +284,8 @@ function CombatRun({
     // On while a log plays or a turn is in flight: no card can be played.
     const [isBusy, setIsBusy] = useState(opened.log.length > 0);
     const [inspected, setInspected] = useState<InventoryItem | null>(null);
+    /** The server's clock minus the phone's, for the turn clock. */
+    const [clockOffsetMs, setClockOffsetMs] = useState(() => Date.parse(opened.run.serverTime) - Date.now());
 
     // A fresh Run's log is rewound to find where health stood before it; a
     // resumed one has no log, so it starts where the server says it is.
@@ -308,13 +317,14 @@ function CombatRun({
     /** Plays a log, then adopts the server's view of the Run as truth. */
     const play = useCallback(
         async (response: GeoRunResponse) => {
-            const names = new Map(response.run.combatants.map((c) => [c.id, c.side === "player" ? "You" : c.name]));
+            const names = new Map(response.run.combatants.map((c) => [c.id, c.id === response.run.you ? "You" : c.name]));
             const cards = new Map(response.run.hand.map((card) => [card.cardId, items[card.itemId]?.name]));
             await playBattleLog(response.log, {
                 sideOf: (id) => {
                     const combatant = response.run.combatants.find((c) => c.id === id);
                     if (!combatant) return null;
-                    if (combatant.side === "player") return "player";
+                    // Teammates aren't drawn in the arena: their part plays in the party strip.
+                    if (combatant.side === "player") return combatant.id === response.run.you ? "player" : null;
                     return combatant.id === enemyOf(response.run)?.id ? "enemy" : null;
                 },
                 nameOf: (id) => names.get(id) ?? displayName(id),
@@ -351,10 +361,43 @@ function CombatRun({
             setRun(response.run);
             setOrder(response.run.order);
             setActorId(response.run.currentActor);
+            setClockOffsetMs(Date.parse(response.run.serverTime) - Date.now());
             // Charges, loot and XP changed on the server: fetch them once it's over.
             if (response.run.status !== "active") void refreshPlayer();
         },
         [items, perform, dropGuard, sync, refreshPlayer],
+    );
+
+    /**
+     * Logs play one after another, oldest version first: your own turns and,
+     * in a shared fight, the others' arriving over the socket. One older
+     * than what's been shown is dropped.
+     */
+    const shownVersion = useRef(opened.run.version);
+    const queue = useRef<Promise<void>>(Promise.resolve());
+    const enqueue = useCallback(
+        (response: GeoRunResponse) => {
+            queue.current = queue.current.then(async () => {
+                if (response.run.version < shownVersion.current) return;
+                shownVersion.current = response.run.version;
+                await play(response);
+            });
+            return queue.current;
+        },
+        [play],
+    );
+
+    // The others' turns (and turns the clock skipped), pushed.
+    useGeoSocketListener(
+        useCallback(
+            (message) => {
+                if (message.type !== "run" || message.run.run.id !== opened.run.id) return;
+                if (message.run.run.version <= shownVersion.current) return;
+                setIsBusy(true);
+                void enqueue(message.run).finally(() => setIsBusy(false));
+            },
+            [enqueue, opened.run.id],
+        ),
     );
 
     // The opening log: an enemy faster than you acts before your first card.
@@ -387,13 +430,13 @@ function CombatRun({
 
     const playCard = (card: InventoryItem) =>
         send(async () => {
-            await play(await runsApi.playCard(run.id, { inventoryId: card.id, targetId: enemy?.id }));
+            await enqueue(await runsApi.playCard(run.id, { inventoryId: card.id, targetId: enemy?.id }));
         });
 
     /** Eats from a lunchbox slot: the server takes the food, then applies it. */
     const eat = (slot: number) =>
         send(async () => {
-            await play(await runsApi.playCard(run.id, { lunchboxSlot: slot }));
+            await enqueue(await runsApi.playCard(run.id, { lunchboxSlot: slot }));
             // The stored lunchbox changed too, for the character screen.
             void refreshPlayer();
         });
@@ -412,7 +455,9 @@ function CombatRun({
         [runId],
     );
 
-    const flee = async () => {
+    const teammates = teammatesOf(run);
+    const isShared = teammates.length > 0;
+    const fleeNow = async () => {
         if (!isOver) {
             try {
                 await runsApi.flee(run.id);
@@ -425,11 +470,38 @@ function CombatRun({
         }
         router.back();
     };
+    // Fleeing a shared fight is for good (a dungeon's boss: out of the dungeon), so ask first.
+    const flee = () => {
+        if (!isShared || isOver) return void fleeNow();
+        Alert.alert("Flee the fight?", "The party fights on without you. You're out of the dungeon, with no chests.", [
+            { text: "Stay", style: "cancel" },
+            { text: "Flee", style: "destructive", onPress: () => void fleeNow() },
+        ]);
+    };
+    // Android's back button asks too, rather than fleeing outright.
+    useEffect(() => {
+        if (!isShared || isOver) return;
+        const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+            flee();
+            return true;
+        });
+        return () => subscription.remove();
+    });
 
+    const deadline = run.turnDeadline ? Date.parse(run.turnDeadline) : null;
+    const turnLeft = useTermCountdown(deadline, clockOffsetMs);
+    const clock = deadline !== null && !isOver ? ` · ${Math.ceil(turnLeft / 1000)}s` : "";
+    const mateActing = teammates.find((mate) => mate.id === actorId);
     const status = isOver
         ? null
         : (narration ??
-          (isPlayerTurn ? "Your turn · play a card" : actorId === enemy?.id ? `${enemy?.name}'s turn` : "…"));
+          (isPlayerTurn
+              ? `Your turn · play a card${clock}`
+              : actorId === enemy?.id
+                ? `${enemy?.name}'s turn`
+                : mateActing
+                  ? `${mateActing.name}'s turn${clock}`
+                  : "…"));
 
     // The strip shows who acts next on the left, so it turns with the Run.
     const turnEntries = useMemo<TurnOrderEntry[]>(() => {
@@ -439,10 +511,17 @@ function CombatRun({
             const combatant = run.combatants.find((c) => c.id === id);
             if (!combatant) return [];
             return combatant.side === "player"
-                ? [{ id, name: "You", image: require("@/features/character/assets/knight_head_portrait.png"), isPlayer: true }]
+                ? [
+                      {
+                          id,
+                          name: combatant.id === run.you ? "You" : combatant.name,
+                          image: require("@/features/character/assets/knight_head_portrait.png"),
+                          isPlayer: combatant.id === run.you,
+                      },
+                  ]
                 : [{ id, name: combatant.name, image: { uri: spriteOf(combatant.sprite).uri } }];
         });
-    }, [order, actorId, run.combatants]);
+    }, [order, actorId, run.combatants, run.you]);
 
     const hand = useMemo(() => handItems(run, items), [run, items]);
     // What each card would do now, by inventory id: shown on the card while it's your turn.
@@ -460,10 +539,6 @@ function CombatRun({
     // A win that gave chests: picked from here, or left pending for later.
     const chestReward = run.rewards?.chests ?? null;
     const [openedChests, setOpenedChests] = useState<GeoChestSelection | null>(null);
-    const wonSelectionId = chestReward?.selectionId ?? null;
-    useEffect(() => {
-        if (wonSelectionId) pendingChestActions.won(wonSelectionId);
-    }, [wonSelectionId]);
     // "Combat 12 → 13" for each skill this fight levelled up, once.
     const xpRewards = run.rewards?.xp ?? null;
     useEffect(() => {
@@ -483,6 +558,8 @@ function CombatRun({
 
     return (
         <View style={styles.screen}>
+            {/* A swipe back would flee a shared fight for good: only the Flee button (which asks) leaves it. */}
+            <Stack.Screen options={{ gestureEnabled: !(isShared && !isOver) }} />
             <RunScreen
                 kind="Combat"
                 onLeave={flee}
@@ -537,6 +614,13 @@ function CombatRun({
                                     revealKey={`${run.round}:${enemy?.intent?.moveId ?? ""}`}
                                     active={isPlayerTurn}
                                     firedKey={enemyMoves}
+                                    targetName={
+                                        isShared && enemy?.intent?.targetId
+                                            ? enemy.intent.targetId === run.you
+                                                ? "You"
+                                                : run.combatants.find((c) => c.id === enemy.intent?.targetId)?.name
+                                            : undefined
+                                    }
                                 />
                             </View>
                         </View>
@@ -544,7 +628,12 @@ function CombatRun({
                         <HitEffectLayer effects={effects} onDone={removeEffect} />
                     </Animated.View>
                 }
-                turnOrder={<TurnOrder entries={turnEntries} />}
+                turnOrder={
+                    <>
+                        <TurnOrder entries={turnEntries} />
+                        <FightParty teammates={teammates} actorId={actorId} deadline={isOver ? null : deadline} clockOffsetMs={clockOffsetMs} />
+                    </>
+                }
                 hand={
                     <RunHand
                         cards={hand}
@@ -629,9 +718,11 @@ function CombatRun({
                     ) : (
                         <DeathCard
                             body={
-                                run.dungeonRunId
-                                    ? `The ${(enemy?.name ?? "enemy").toLowerCase()} got the better of you. The dungeon is lost; your purse is safe.`
-                                    : `The ${(enemy?.name ?? "enemy").toLowerCase()} got the better of you.`
+                                isShared
+                                    ? `The ${(enemy?.name ?? "enemy").toLowerCase()} got the better of you. You're out of the dungeon, purse safe; the map shows how your party does.`
+                                    : run.dungeonRunId
+                                      ? `The ${(enemy?.name ?? "enemy").toLowerCase()} got the better of you. The dungeon is lost; your purse is safe.`
+                                      : `The ${(enemy?.name ?? "enemy").toLowerCase()} got the better of you.`
                             }
                             coinsLost={run.dungeonRunId ? null : run.coinsLost}
                             actions={

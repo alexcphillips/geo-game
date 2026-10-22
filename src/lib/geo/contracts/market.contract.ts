@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/market.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/market.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoPetState } from "./pet.contract";
 

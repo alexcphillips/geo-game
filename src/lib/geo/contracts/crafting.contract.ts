@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/crafting.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/crafting.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
  * Crafting: recipes turn items into other items. Every recipe comes with the

@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/distance.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/distance.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 export type GeoPoint = { latitude: number; longitude: number };
 

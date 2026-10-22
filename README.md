@@ -4,7 +4,7 @@ A location-based game in the spirit of Dark Souls: walk the real world, fight
 what spawns on real landmarks, and lose your souls where you fall.
 
 Expo + React Native, with a MapLibre map over OpenStreetMap tiles. The backend
-lives in `cozy-app` as a separate module.
+is [geo-game-server](../geo-game-server).
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack, decision log, project
 structure, and current state.

@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/quest.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/quest.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
  * Quests: a player's active quests and how far along each one is.

@@ -44,7 +44,7 @@ These shape the technical choices below, so they come first.
 | Notifications | `expo-notifications`, local only (works in Expo Go) — scaffold | in place |
 | Build | **Expo Go** — no custom native modules, deliberately | in place |
 | Client state | Zustand; player state is a cache of the server's (`features/player/`) | in place |
-| Backend | cozy-app's Express + Postgres, in its own `geo` folders and schema | in place |
+| Backend | geo-game-server: Express + Postgres (`geo` schema); a Cloudflare move is planned | in place |
 | Landmark data | OpenStreetMap, imported into Postgres | **not started** |
 
 ---
@@ -66,6 +66,10 @@ by `npm run sync:contracts`; never edit the copies. Change a contract in
 cozy-app, run the sync, and let the type errors show what to update. If that
 becomes painful, the options are publishing `@cozy/shared` to a registry or a
 git submodule.
+
+**Update 2026-10-21:** the server moved out of cozy-app into its own repo,
+`geo-game-server` (`server/` + `shared/`, the contracts now `@geo/shared`),
+ahead of a move to Cloudflare. The sync copies from `geo-game-server/shared/src/`.
 
 **Server is the source of truth.** Inventory, equipment, the Talisman Bag,
 hands, XP, coins, spawns, vendors, the Market, elections and every combat turn
@@ -481,7 +485,7 @@ src/
     pets/               Pets modal
 
   lib/
-    api/                Typed client for the cozy-app backend
+    api/                Typed client for geo-game-server
     config.ts           Resolves the backend URL (see below)
 
   theme/
@@ -656,14 +660,14 @@ Roughly in dependency order.
 1. **Run it in Expo Go and look at the map.** Most likely things to need tuning:
    the park and water colours against the dark basemap, the zoom bounds, marker
    size, and whether WebView gesture handling feels right for pan and twist.
-2. **Backend module in cozy-app**: OSM extract import with PostGIS, a landmark
+2. **Backend module in geo-game-server**: OSM extract import with PostGIS, a landmark
    table, tag→tier normalisation, and a "what has spawned near this coordinate"
    endpoint. This is the biggest remaining piece.
 4. ~~Server-authoritative spawns~~ — done. Still open: GPS spoofing, the
    standard plague of location games; plausibility checks on movement speed
    are table stakes.
 5. ~~Auth + token persistence~~ — sign-in with a geo-game account (email and
-   password, separate from cozy-app's), tokens in `expo-secure-store`, done. Apple and Google sign-in
+   password), tokens in `expo-secure-store`, done. Apple and Google sign-in
    could still come later.
 6. **Encounter system.** Tap-resolved stat checks. Design pillar 4 constrains
    this hard.

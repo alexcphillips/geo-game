@@ -7,7 +7,7 @@ export const CHECK = process.argv.includes("--check");
 /**
  * Writes a generated file, only when its contents change, so running a
  * generator with nothing new touches nothing (no Metro reload, no diff in
- * cozy-app). With `--check` it writes nothing and fails the run instead.
+ * geo-game-server). With `--check` it writes nothing and fails the run instead.
  *
  * Returns whether the file was out of date.
  */

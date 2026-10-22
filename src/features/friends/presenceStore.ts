@@ -7,7 +7,7 @@ type Report = { id: number; activity: GeoActivity; skill: string | null };
 type PresenceState = {
     /** What each mounted screen or menu says the player is doing; the last one wins. */
     reports: Report[];
-    /** Incoming friend requests, from the last heartbeat or friends fetch. */
+    /** Incoming friend requests, from the last badge push or friends fetch. */
     incomingRequests: number;
     setIncomingRequests: (count: number) => void;
 };
@@ -18,7 +18,7 @@ export const usePresenceStore = create<PresenceState>()((set) => ({
     setIncomingRequests: (incomingRequests) => set({ incomingRequests }),
 }));
 
-/** What the heartbeat sends: the newest report, or exploring with none. */
+/** What gets reported: the newest report, or exploring with none. */
 export function currentActivity(reports: Report[]): { activity: GeoActivity; skill: string | null } {
     const top = reports[reports.length - 1];
     return top ? { activity: top.activity, skill: top.skill } : { activity: "exploring", skill: null };

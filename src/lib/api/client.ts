@@ -17,6 +17,11 @@ export function setAuthToken(token: string | null): void {
     authToken = token;
 }
 
+/** The current access token, for the geo socket's sign-in. */
+export function getAuthToken(): string | null {
+    return authToken;
+}
+
 /**
  * Called on a 401: gets a new access token and says whether it did. Set by
  * `session.ts`, so this file stays free of how sessions work.
@@ -25,6 +30,11 @@ let onUnauthorized: (() => Promise<boolean>) | null = null;
 
 export function setUnauthorizedHandler(handler: (() => Promise<boolean>) | null): void {
     onUnauthorized = handler;
+}
+
+/** Gets a new access token after the geo socket was refused one; false if the session is over. */
+export async function refreshAuthToken(): Promise<boolean> {
+    return onUnauthorized ? onUnauthorized() : false;
 }
 
 /**
@@ -119,7 +129,7 @@ async function request<T>(
 }
 
 /**
- * Typed JSON access to the cozy-app backend. Every feature's `*.api.ts` is
+ * Typed JSON access to geo-game-server. Every feature's `*.api.ts` is
  * built from these calls and names its own response type, so a contract change
  * breaks the call site rather than failing at runtime.
  *

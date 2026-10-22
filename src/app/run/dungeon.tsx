@@ -8,6 +8,9 @@ import ChestPicker from "@/features/chests/components/ChestPicker";
 import { chestsApi } from "@/features/chests/chestsApi";
 import { CHEST_TIER_COLORS } from "@/features/chests/chestTiers";
 import DungeonMap from "@/features/dungeons/components/DungeonMap";
+import PartyResult, { partyOutcome } from "@/features/dungeons/components/PartyResult";
+import PartyStrip from "@/features/dungeons/components/PartyStrip";
+import ReadyUpCard from "@/features/dungeons/components/ReadyUpCard";
 import { dungeonRunsApi } from "@/features/dungeons/dungeonRunsApi";
 import { ROOM_KINDS } from "@/features/dungeons/dungeonRooms";
 import { useReportActivity } from "@/features/friends/presenceStore";
@@ -16,7 +19,8 @@ import { usePlayerStore } from "@/features/player/playerStore";
 import OutcomeButton from "@/features/run/components/OutcomeButton";
 import RunScreen from "@/features/run/components/RunScreen";
 import { toErrorMessage } from "@/lib/api";
-import type { GeoChestSelection, GeoDungeonRoom, GeoDungeonRunResponse, GeoDungeonRunView } from "@/lib/geo/contracts";
+import { useGeoSocketListener } from "@/lib/realtime/geoSocket";
+import type { GeoChestSelection, GeoDungeonOutReason, GeoDungeonRoom, GeoDungeonRunResponse, GeoDungeonRunView } from "@/lib/geo/contracts";
 import { createStyles, MoodProvider, useTheme, inked } from "@/theme/theme";
 
 /**
@@ -24,7 +28,12 @@ import { createStyles, MoodProvider, useTheme, inked } from "@/theme/theme";
  * dungeon in progress (there's only ever one).
  *
  * The server holds the map and decides everything; this screen asks to enter
- * a room or answer a puzzle and shows what comes back. Entering a fight room
+ * a room or answer a puzzle and shows what comes back. The party shares the
+ * map: what the others do arrives over the geo socket, and whichever view
+ * is newest (by `version`) wins, whether it came from a push or a reply.
+ * The boss room is the ready-up: standing in it is being ready, and when
+ * the boss starts (for everyone at once) its fight opens by itself.
+ * Entering a fight room
  * opens the combat screen, and leaving that comes back here. When the
  * dungeon ends, its result shows over the map: the chests on a win, or that
  * it's lost (the purse is always kept).
@@ -63,17 +72,43 @@ function DungeonRunScreenContent() {
         router.push("/run/combat");
     }, []);
 
+    // A fight the server opened for you without you asking: the boss, once the whole party's in.
+    const shownFight = view?.status === "active" ? view.fightRunId : null;
+    useEffect(() => {
+        openFight(shownFight);
+    }, [shownFight, openFight]);
+    /** The server's clock minus the phone's, taken as each view arrives, for the ready-up countdowns. */
+    const [clockOffsetMs, setClockOffsetMs] = useState(0);
+
+    /** Shows `next` unless what's shown is newer: a reply and a push can cross. */
+    const showView = useCallback((next: GeoDungeonRunView) => {
+        setClockOffsetMs(Date.parse(next.serverTime) - Date.now());
+        setView((shown) => (shown && shown.id === next.id && shown.version > next.version ? shown : next));
+    }, []);
+
+    // The others' moves, pushed.
+    useGeoSocketListener(
+        useCallback(
+            (message) => {
+                if (message.type !== "dungeonRun") return;
+                const shown = viewRef.current;
+                if (!shown || shown.id === message.dungeonRun.id) showView(message.dungeonRun);
+            },
+            [showView],
+        ),
+    );
+
     /** Shows what an action did: notes and found items as toasts. */
     const adopt = useCallback(
         (response: GeoDungeonRunResponse) => {
-            setView(response.dungeonRun);
+            showView(response.dungeonRun);
             for (const note of response.notes) showToast(note, "info");
             for (const found of response.found) {
                 showToast(`Found ${found.quantity} × ${items[found.itemId]?.name ?? found.itemId}`, "success");
             }
             if (response.found.length > 0) void refreshPlayer();
         },
-        [items, refreshPlayer],
+        [items, refreshPlayer, showView],
     );
 
     // On every visit (back from a fight included): the map as it is now.
@@ -85,12 +120,12 @@ function DungeonRunScreenContent() {
                 setProblem("You're not in a dungeon.");
                 return;
             }
-            setView(response.dungeonRun);
+            showView(response.dungeonRun);
             if (response.dungeonRun.status === "active") openFight(response.dungeonRun.fightRunId);
         } catch (error) {
             setProblem(toErrorMessage(error));
         }
-    }, [openFight]);
+    }, [openFight, showView]);
 
     useFocusEffect(
         useCallback(() => {
@@ -179,6 +214,7 @@ function DungeonRunScreenContent() {
                 leaveLabel={isOver ? "Back" : "Leave"}
                 arena={
                     <ScrollView contentContainerStyle={styles.arena}>
+                        {!isOver && view.readyUp && <ReadyUpCard readyUp={view.readyUp} party={view.party} clockOffsetMs={clockOffsetMs} />}
                         <DungeonMap view={view} onPressRoom={enter} disabled={isBusy || isOver} />
                         {!isOver && view.puzzle && (
                             <PuzzleCard
@@ -243,7 +279,7 @@ function PuzzleCard({
     );
 }
 
-/** Along the bottom: dungeon health, star rooms, the score so far, and the lunchbox. */
+/** Along the bottom: the rest of the party, dungeon health, star rooms, the party's score so far, and the lunchbox. */
 function StatusPanel({ view, onOpenLunchbox }: { view: GeoDungeonRunView; onOpenLunchbox?: () => void }) {
     const styles = useStyles();
     const palette = useTheme();
@@ -251,6 +287,7 @@ function StatusPanel({ view, onOpenLunchbox }: { view: GeoDungeonRunView; onOpen
     const sealed = view.stars.cleared < view.stars.total;
     return (
         <View style={styles.panel}>
+            <PartyStrip party={view.party} />
             <View style={styles.healthRow} accessible accessibilityLabel={`Health ${view.health} of ${view.maxHealth}`}>
                 <View style={styles.healthTrack}>
                     <View style={[styles.healthFill, { width: `${share * 100}%` }]} />
@@ -288,7 +325,22 @@ function StatusPanel({ view, onOpenLunchbox }: { view: GeoDungeonRunView; onOpen
     );
 }
 
-/** Over the map once it's over: the chests on a win, or the loss. */
+/** Why you're out, for the result card. */
+const OUT_REASONS: Record<GeoDungeonOutReason, string> = {
+    died: "You fell.",
+    left: "You left.",
+    missedBoss: "You didn't reach the boss room in time.",
+    fledBoss: "You fled the boss. There's no going back in.",
+};
+
+/** The headline when you're out: how it ended for the party, or that it's still going without you. */
+const OUT_TITLES = { going: "You're out", cleared: "Your party cleared it", fell: "Your party fell" } as const;
+
+/**
+ * Over the map once it's over for you: your chests on a win, or why you're
+ * out. In a party, also what became of everyone, live while the others
+ * play on.
+ */
 function ResultCard({ view }: { view: GeoDungeonRunView }) {
     const styles = useStyles();
     const [selection, setSelection] = useState<GeoChestSelection | null>(null);
@@ -303,13 +355,21 @@ function ResultCard({ view }: { view: GeoDungeonRunView }) {
     }, [view.chestSelectionId]);
 
     const won = view.status === "won";
+    const inParty = view.party.length > 1;
+    const outcome = partyOutcome(view.party);
+    const title = won ? "Dungeon cleared" : inParty ? OUT_TITLES[outcome] : "Dungeon lost";
     return (
         <View style={styles.scrim}>
             <View style={styles.result}>
-                <Text style={styles.resultTitle}>{won ? "Dungeon cleared" : "Dungeon lost"}</Text>
+                <Text style={styles.resultTitle}>{title}</Text>
                 <Text style={styles.resultBody}>
-                    {won ? `Score ${view.score}. Pick a chest, or decide later.` : "No chests this time. Your purse is safe."}
+                    {won
+                        ? `Score ${view.score}. Pick a chest, or decide later.`
+                        : `${view.outReason ? `${OUT_REASONS[view.outReason]} ` : ""}No chests for you this time. Your purse is safe.`}
+                    {!won && outcome === "going" && inParty ? " The rest of the party plays on." : ""}
+                    {!won && outcome !== "going" && inParty ? ` Party score ${view.score}.` : ""}
                 </Text>
+                {inParty && <PartyResult party={view.party} />}
                 {won && selection && (
                     <ChestPicker selection={opened ?? selection} onOpened={setOpened} />
                 )}

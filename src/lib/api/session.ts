@@ -5,7 +5,7 @@ import { api, setAuthToken, setUnauthorizedHandler } from "./client";
 
 /**
  * The player's session. Signing in uses a geo-game account (email and
- * password, separate from cozy-app's); the server answers with tokens. The refresh token
+ * password); the server answers with tokens. The refresh token
  * is kept in the device's secure storage, so a restart stays signed in; the
  * access token is short-lived and held in memory only.
  */

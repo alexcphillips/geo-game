@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/auth.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/auth.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /** Claims in a geo-game access token. */
 export type GeoTokenPayload = {
@@ -6,8 +6,7 @@ export type GeoTokenPayload = {
 };
 
 /**
- * What a player may do beyond playing. Separate from cozy-app's `is_admin`:
- * running cozy-app doesn't make you a game admin, nor the other way round.
+ * What a player may do beyond playing.
  */
 export type GeoRole = "player" | "admin";
 
@@ -23,8 +22,7 @@ export type GeoPlayer = {
 };
 
 /**
- * A signed-in session. Accounts are geo-game's own, separate from cozy-app's:
- * the same email can have a different password in each.
+ * A signed-in session.
  */
 export type GeoSession = {
     accessToken: string;
@@ -41,7 +39,7 @@ export type GeoLoginRequest = {
 
 /**
  * `POST /geo/auth/register`: makes a geo-game account and its player in one
- * go, then signs in. Same validation rules as cozy-app's sign-up. `username`
+ * go, then signs in. Rules in the server's `lib/credentials.ts`. `username`
  * becomes the display name, unique ignoring case.
  */
 export type GeoRegisterRequest = {

@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/player.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/player.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoPlayer } from "./auth.contract";
 import type { GeoEquipmentSlot, GeoItemStat, GeoRarity } from "./content.contract";

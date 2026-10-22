@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/wardrobe.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/wardrobe.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoEquipmentSlot } from "./content.contract";
 

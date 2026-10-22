@@ -51,7 +51,7 @@ export default function InboxModal({ onClose }: InboxModalProps) {
                 if (!isCurrent) return;
                 setMail(toMail(inbox));
                 useInboxStore.getState().setUnread(0);
-                // The badge can come back on the next heartbeat if this fails; nothing else lost.
+                // If this fails the badge comes back with the next push; nothing else lost.
                 if (inbox.unread > 0) inboxApi.markRead(inbox.asOf).catch(() => {});
             })
             .catch((failure) => isCurrent && setError(toErrorMessage(failure)));

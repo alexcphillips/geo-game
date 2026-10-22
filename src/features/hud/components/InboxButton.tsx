@@ -7,8 +7,7 @@ type InboxButtonProps = {
 
 /**
  * Top-right, left of friends: the inbox, with a badge counting unread mail
- * and unopened chests (from the presence heartbeat, so it updates every
- * minute or so).
+ * and unopened chests (pushed over the geo socket as they change).
  */
 export default function InboxButton({ onPress }: InboxButtonProps) {
     const unread = useInboxStore((state) => state.unread);

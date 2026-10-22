@@ -18,15 +18,16 @@ import { SectionTitle } from "@/components/Text/Text";
 import { formatListedAgo } from "@/features/market/market";
 import { SKILLS } from "@/features/skills/skills";
 import { toErrorMessage } from "@/lib/api";
-import { latestOnly, usePolling } from "@/lib/usePolling";
+import { useLiveRead } from "@/lib/realtime/useLiveRead";
+import { latestOnly } from "@/lib/usePolling";
 import type { GeoFriend, GeoFriendRequest, GeoFriendsResponse, GeoFriendStatus } from "@/lib/geo/contracts";
 import { FONTS } from "@/theme/palette";
 import { createStyles, useTheme } from "@/theme/theme";
 import { friendsApi } from "../friendsApi";
 import { usePresenceStore } from "../presenceStore";
 
-/** Friends' status is only as fresh as their heartbeat, so no need to poll faster. */
-const REFRESH_MS = 30_000;
+/** While the list is open and the geo socket is down, read it this often. */
+const FALLBACK_POLL_MS = 30_000;
 
 type FriendsModalProps = {
     onClose: () => void;
@@ -66,7 +67,8 @@ export default function FriendsModal({ onClose }: FriendsModalProps) {
         }
     }, [reads, show]);
 
-    usePolling(refresh, REFRESH_MS);
+    // Read again when a friend comes or goes, changes activity, or a request changes.
+    useLiveRead(refresh, "friends", FALLBACK_POLL_MS);
 
     /** Runs a change that answers with the new list; failures are a toast. */
     const change = async (send: () => Promise<GeoFriendsResponse>, success?: string) => {

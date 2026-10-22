@@ -1,9 +1,7 @@
-// Copied from cozy-app/shared/src/geo/geo.paths.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/geo.paths.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
- * Every geo-game HTTP path, declared once. Kept apart from cozy-app's
- * `API_PATHS` so the two products never share a namespace; all live under
- * `/geo`.
+ * Every geo-game HTTP path, declared once; all live under `/geo`.
  */
 export const GEO_API_PATHS = {
     health: "/geo/health",
@@ -204,7 +202,7 @@ export const GEO_API_PATHS = {
     },
     /** GET: the player's own feedback; POST: send a bug, suggestion or other. */
     feedback: "/geo/feedback",
-    /** POST: the heartbeat, while the app is open; DELETE: gone (backgrounded). */
+    /** POST GeoPresenceRequest: what the player is doing now, when it changes (204). */
     presence: "/geo/presence",
     friends: {
         /** GET: friends with their status, and requests both ways. */

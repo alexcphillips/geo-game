@@ -13,6 +13,8 @@ type EnemyIntentProps = {
     active: boolean;
     /** Changes the moment the enemy makes its move: the badge pulses, tying it to what happens. */
     firedKey: number;
+    /** In a shared fight: who it's aimed at ("You", or a teammate's name). The numbers count their defense. */
+    targetName?: string;
 };
 
 /**
@@ -21,7 +23,7 @@ type EnemyIntentProps = {
  * "⚔ 4 ×3": the number is per hit and already counts your defense, so it
  * drops when you equip armor.
  */
-export default function EnemyIntent({ intent, revealKey, active, firedKey }: EnemyIntentProps) {
+export default function EnemyIntent({ intent, revealKey, active, firedKey, targetName }: EnemyIntentProps) {
     const styles = useStyles();
     const [reveal] = useState(() => new Animated.Value(0));
     const [fire] = useState(() => new Animated.Value(0));
@@ -61,10 +63,10 @@ export default function EnemyIntent({ intent, revealKey, active, firedKey }: Ene
                 },
             ]}
             accessible
-            accessibilityLabel={`Next move: ${intent.name}. ${describeParts(intent.parts, "enemy")}.`}
+            accessibilityLabel={`Next move: ${intent.name}${targetName ? ` at ${targetName}` : ""}. ${describeParts(intent.parts, "enemy")}.`}
         >
             <Text style={styles.name} numberOfLines={1}>
-                {intent.name}
+                {targetName ? `${intent.name} → ${targetName}` : intent.name}
             </Text>
             <View style={styles.pill}>
                 <PreviewParts parts={intent.parts} />

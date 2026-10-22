@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/content.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/content.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoRecipe, GeoSkillRequirement } from "./crafting.contract";
 import type { GeoQualityTier } from "./fishing.contract";

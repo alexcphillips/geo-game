@@ -33,7 +33,7 @@ export default function ChestsPage() {
             .list()
             .then((list) => {
                 setChests(list);
-                // Fresher than the last heartbeat's count.
+                // Matches the list shown; the server pushes it too.
                 useInboxStore.getState().setPendingChests(list.pending.length);
             })
             .catch((failure) => setError(toErrorMessage(failure)));

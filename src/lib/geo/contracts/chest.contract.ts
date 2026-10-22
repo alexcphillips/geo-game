@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/chest.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/chest.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /** Chest tiers, cheapest first. What each costs is the server's content. */
 export const GEO_CHEST_TIERS = ["plain", "gold", "ruby", "void"] as const;

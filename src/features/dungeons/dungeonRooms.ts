@@ -30,6 +30,7 @@ export function describeRoom(room: GeoDungeonRoom, isHere: boolean): string {
     if (isHere) parts.push("you're here");
     if (room.locked) parts.push("locked");
     if (room.done) parts.push("done");
+    if (room.busyWith) parts.push(`${room.busyWith} is in there`);
     if (room.seen === "seen") parts.push("not visited yet");
     return parts.join(", ");
 }

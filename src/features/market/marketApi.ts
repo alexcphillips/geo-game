@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { showToast } from "@/components/Toast/toastStore";
 import { usePlayerStore } from "@/features/player/playerStore";
 import { api, apiPath, toErrorMessage } from "@/lib/api";
-import { latestOnly, usePolling } from "@/lib/usePolling";
+import { useLiveRead } from "@/lib/realtime/useLiveRead";
+import { latestOnly } from "@/lib/usePolling";
 import {
     GEO_API_PATHS,
     type GeoCreateListingRequest,
@@ -19,8 +20,8 @@ import {
     type OwnListing,
 } from "./market";
 
-/** While the Market is open, it reads the server this often, so bids and sales show up. */
-const POLL_MS = 15_000;
+/** While the Market is open and the geo socket is down, it reads the server this often. */
+const FALLBACK_POLL_MS = 15_000;
 
 
 async function fetchMarket(): Promise<{ market: GeoMarketResponse; own: GeoOwnListing[] } | { error: string }> {
@@ -48,8 +49,8 @@ type MarketData = {
 
 /**
  * The Market as the server has it: everyone's listings, pooled stacks, and the
- * player's own. Read when the Market opens, every 15 seconds while it stays
- * open, and after every trade.
+ * player's own. Read when the Market opens, whenever the server says it
+ * changed (a listing, bid or sale by anyone), and after every trade.
  */
 export function useMarketData(): MarketData {
     const items = usePlayerStore((state) => state.items);
@@ -75,7 +76,7 @@ export function useMarketData(): MarketData {
         setIsLoading(false);
     }, [reads]);
 
-    usePolling(refresh, POLL_MS);
+    useLiveRead(refresh, "market", FALLBACK_POLL_MS);
 
     return useMemo(
         () => ({

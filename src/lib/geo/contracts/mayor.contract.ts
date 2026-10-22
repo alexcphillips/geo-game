@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/mayor.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/mayor.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
  * Mayors and elections. The mayor's perks are global: every player has them

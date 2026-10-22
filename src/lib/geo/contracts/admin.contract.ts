@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/admin.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/admin.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoRole } from "./auth.contract";
 import type { GeoInventoryEntry } from "./player.contract";

@@ -8,9 +8,10 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ToastHost from "@/components/Toast/ToastHost";
 import SignInScreen from "@/features/auth/components/SignInScreen";
-import { usePresenceHeartbeat } from "@/features/friends/usePresenceHeartbeat";
+import { usePresence } from "@/features/friends/usePresence";
 import { configureNotifications } from "@/features/notifications/notifications";
 import { usePlayerStore } from "@/features/player/playerStore";
+import { useGeoSocket } from "@/lib/realtime/geoSocket";
 import { TRANSITION_DURATION_MS } from "@/theme/layout";
 import { PALETTES } from "@/theme/palette";
 import { FollowScreenMood } from "@/theme/theme";
@@ -29,8 +30,11 @@ void usePlayerStore.getState().load();
 
 export default function RootLayout() {
     const isSignedOut = usePlayerStore((state) => state.status === "signedOut");
-    // Online for friends from anywhere in the app, not just the world screen.
-    usePresenceHeartbeat();
+    const isPlayerReady = usePlayerStore((state) => state.status === "ready");
+    // Other players' changes, pushed: a party's map, the lobby you wait in.
+    useGeoSocket(isPlayerReady);
+    // Online for friends from anywhere in the app, and the HUD badges.
+    usePresence();
     // The storybook fonts (see FONTS in theme/palette.ts). Only the weights in
     // use, imported one by one so the bundle doesn't carry every weight.
     const [fontsLoaded, fontError] = useFonts({ Fredoka_600SemiBold, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold });

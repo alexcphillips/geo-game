@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/skills.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/skills.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoSkillRequirement } from "./crafting.contract";
 

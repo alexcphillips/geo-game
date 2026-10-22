@@ -1,12 +1,12 @@
 import Constants from "expo-constants";
 
-/** Port cozy-app's Express server listens on. */
-const BACKEND_PORT = 3000;
+/** Port geo-game-server listens on (its `PORT`). */
+const BACKEND_PORT = 3001;
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
 /**
- * Where the cozy-app backend lives.
+ * Where geo-game-server lives.
  *
  * `localhost` is useless from a phone — it resolves to the phone itself — so in
  * development the dev machine's LAN address is used, with the backend port:
@@ -19,7 +19,7 @@ const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
  *   instead. That works while the phone is on the same Wi-Fi.
  *
  * Set `EXPO_PUBLIC_API_URL` to override — required off the home network (a
- * deployed server, or a tunnel to port 3000), and for any real build.
+ * deployed server, or a tunnel to port 3001), and for any real build.
  */
 function resolveApiBaseUrl(): string {
     const explicit = process.env.EXPO_PUBLIC_API_URL;

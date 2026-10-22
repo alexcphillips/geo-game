@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/world.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/world.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /** An enemy on the map, as `GET /geo/world` lists it. */
 export type GeoSpawn = {

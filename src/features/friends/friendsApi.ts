@@ -3,7 +3,6 @@ import {
     GEO_API_PATHS,
     type GeoFriendsResponse,
     type GeoPresenceRequest,
-    type GeoPresenceResponse,
     type GeoSendFriendRequest,
     type GeoSendFriendResponse,
 } from "@/lib/geo/contracts";
@@ -22,6 +21,6 @@ export const friendsApi = {
         api.delete<GeoFriendsResponse>(apiPath(GEO_API_PATHS.friends.request, { requestId })),
     remove: (playerId: string) =>
         api.delete<GeoFriendsResponse>(apiPath(GEO_API_PATHS.friends.friend, { playerId })),
-    beat: (request: GeoPresenceRequest) => api.post<GeoPresenceResponse>(GEO_API_PATHS.presence, request),
-    leave: () => api.delete<void>(GEO_API_PATHS.presence),
+    /** What the player is doing now; online itself is the geo socket. */
+    report: (request: GeoPresenceRequest) => api.post<void>(GEO_API_PATHS.presence, request),
 };

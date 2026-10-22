@@ -7,7 +7,7 @@ type FriendsButtonProps = {
 
 /**
  * Top-right, beside settings: friends, with a badge counting incoming
- * requests (from the presence heartbeat, so it updates every minute or so).
+ * requests (pushed over the geo socket as they arrive).
  */
 export default function FriendsButton({ onPress }: FriendsButtonProps) {
     const incoming = usePresenceStore((state) => state.incomingRequests);

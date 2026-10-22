@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/place.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/place.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
  * Hand-made places: skill hubs and landmarks a game admin puts on the map,

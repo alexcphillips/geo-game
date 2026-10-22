@@ -1,4 +1,4 @@
-// Copied from cozy-app/shared/src/geo/suggestion.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/suggestion.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 /**
  * Location suggestions: a player says a real place should be a skill hub or

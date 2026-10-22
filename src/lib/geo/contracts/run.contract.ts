@@ -1,6 +1,15 @@
-// Copied from cozy-app/shared/src/geo/run.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
+// Copied from geo-game-server/shared/src/run.contract.ts by scripts/sync-geo-contracts.mjs — do not edit.
 
 import type { GeoChestOffer } from "./chest.contract";
+
+/**
+ * A shared fight (a dungeon's boss, with the whole party in it): each player
+ * has this long to act on their turn, or it's skipped. A player with no geo
+ * socket gets the reconnect window (GEO_DUNGEON_RECONNECT_SECONDS) from when
+ * they dropped, if that ends sooner; after it, their turns skip at once.
+ * Solo fights have no clock.
+ */
+export const GEO_RUN_TURN_SECONDS = 30;
 
 /**
  * The battle log: what happened in a turn, in order, for the app to animate.
@@ -43,6 +52,8 @@ export type GeoLogEntry =
     | { type: "statusRemoved"; target: string; statusId: string }
     | { type: "proc"; owner: string; effectId: string }
     | { type: "defeated"; target: string }
+    /** A player fled a shared fight: out of it, and nobody's target any more. */
+    | { type: "left"; actor: string }
     | { type: "battleEnd"; outcome: "victory" | "defeat" };
 
 export type GeoRunStatus = "active" | "victory" | "defeat" | "fled";
@@ -63,6 +74,8 @@ export type GeoCombatantView = {
     defense: number;
     /** Enemies: what they'll do on their next turn. Absent once the fight is over. */
     intent?: GeoEnemyIntent;
+    /** Players in a shared fight: fled it. Still shown, never targeted. */
+    left: boolean;
 };
 
 /**
@@ -75,8 +88,12 @@ export type GeoIntentPart =
     | { kind: "guard" | "barrier" | "heal"; amount: number; self: boolean }
     | { kind: "status"; statusId: string; self: boolean };
 
-/** An enemy's next move, chosen in advance: it always does this, unless its turn is skipped. */
-export type GeoEnemyIntent = { moveId: string; name: string; parts: GeoIntentPart[] };
+/**
+ * An enemy's next move, chosen in advance: it always does this, unless its
+ * turn is skipped. `targetId`: who it's aimed at, rolled when the move is
+ * chosen (a new roll if they're down or gone by then); null for none.
+ */
+export type GeoEnemyIntent = { moveId: string; name: string; parts: GeoIntentPart[]; targetId: string | null };
 
 export type GeoHandCard = {
     /** The inventory entry, sent back to play it. */
@@ -135,7 +152,19 @@ export type GeoDeathResponse = {
 export type GeoRunView = {
     id: string;
     kind: "combat";
+    /** Yours: in a shared fight you can be out while the others fight on. */
     status: GeoRunStatus;
+    /** Your combatant's id. In a shared fight the others on your side are your party. */
+    you: string;
+    /**
+     * Goes up with every turn. Shared fights also arrive over the geo socket
+     * (`run`): drop one older than what you hold.
+     */
+    version: number;
+    /** Shared fights: when the current player's turn is skipped (ISO); null otherwise. */
+    turnDeadline: string | null;
+    /** The server's clock (ISO), for the turn countdown on a phone set wrong. */
+    serverTime: string;
     round: number;
     /** Acting order this round, combatant ids. */
     order: string[];
