@@ -34,7 +34,7 @@ export type GeoBadges = {
 
 export type GeoFriendStatus =
     | { online: true; activity: GeoActivity; skill: string | null }
-    | { online: false; lastSeenAt: string | null };
+    | { online: false };
 
 export type GeoFriend = {
     playerId: string;

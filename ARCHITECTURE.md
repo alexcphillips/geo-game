@@ -514,15 +514,19 @@ scripts/
 
 ## Connecting to the backend
 
-`src/lib/config.ts` resolves the API base URL at runtime:
+`src/lib/config.ts` resolves the API base URL at runtime (the socket uses the
+same host, `ws`/`wss`):
 
-1. `EXPO_PUBLIC_API_URL` if set — **required for any real build.**
-2. Otherwise it derives the dev machine's LAN IP from the Expo dev server's own
-   `hostUri` and swaps in port 3000.
+1. Unset: the deployed Worker, `https://geo-game.alexphillipsdev.workers.dev`.
+2. `EXPO_PUBLIC_API_URL=lan`: a Worker on the dev machine (`npm run dev:worker --
+   --ip 0.0.0.0` in geo-game-server). The LAN IP comes from the Expo dev
+   server's own `hostUri` (or, under a tunnel, the address `app.config.js` read
+   at start), with port 8787.
+3. Any other value is used as the base URL.
 
-Step 2 matters because `localhost` on a phone means the phone. Deriving the host
-from the bundler means device testing works without hand-editing an IP every time
-the network reassigns one.
+The LAN lookup matters because `localhost` on a phone means the phone. Deriving
+the host from the bundler means device testing works without hand-editing an IP
+every time the network reassigns one.
 
 `setAuthToken()` holds the bearer token in a module variable so `api` has no React
 dependency. It is **not yet persisted** — a cold start has no token.

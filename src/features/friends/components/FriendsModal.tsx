@@ -252,9 +252,9 @@ function RequestsPage({
     );
 }
 
-/** "Fishing", "In a fight", "Last seen 2h ago". */
+/** "Fishing", "In a fight", "Offline". */
 function describeStatus(status: GeoFriendStatus): string {
-    if (!status.online) return status.lastSeenAt ? `Last seen ${formatListedAgo(status.lastSeenAt)}` : "Offline";
+    if (!status.online) return "Offline";
     switch (status.activity) {
         case "fighting":
             return "In a fight";
