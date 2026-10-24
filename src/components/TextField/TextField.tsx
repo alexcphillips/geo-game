@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, type ComponentRef, type ReactNode } from "react";
 import { TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from "react-native";
 import { Hint, SectionTitle } from "@/components/Text/Text";
 import { FONTS } from "@/theme/palette";
@@ -25,7 +25,7 @@ type TextFieldProps = Omit<TextInputProps, "style" | "placeholderTextColor"> & {
  * A text input, inked like the rest: a sunk well with a thick outline. Takes
  * every `TextInput` prop, so it drops in wherever one was.
  */
-const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
+const TextField = forwardRef<ComponentRef<typeof TextInput>, TextFieldProps>(function TextField(
     { label, note, leading, trailing, numeric = false, tone = "default", multiline, containerStyle, ...input },
     ref,
 ) {

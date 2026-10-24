@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, useState, type Ref } from "react";
+import { useImperativeHandle, useRef, useState, type ComponentRef, type Ref } from "react";
 import {
     Animated,
     Easing,
@@ -70,7 +70,7 @@ export default function Combatant({
 }: CombatantProps) {
     const styles = useStyles();
     const palette = useTheme();
-    const figureRef = useRef<View>(null);
+    const figureRef = useRef<ComponentRef<typeof View>>(null);
     const [offset] = useState(() => new Animated.Value(0));
     const [shake] = useState(() => new Animated.Value(0));
     const [flash] = useState(() => new Animated.Value(0));

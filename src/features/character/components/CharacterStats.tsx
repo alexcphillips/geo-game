@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ComponentRef } from "react";
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useStats } from "@/features/player/usePlayer";
 import type { GeoStatGroup, GeoStatLine } from "@/lib/geo/contracts";
@@ -67,7 +67,7 @@ function StatCell({
     onPress: (anchor: Anchor) => void;
 }) {
     const styles = useStyles();
-    const ref = useRef<View>(null);
+    const ref = useRef<ComponentRef<typeof View>>(null);
     return (
         <View style={styles.cellWrap}>
             <Pressable

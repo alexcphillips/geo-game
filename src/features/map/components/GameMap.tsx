@@ -81,7 +81,9 @@ export default function GameMap({
     focus = null,
     onError,
 }: GameMapProps) {
-    const webViewRef = useRef<WebView | null>(null);
+    // `object`, not the default `undefined`: webview 14 types props as
+    // `WebViewProps & P`, and `& undefined` is `never` under React 19.3's types.
+    const webViewRef = useRef<WebView<object> | null>(null);
     const [isMapReady, setIsMapReady] = useState(false);
 
     // Built once: re-rendering the HTML would reload the whole map and lose the
@@ -279,7 +281,7 @@ export default function GameMap({
 
     return (
         <View style={[styles.container, { backgroundColor: MAP_COLORS[mood].land }]}>
-            <WebView
+            <WebView<object>
                 ref={webViewRef}
                 // `baseUrl` gives the page a real secure origin rather than
                 // about:blank. Without it, MapLibre's Cache Storage tile cache

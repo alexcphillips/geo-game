@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useId, type ReactNode } from "react";
-import { StyleSheet, useColorScheme } from "react-native";
+import { StyleSheet, useColorScheme, type ImageStyle, type TextStyle, type ViewStyle } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { create } from "zustand";
 import { INK, PALETTES, type Mood, type Palette } from "./palette";
@@ -87,7 +87,10 @@ export function useAmbientMood(): Mood {
  *     // in the component:
  *     const styles = useStyles();
  */
-export function createStyles<T extends StyleSheet.NamedStyles<T>>(factory: (palette: Palette, mood: Mood) => T): () => T {
+/** A sheet of named styles (RN 0.88's types dropped `StyleSheet.NamedStyles`). */
+type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
+
+export function createStyles<T extends NamedStyles<T>>(factory: (palette: Palette, mood: Mood) => T): () => T {
     const sheets: Partial<Record<Mood, T>> = {};
     return function useStyles() {
         const mood = useMood();

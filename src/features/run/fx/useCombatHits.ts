@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ComponentRef } from "react";
 import { Animated, Easing, type View } from "react-native";
 import type { CombatantHandle } from "@/features/run/components/Combatant";
 import { colors } from "@/theme/colors";
@@ -85,7 +85,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export function useCombatHits(initialHealth: SideNumbers, initialGuard: SideNumbers, initialBarrier: SideNumbers) {
     const playerRef = useRef<CombatantHandle>(null);
     const enemyRef = useRef<CombatantHandle>(null);
-    const arenaRef = useRef<View>(null);
+    const arenaRef = useRef<ComponentRef<typeof View>>(null);
     const [arenaShake] = useState(() => new Animated.Value(0));
     const [effects, setEffects] = useState<HitEffect[]>([]);
     const [health, setHealth] = useState<SideNumbers>(initialHealth);

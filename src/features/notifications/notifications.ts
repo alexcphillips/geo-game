@@ -35,6 +35,9 @@ export function configureNotifications(): void {
             void Notifications.setNotificationChannelAsync(category.id, {
                 name: category.label,
                 description: category.description,
+                // It is exported (tsc checks it); eslint-plugin-import can't
+                // read expo-notifications 58's compiled enum.
+                // eslint-disable-next-line import/namespace
                 importance: Notifications.AndroidImportance.DEFAULT,
             });
         }

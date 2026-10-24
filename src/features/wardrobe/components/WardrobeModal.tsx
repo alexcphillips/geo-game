@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ComponentRef } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Pill from "@/components/Pill/Pill";
@@ -30,7 +30,7 @@ type WardrobeModalProps = {
 export default function WardrobeModal({ onClose, focusSlot }: WardrobeModalProps) {
     const styles = useStyles();
     const wardrobe = useWardrobe();
-    const scroll = useRef<ScrollView>(null);
+    const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
 
     return (
         <Modal title="Wardrobe" size="fill" showBack closePlacement="footer" onClose={onClose}>
