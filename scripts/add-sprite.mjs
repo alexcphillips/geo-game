@@ -1,9 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decodePng, encodePng } from "./png.mjs";
+import { decodePng, encodePng, readPng } from "./png.mjs";
 
 /**
  * Adds a map sprite from generated art: removes its plain background, saves it
@@ -49,22 +48,6 @@ writeFileSync(outFile, encodePng(image));
 console.log(`${replacing ? "Replaced" : "Added"} ${name}.png: removed ${Math.round((removed / (image.width * image.height)) * 100)}% as background.\n`);
 
 execFileSync(process.execPath, [join(root, "scripts/generate-sprites.mjs")], { stdio: "inherit" });
-
-/** The file as an 8-bit PNG, converting with `sips` if it is anything else. */
-function readPng(path) {
-    const buffer = readFileSync(path);
-    const isPng = buffer.subarray(1, 4).toString("ascii") === "PNG";
-    if (isPng && (buffer[24] === 8 && (buffer[25] === 2 || buffer[25] === 6))) return buffer;
-
-    const dir = mkdtempSync(join(tmpdir(), "sprite-"));
-    try {
-        const converted = join(dir, "converted.png");
-        execFileSync("sips", ["-s", "format", "png", "-s", "formatOptions", "default", path, "--out", converted], { stdio: "ignore" });
-        return readFileSync(converted);
-    } finally {
-        rmSync(dir, { recursive: true, force: true });
-    }
-}
 
 function luminance(r, g, b) {
     return 0.299 * r + 0.587 * g + 0.114 * b;

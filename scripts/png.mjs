@@ -1,3 +1,8 @@
+import { Buffer } from "node:buffer";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
 
 /**
@@ -137,4 +142,20 @@ export function encodePng({ width, height, pixels }) {
         chunk("IDAT", deflateSync(raw, { level: 9 })),
         chunk("IEND", Buffer.alloc(0)),
     ]);
+}
+
+/** The file as an 8-bit PNG, converting with `sips` if it is anything else. */
+export function readPng(path) {
+    const buffer = readFileSync(path);
+    const isPng = buffer.subarray(1, 4).toString("ascii") === "PNG";
+    if (isPng && (buffer[24] === 8 && (buffer[25] === 2 || buffer[25] === 6))) return buffer;
+
+    const dir = mkdtempSync(join(tmpdir(), "sprite-"));
+    try {
+        const converted = join(dir, "converted.png");
+        execFileSync("sips", ["-s", "format", "png", "-s", "formatOptions", "default", path, "--out", converted], { stdio: "ignore" });
+        return readFileSync(converted);
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
 }
