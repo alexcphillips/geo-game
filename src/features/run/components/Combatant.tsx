@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, useState, type ComponentRef, type Ref } from "react";
+import { useImperativeHandle, useRef, useState, type ComponentRef, type ReactNode, type Ref } from "react";
 import {
     Animated,
     Easing,
@@ -30,7 +30,10 @@ export type CombatantHandle = {
 
 type CombatantProps = {
     ref?: Ref<CombatantHandle>;
-    image: ImageSourcePropType;
+    /** The art: one image, or `figure` for anything else (the player's layered figure). */
+    image?: ImageSourcePropType;
+    /** Drawn instead of `image`, at `height` × `height * aspectRatio`. No hit flash. */
+    figure?: ReactNode;
     /** Natural width ÷ height of the art, so it sizes without distortion. */
     aspectRatio: number;
     /** On-screen height of the art. */
@@ -60,6 +63,7 @@ const HEALTH_BAR_WIDTH = 130;
 export default function Combatant({
     ref,
     image,
+    figure,
     aspectRatio,
     height,
     name,
@@ -171,13 +175,15 @@ export default function Combatant({
                     ref={figureRef}
                     style={{ transform: [{ translateX: Animated.add(offset, shake) }] }}
                 >
-                    <Image
-                        source={image}
-                        style={{ height, width }}
-                        resizeMode="contain"
-                        accessibilityIgnoresInvertColors
-                    />
-                    {flashOnHit && (
+                    {figure ?? (
+                        <Image
+                            source={image}
+                            style={{ height, width }}
+                            resizeMode="contain"
+                            accessibilityIgnoresInvertColors
+                        />
+                    )}
+                    {flashOnHit && image && !figure && (
                         <Animated.Image
                             source={image}
                             style={[StyleSheet.absoluteFill, { opacity: flash, tintColor: "#FFFFFF" }]}

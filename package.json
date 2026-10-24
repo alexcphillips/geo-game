@@ -48,6 +48,7 @@
         "layer:base": "node scripts/set-layer-base.mjs",
         "layer:add": "node scripts/add-layer.mjs",
         "item-art": "node scripts/generate-item-art.mjs",
+        "figure-layers": "node scripts/generate-figure-layers.mjs",
         "assets": "node scripts/generate-assets.mjs",
         "sync:contracts": "node scripts/sync-geo-contracts.mjs",
         "check": "node scripts/sync-geo-contracts.mjs --check && node scripts/generate-assets.mjs --check && tsc --noEmit && expo lint"

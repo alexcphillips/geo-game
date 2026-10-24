@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -81,8 +82,10 @@ removeBackground(body);
 writeFileSync(bodyPath, encodePng(body));
 console.log(
     `Wrote player-base.png (${width}×${height}, from ${image.width}×${image.height}): give this file to Gemini for every item edit.\n` +
-        "Wrote layers/body.png: the same with the background removed, for the app.",
+        "Wrote layers/body.png: the same with the background removed, for the app.\n",
 );
+
+execFileSync(process.execPath, [join(root, "scripts/generate-figure-layers.mjs")], { stdio: "inherit" });
 
 /** Sets the near-white background reachable from the image's edges to pure white, in place. */
 function whitenBackground({ width, height, pixels }) {

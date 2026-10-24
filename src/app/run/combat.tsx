@@ -4,6 +4,8 @@ import { Alert, Animated, BackHandler, Text, View } from "react-native";
 import Panel from "@/components/Panel/Panel";
 import Meter from "@/components/Meter/Meter";
 import Combatant from "@/features/run/components/Combatant";
+import PlayerFigure, { PLAYER_FIGURE_ASPECT_RATIO } from "@/features/character/components/PlayerFigure";
+import { useOwnFigureGear } from "@/features/character/playerFigure";
 import EnemyIntent, { IntentSpacer } from "@/features/run/components/EnemyIntent";
 import FightParty from "@/features/run/components/FightParty";
 import PreviewParts, { describeParts } from "@/features/run/components/PreviewParts";
@@ -48,8 +50,6 @@ import { FONTS } from "@/theme/palette";
 import { createStyles, MoodProvider, useTheme } from "@/theme/theme";
 import { useReportActivity } from "@/features/friends/presenceStore";
 
-/** Natural aspect of `knight_portrait.png` (432×578). */
-const PLAYER_ASPECT_RATIO = 432 / 578;
 const PLAYER_HEIGHT = 210;
 const ENEMY_HEIGHT = 96;
 
@@ -264,6 +264,7 @@ function CombatRun({
     const palette = useTheme();
     const items = usePlayerStore((state) => state.items);
     const refreshPlayer = usePlayerStore((state) => state.refresh);
+    const figureGear = useOwnFigureGear();
     // Can't change mid-Run, so the slots unlocked when it started still hold.
     const lunchboxSlots = usePlayerStore((state) => state.me?.lunchbox.slots ?? 1);
     // Skill XP before this fight, for the level meter and level-up toasts on a win.
@@ -585,8 +586,8 @@ function CombatRun({
                             <View style={styles.side}>
                                 <Combatant
                                     ref={playerRef}
-                                    image={require("@/features/character/assets/knight_portrait.png")}
-                                    aspectRatio={PLAYER_ASPECT_RATIO}
+                                    figure={<PlayerFigure gear={figureGear} height={PLAYER_HEIGHT} />}
+                                    aspectRatio={PLAYER_FIGURE_ASPECT_RATIO}
                                     height={PLAYER_HEIGHT}
                                     name={player?.name ?? "You"}
                                     health={{ current: health.player, max: player?.maxHealth ?? 1, barrier: barrier.player }}

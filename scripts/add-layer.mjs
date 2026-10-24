@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -31,6 +32,8 @@ import { decodePng, encodePng, onWhite, readPng } from "./png.mjs";
  * (a redrawn eye, a moved boot) ends up in the layer too, and needs erasing
  * by hand or a better edit.
  *
+ * Then runs generate-figure-layers so the app can draw the new layer.
+ *
  * Non-PNG input (JPEG, WebP) is converted with macOS `sips` first. Replaces an
  * existing layer of the same name.
  */
@@ -40,7 +43,7 @@ const assetsDir = join(root, "src/features/character/assets");
 const basePath = join(assetsDir, "player-base.png");
 
 /** The slots that get a layer (see the Layered Player Figure plan). */
-const SLOTS = ["head", "chest", "legs", "cloak", "main-hand", "off-hand"];
+const SLOTS = ["head", "chest", "legs", "main-hand", "off-hand"];
 
 /**
  * Summed RGB difference (on blurred copies) above which a pixel counts as
@@ -128,8 +131,10 @@ console.log(
     `${replacing ? "Replaced" : "Added"} layers/${slot}/${name}.png: ${((kept / count) * 100).toFixed(1)}% of the canvas.\n` +
         `Aligned the edit: zoom ${(fit.zoom * 100).toFixed(1)}%, shift ${fit.dx},${fit.dy}px, ` +
         `leftover difference ${fit.score.toFixed(1)}/255${fit.score > 12 ? " (high: the edit may have moved the character)" : ""}.\n` +
-        `Preview: ${previewFile}`,
+        `Preview: ${previewFile}\n`,
 );
+
+execFileSync(process.execPath, [join(root, "scripts/generate-figure-layers.mjs")], { stdio: "inherit" });
 
 function luminance(r, g, b) {
     return 0.299 * r + 0.587 * g + 0.114 * b;

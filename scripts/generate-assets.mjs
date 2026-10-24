@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * Runs every generator that turns source art or lists into code: icons, map
- * sprites, item art. Each writes only what changed, so this is cheap to run
+ * sprites, item art, player figure layers. Each writes only what changed, so this is cheap to run
  * often; `npm start` runs it first (scripts/dev.mjs). Pass `--check` to fail
  * on anything out of date instead of writing it (part of `npm run check`).
  */
@@ -16,6 +16,7 @@ export const GENERATORS = [
     { name: "icons", script: "scripts/generate-icons.mjs", watch: ["scripts/generate-icons.mjs"] },
     { name: "sprites", script: "scripts/generate-sprites.mjs", watch: ["src/features/spawns/assets"] },
     { name: "item-art", script: "scripts/generate-item-art.mjs", watch: ["src/features/items/art"] },
+    { name: "figure-layers", script: "scripts/generate-figure-layers.mjs", watch: ["src/features/character/assets/layers"] },
 ];
 
 /** Runs one generator in its own process; false if it failed. */
