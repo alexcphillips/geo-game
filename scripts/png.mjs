@@ -159,3 +159,15 @@ export function readPng(path) {
         rmSync(dir, { recursive: true, force: true });
     }
 }
+
+/** Composites any transparency onto white, in place. */
+export function onWhite(image) {
+    if (!image.hasAlpha) return image;
+    const { pixels } = image;
+    for (let at = 0; at < pixels.length; at += 4) {
+        const a = pixels[at + 3] / 255;
+        for (let c = 0; c < 3; c++) pixels[at + c] = Math.round(pixels[at + c] * a + 255 * (1 - a));
+        pixels[at + 3] = 255;
+    }
+    return image;
+}

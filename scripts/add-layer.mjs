@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decodePng, encodePng, readPng } from "./png.mjs";
+import { decodePng, encodePng, onWhite, readPng } from "./png.mjs";
 
 /**
  * Cuts one gear layer for the player figure out of a Gemini edit of the base
@@ -12,8 +12,8 @@ import { decodePng, encodePng, readPng } from "./png.mjs";
  *
  *     npm run layer:add -- ~/Downloads/gemini-crown.png head crown-of-ash
  *
- * The input is `player-base.png` (white background, in the same folder as
- * `layers/`) edited by Gemini to wear one item, with everything else
+ * The input is `player-base.png` (made with `npm run layer:base`, in the
+ * same folder as `layers/`) edited by Gemini to wear one item, with everything else
  * unchanged. The layer keeps only the pixels that differ from the base, on a
  * transparent canvas the base's size, so stacking it over the base puts the
  * item in place.
@@ -48,6 +48,13 @@ const SLOTS = ["head", "chest", "legs", "cloak", "main-hand", "off-hand"];
  * hood still counts.
  */
 const DIFF_THRESHOLD = 36;
+/**
+ * Difference in local contrast (grey standard deviation over TEXTURE_PX)
+ * above which a pixel counts as changed even if its average colour didn't:
+ * smooth steel replacing grey chainmail.
+ */
+const TEXTURE_THRESHOLD = 10;
+const TEXTURE_PX = 2;
 /** Blur radius before comparing, so anti-aliasing and 1px jitter don't count as changes. */
 const BLUR_PX = 1;
 /** Changed slivers thinner than about twice this are treated as redrawn outlines and dropped. */
@@ -80,7 +87,7 @@ if (!input || !SLOTS.includes(slot) || !name || !/^[a-z0-9-]+$/.test(name)) {
     process.exit(1);
 }
 if (!existsSync(basePath)) {
-    console.error(`Missing ${basePath}: save the padded base character there first (white background).`);
+    console.error(`Missing ${basePath}: make it first with npm run layer:base -- <image>.`);
     process.exit(1);
 }
 
@@ -123,18 +130,6 @@ console.log(
         `leftover difference ${fit.score.toFixed(1)}/255${fit.score > 12 ? " (high: the edit may have moved the character)" : ""}.\n` +
         `Preview: ${previewFile}`,
 );
-
-/** Composites any transparency onto white, so a padded base with a transparent border still compares. */
-function onWhite(image) {
-    if (!image.hasAlpha) return image;
-    const { pixels } = image;
-    for (let at = 0; at < pixels.length; at += 4) {
-        const a = pixels[at + 3] / 255;
-        for (let c = 0; c < 3; c++) pixels[at + c] = Math.round(pixels[at + c] * a + 255 * (1 - a));
-        pixels[at + 3] = 255;
-    }
-    return image;
-}
 
 function luminance(r, g, b) {
     return 0.299 * r + 0.587 * g + 0.114 * b;
@@ -321,14 +316,44 @@ function flood(starts, inside, seen, queue) {
     return queue.subarray(0, tail);
 }
 
+/** Box-blurs a grey image (separable). */
+function blurGrey(values, r) {
+    const tmp = new Float32Array(count);
+    const out = new Float32Array(count);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            let sum = 0, n = 0;
+            for (let k = Math.max(0, x - r); k <= Math.min(width - 1, x + r); k++, n++) sum += values[y * width + k];
+            tmp[y * width + x] = sum / n;
+        }
+    }
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            let sum = 0, n = 0;
+            for (let k = Math.max(0, y - r); k <= Math.min(height - 1, y + r); k++, n++) sum += tmp[k * width + x];
+            out[y * width + x] = sum / n;
+        }
+    }
+    return out;
+}
+
+/** Standard deviation of grey within `r` of each pixel: high on busy texture (mail), low on flat colour. */
+function localContrast(values, r) {
+    const mean = blurGrey(values, r);
+    const squares = blurGrey(values.map((v) => v * v), r);
+    return mean.map((m, i) => Math.sqrt(Math.max(0, squares[i] - m * m)));
+}
+
 /** 1 where the edit changed the base enough to be the item. */
 function changedMask(base, aligned) {
     const a = blur(base, BLUR_PX);
     const b = blur(aligned, BLUR_PX);
+    const textureA = localContrast(grey(base), px(TEXTURE_PX));
+    const textureB = localContrast(grey(aligned), px(TEXTURE_PX));
     let mask = new Uint8Array(count);
     for (let i = 0; i < count; i++) {
         const d = Math.abs(a[i * 3] - b[i * 3]) + Math.abs(a[i * 3 + 1] - b[i * 3 + 1]) + Math.abs(a[i * 3 + 2] - b[i * 3 + 2]);
-        mask[i] = d > DIFF_THRESHOLD ? 1 : 0;
+        mask[i] = d > DIFF_THRESHOLD || Math.abs(textureA[i] - textureB[i]) > TEXTURE_THRESHOLD ? 1 : 0;
     }
 
     mask = morph(morph(mask, width, height, ERODE_PX, false), width, height, ERODE_PX, true);

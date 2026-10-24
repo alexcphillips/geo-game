@@ -45,6 +45,7 @@
         "icons": "node scripts/generate-icons.mjs",
         "sprites": "node scripts/generate-sprites.mjs",
         "sprite:add": "node scripts/add-sprite.mjs",
+        "layer:base": "node scripts/set-layer-base.mjs",
         "layer:add": "node scripts/add-layer.mjs",
         "item-art": "node scripts/generate-item-art.mjs",
         "assets": "node scripts/generate-assets.mjs",
